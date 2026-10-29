@@ -1,0 +1,194 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "oxc", "typescript", "react", "jsx-a11y", "import", "unicorn", "promise"],
+  "jsPlugins": [
+    "eslint-plugin-sonarjs",
+    "eslint-plugin-boundaries",
+    "./tooling/lint-rules/no-throw-in-domain.js"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  // tooling/lint-canaries/** is excluded on the CLI (`pnpm lint`), not here, so scripts/check-lint-canaries.ts can lint them with this config.
+  "ignorePatterns": [
+    "src/routeTree.gen.ts",
+    ".superpowers/**",
+    "docs/**",
+    "dist/**",
+    "coverage/**",
+    ".output/**",
+    ".tanstack/**"
+  ],
+  "settings": {
+    "import/resolver": { "typescript": true },
+    "boundaries/elements": [
+      { "type": "feature", "pattern": "**/src/features/*", "capture": ["root", "name"] },
+      { "type": "shared-ui", "pattern": "**/src/shared/ui" },
+      { "type": "shared", "pattern": "**/src/shared" },
+      { "type": "routes", "pattern": "**/src/routes" },
+      { "type": "i18n", "pattern": "**/src/i18n" },
+      { "type": "convex", "pattern": "**/convex" }
+    ]
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/strict-boolean-expressions": "error",
+    "typescript/switch-exhaustiveness-check": [
+      "error",
+      { "considerDefaultExhaustiveForUnions": false }
+    ],
+    "typescript/only-throw-error": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-enum-comparison": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-unsafe-unary-minus": "error",
+    "import/no-cycle": "error",
+    "complexity": ["error", { "max": 10 }],
+    // Pairs with import/consistent-type-specifier-style (top-level `import type`).
+    "eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
+    // Identity/sentinel values (-1 from indexOf, 0, 1) are not magic; everything else needs a named constant.
+    "eslint/no-magic-numbers": ["error", { "ignore": [-1, 0, 1], "ignoreArrayIndexes": true }],
+    "eslint/id-length": ["error", { "checkGeneric": false }],
+    "eslint/func-style": ["error", "declaration", { "allowArrowFunctions": true }],
+    "unicorn/text-encoding-identifier-case": ["error", { "withDash": true }],
+    // Formatter-owned (oxfmt, Task 4): import order and whitespace/casing rules eslint-config-prettier also disables.
+    "eslint/sort-imports": "off",
+    "unicorn/empty-brace-spaces": "off",
+    "unicorn/no-nested-ternary": "off",
+    "unicorn/number-literal-case": "off",
+    // TanStack Router requires a named `Route` export, so default-export style rules cannot apply.
+    "import/no-named-export": "off",
+    "import/prefer-default-export": "off",
+    // One export statement per file / exports-last fight inline `export const` and TanStack's Route-first file layout.
+    "import/group-exports": "off",
+    "import/exports-last": "off",
+    // Contradicts unicorn/prefer-ternary (also enabled); eslint/no-nested-ternary still bans nested ones.
+    "eslint/no-ternary": "off",
+    // Legacy single-declaration style; conflicts with one-const-per-binding modern TS.
+    "eslint/one-var": "off",
+    // Key order is semantic in our data (Result {ok, value}, route options); sorting adds noise, not safety.
+    "eslint/sort-keys": "off",
+    // Obsolete with the automatic JSX runtime (tsconfig jsx: react-jsx).
+    "react/react-in-jsx-scope": "off",
+    // User-facing strings go through Paraglide (ADR 17, 19); the product name is the only untranslated literal.
+    "react/jsx-no-literals": [
+      "error",
+      {
+        "noStrings": true,
+        "ignoreProps": true,
+        "allowedStrings": ["NAND Computer Architecture"],
+        "restrictedAttributes": ["alt", "aria-description", "aria-label", "placeholder", "title"]
+      }
+    ],
+    "sonarjs/cognitive-complexity": ["error", 15],
+    "local/no-throw-in-domain": "error",
+    "boundaries/dependencies": [
+      "error",
+      {
+        "default": "disallow",
+        "policies": [
+          {
+            "from": { "element": { "type": "shared" } },
+            "allow": { "to": { "element": { "type": "shared" } } }
+          },
+          {
+            "from": { "element": { "type": "feature" } },
+            "allow": [
+              { "to": { "element": { "types": { "anyOf": ["shared", "shared-ui", "i18n"] } } } },
+              { "to": { "element": { "type": "feature", "fileInternalPath": "index.ts" } } }
+            ]
+          },
+          {
+            "from": { "element": { "type": "routes" } },
+            "allow": [
+              {
+                "to": {
+                  "element": { "types": { "anyOf": ["shared", "shared-ui", "i18n", "convex", "routes"] } }
+                }
+              },
+              { "to": { "element": { "type": "feature", "fileInternalPath": "index.ts" } } }
+            ]
+          },
+          {
+            "from": { "element": { "type": "feature", "captured": { "name": "simulation" } } },
+            "disallow": {
+              "to": { "element": { "types": { "anyOf": ["shared-ui", "i18n", "feature"] } } }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        // Repo scripts run in Node, not the browser.
+        "import/no-nodejs-modules": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        // Test fixtures are literal inputs/expectations; naming every number hurts readability.
+        "eslint/no-magic-numbers": "off"
+      }
+    },
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "excludeFiles": ["**/src/shared/ui/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["react-aria-components", "react-aria-components/*", "react-aria", "react-aria/*"],
+                "message": "Only src/shared/ui may import React Aria (ADR 26)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/features/simulation/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["react-aria-components", "react-aria-components/*", "react-aria", "react-aria/*"],
+                "message": "Only src/shared/ui may import React Aria (ADR 26)."
+              },
+              {
+                "group": ["react", "react/*", "react-dom", "react-dom/*", "@tanstack/*"],
+                "message": "simulation is pure TS: no React, DOM or TanStack (ADR 23)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

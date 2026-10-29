@@ -10,8 +10,8 @@ import {
   newPinId,
   newProjectId,
   newWireId,
-  type ChipId,
 } from "./ids";
+import type { ChipId } from "./ids";
 import { assertNever } from "./assert-never";
 
 test("branded ids reject non-uuids and accept generated ids", () => {
@@ -25,10 +25,11 @@ test("branded ids reject non-uuids and accept generated ids", () => {
 
 test("ids of different kinds are not assignable (type-level)", () => {
   // @ts-expect-error PinId is not a ChipId
-  const _c: ChipId = newPinId();
-  expect(_c).toBeTypeOf("string");
+  const chipId: ChipId = newPinId();
+  expect(chipId).toBeTypeOf("string");
 });
 
 test("assertNever throws on unreachable values", () => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deliberately forging an impossible value to reach the throw
   expect(() => assertNever("boom" as never)).toThrow("Unexpected value");
 });
