@@ -184,6 +184,14 @@
       "rules": { "typescript/prefer-readonly-parameter-types": "off" }
     },
     {
+      // Editor actions and state carry branded ids (mutable object types), so no parameter can satisfy the rule; `a`/`b` are the NAND pin names.
+      "files": ["**/features/circuit-editor/**"],
+      "rules": {
+        "typescript/prefer-readonly-parameter-types": "off",
+        "eslint/id-length": ["error", { "checkGeneric": false, "exceptions": ["a", "b"] }]
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         // Tests read repo files (e.g. the committed tokens.css) to guard generated output.

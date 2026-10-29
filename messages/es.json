@@ -27,5 +27,8 @@
   "persistence_error_not_found": "No se encontró ese proyecto en este navegador.",
   "persistence_error_corrupt": "El proyecto guardado está dañado y no se pudo abrir. {reason}",
   "persistence_error_quota": "El almacenamiento del navegador está lleno, así que no se pudo guardar el proyecto.",
-  "persistence_error_unavailable": "El almacenamiento del navegador no está disponible. Tu trabajo solo se conserva en memoria y se perderá al cerrar esta pestaña."
+  "persistence_error_unavailable": "El almacenamiento del navegador no está disponible. Tu trabajo solo se conserva en memoria y se perderá al cerrar esta pestaña.",
+  "editor_error_instance_not_found": "No se encontró la instancia {instanceId}.",
+  "editor_error_duplicate_instance": "La instancia {instanceId} ya existe.",
+  "editor_error_protected_instance": "Las entradas y salidas no se pueden eliminar."
 }

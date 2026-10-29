@@ -27,5 +27,8 @@
   "persistence_error_not_found": "That project was not found in this browser.",
   "persistence_error_corrupt": "The saved project is damaged and could not be opened. {reason}",
   "persistence_error_quota": "Browser storage is full, so the project could not be saved.",
-  "persistence_error_unavailable": "Browser storage is unavailable. Your work is kept in memory only and will be lost when you close this tab."
+  "persistence_error_unavailable": "Browser storage is unavailable. Your work is kept in memory only and will be lost when you close this tab.",
+  "editor_error_instance_not_found": "Instance {instanceId} was not found.",
+  "editor_error_duplicate_instance": "Instance {instanceId} already exists.",
+  "editor_error_protected_instance": "Input and output pins cannot be removed."
 }

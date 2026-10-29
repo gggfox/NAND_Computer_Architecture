@@ -28,7 +28,8 @@
     "react": "catalog:",
     "react-aria-components": "catalog:",
     "react-dom": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@babel/core": "catalog:",
