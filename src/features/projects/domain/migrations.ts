@@ -11,6 +11,24 @@ export type MigrationChain = readonly Migration[];
 
 export const defaultChain: MigrationChain = [];
 
+/** A migration that throws becomes a typed error instead of escaping. */
+const runStep = (step: Migration, value: unknown): Result<unknown, ImportError> => {
+  try {
+    return ok(step.migrate(value));
+  } catch {
+    return err({ type: "InvalidProject", issues: [`migration from version ${step.from} failed`] });
+  }
+};
+
+const advance = (
+  value: unknown,
+  version: number,
+  chain: MigrationChain,
+): Result<unknown, ImportError> => {
+  const step = chain.find((migration) => migration.from === version);
+  return step === undefined ? err({ type: "UnsupportedVersion", version }) : runStep(step, value);
+};
+
 /** Apply migrations from `data.version` up to `current`; a missing step is `UnsupportedVersion`. */
 export const migrateToCurrent = (
   data: { readonly version: number },
@@ -20,11 +38,13 @@ export const migrateToCurrent = (
   const { version: start } = data;
   let value: unknown = data;
   for (let version = start; version < current; version += 1) {
-    const step = chain.find((migration) => migration.from === version);
-    if (step === undefined) {
-      return err({ type: "UnsupportedVersion", version: start });
+    const next = advance(value, version, chain);
+    if (!next.ok) {
+      return next.error.type === "UnsupportedVersion"
+        ? err({ type: "UnsupportedVersion", version: start })
+        : next;
     }
-    value = step.migrate(value);
+    ({ value } = next);
   }
   return ok(value);
 };

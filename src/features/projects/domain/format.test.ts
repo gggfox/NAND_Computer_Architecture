@@ -106,6 +106,30 @@ describe("parseProjectFile migrations", () => {
       value: project,
     });
   });
+  test("a migration that forgets to bump the version is rejected", () => {
+    const project = createDemoProject("x");
+    const stale: Migration = { from: 1, migrate: identity };
+    expect(parseProjectFile(oldFile(project), [stale], 2)).toEqual({
+      ok: false,
+      error: { type: "InvalidProject", issues: ["migration did not produce version 2"] },
+    });
+  });
+  test("a migration returning a non-object is rejected", () => {
+    expect(parseProjectFile(envelope(1), [{ from: 1, migrate: () => 7 }], 2)).toEqual({
+      ok: false,
+      error: { type: "InvalidProject", issues: ["migration did not produce version 2"] },
+    });
+  });
+  test("a throwing migration becomes a typed error", () => {
+    const boom: Migration = {
+      from: 1,
+      migrate: (): unknown => structuredClone(Symbol("boom")),
+    };
+    expect(parseProjectFile(envelope(1), [boom], 2)).toEqual({
+      ok: false,
+      error: { type: "InvalidProject", issues: ["migration from version 1 failed"] },
+    });
+  });
   test("a chain with a gap is UnsupportedVersion", () => {
     expect(parseProjectFile(envelope(1), [{ from: 5, migrate: identity }], 2)).toEqual({
       ok: false,

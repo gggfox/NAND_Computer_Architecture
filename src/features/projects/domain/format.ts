@@ -21,6 +21,7 @@ export const ProjectFileSchema = z.object({
 
 // The version literal is checked before migration; after it, only the payload shape matters.
 const PayloadSchema = ProjectFileSchema.omit({ version: true });
+const VersionedSchema = z.looseObject({ version: z.number() });
 const EnvelopeSchema = z.looseObject({
   format: z.literal("nand-project"),
   version: z.number().int(),
@@ -83,7 +84,17 @@ const migrateAndValidate = (
     return checked;
   }
   const migrated = migrateToCurrent(envelope, chain, current);
-  return migrated.ok ? validate(migrated.value) : migrated;
+  if (!migrated.ok) {
+    return migrated;
+  }
+  // Wrong version after migration is an invalid result of a supported file, not an unsupported file.
+  const reached = VersionedSchema.safeParse(migrated.value);
+  return reached.success && reached.data.version === current
+    ? validate(migrated.value)
+    : err({
+        type: "InvalidProject",
+        issues: [`migration did not produce version ${current}`],
+      });
 };
 
 export const parseProjectFile = (
