@@ -15,5 +15,7 @@
   "input_b": "Entrada B",
   "output": "Salida",
   "export": "Exportar",
-  "import": "Importar"
+  "import": "Importar",
+  "project_not_found_title": "Proyecto no encontrado",
+  "project_not_found_body": "Este proyecto no existe o su enlace no es válido."
 }
