@@ -1,4 +1,5 @@
 {
+  "ignoreFiles": ["src/features/theming/tokens.css"],
   "extends": [
     "stylelint-config-standard",
     "stylelint-config-css-modules",
@@ -22,7 +23,10 @@
       }
     ],
     "csstools/use-logical": "always",
-    "csstools/value-no-unknown-custom-properties": true,
+    "csstools/value-no-unknown-custom-properties": [
+      true,
+      { "importFrom": ["src/features/theming/tokens.css", "src/styles/global.css"] }
+    ],
     "plugin/no-low-performance-animation-properties": true,
     "a11y/media-prefers-reduced-motion": true,
     "a11y/no-outline-none": true,

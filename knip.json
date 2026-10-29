@@ -2,6 +2,8 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "src/routes/**/*.{ts,tsx}",
+    "src/features/*/index.ts",
+    "src/shared/ui/index.ts",
     "src/**/*.test.{ts,tsx}",
     "scripts/*.ts",
     "tooling/lint-rules/*.js"

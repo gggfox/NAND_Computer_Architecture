@@ -7,6 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "css-types": "vite-css-modules \"src/**/*.module.css\" --silent",
+    "tokens": "node scripts/generate-theme-css.ts",
     "typecheck": "pnpm css-types && tsc --noEmit && tsc --noEmit -p scripts",
     "lint": "oxlint --type-aware --deny-warnings --ignore-pattern 'tooling/lint-canaries/**'",
     "lint:canaries": "node scripts/check-lint-canaries.ts",
@@ -23,6 +24,7 @@
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "react": "catalog:",
+    "react-aria-components": "catalog:",
     "react-dom": "catalog:",
     "zod": "catalog:"
   },

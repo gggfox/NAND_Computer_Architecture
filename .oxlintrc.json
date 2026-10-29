@@ -160,8 +160,27 @@
       }
     },
     {
+      // React components and their CSS Modules are PascalCase (ThemePicker.tsx); everything else is kebab-case.
+      "files": ["**/*.tsx"],
+      "rules": {
+        "unicorn/filename-case": ["error", { "cases": { "kebabCase": true, "pascalCase": true } }]
+      }
+    },
+    {
+      // Wrappers forward conditionally-spread props to React Aria because it rejects explicit `undefined` under exactOptionalPropertyTypes.
+      "files": ["**/src/shared/ui/**"],
+      "rules": { "react/jsx-props-no-spreading": "off" }
+    },
+    {
+      // `children: ReactNode` props can never satisfy prefer-readonly-parameter-types.
+      "files": ["**/src/**/ui/**"],
+      "rules": { "typescript/prefer-readonly-parameter-types": "off" }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
+        // Tests read repo files (e.g. the committed tokens.css) to guard generated output.
+        "import/no-nodejs-modules": "off",
         // Test fixtures are literal inputs/expectations; naming every number hurts readability.
         "eslint/no-magic-numbers": "off"
       }

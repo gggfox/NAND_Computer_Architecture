@@ -1,3 +1,15 @@
+@import url("../features/theming/tokens.css");
+
+:root {
+  --motion-duration: 150ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+  }
+}
+
 *,
 *::before,
 *::after {
@@ -7,4 +19,6 @@
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-background);
 }
