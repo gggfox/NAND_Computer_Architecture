@@ -3,6 +3,7 @@
   "entry": [
     "src/routes/**/*.{ts,tsx}",
     "src/features/*/index.ts",
+    "src/features/simulation/adapters/engine.worker.ts",
     "src/shared/ui/index.ts",
     "src/**/*.test.{ts,tsx}",
     "scripts/*.ts",

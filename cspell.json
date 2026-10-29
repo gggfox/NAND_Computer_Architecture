@@ -46,6 +46,8 @@
     "Wayfinding",
     "Nand",
     "nand",
-    "rrggbb"
+    "rrggbb",
+    "netlist",
+    "nands"
   ]
 }

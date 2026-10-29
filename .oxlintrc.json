@@ -63,6 +63,13 @@
     "typescript/no-unsafe-unary-minus": "error",
     "import/no-cycle": "error",
     "complexity": ["error", { "max": 10 }],
+    // Typed arrays and DOM events can never be deeply readonly; listing them beats per-line disables.
+    "typescript/prefer-readonly-parameter-types": [
+      "error",
+      {
+        "allow": [{ "from": "lib", "name": ["Int32Array", "Uint8Array", "MessageEvent"] }]
+      }
+    ],
     // Pairs with import/consistent-type-specifier-style (top-level `import type`).
     "eslint/no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
     // Identity/sentinel values (-1 from indexOf, 0, 1) are not magic; everything else needs a named constant.
@@ -205,6 +212,13 @@
             ]
           }
         ]
+      }
+    },
+    {
+      // `a` and `b` are the NAND input pin names in the netlist format (Task 11 interface).
+      "files": ["**/features/simulation/**"],
+      "rules": {
+        "eslint/id-length": ["error", { "checkGeneric": false, "exceptions": ["a", "b"] }]
       }
     },
     {
