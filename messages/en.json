@@ -23,5 +23,9 @@
   "import_error_not_a_project": "The file is not a NAND project file.",
   "import_error_unsupported_version": "Project file version {version} is not supported.",
   "import_error_future_version": "This project was saved by a newer version of the app (file version {version}, supported {supported}).",
-  "import_error_invalid_project": "The project file is damaged or invalid."
+  "import_error_invalid_project": "The project file is damaged or invalid.",
+  "persistence_error_not_found": "That project was not found in this browser.",
+  "persistence_error_corrupt": "The saved project is damaged and could not be opened. {reason}",
+  "persistence_error_quota": "Browser storage is full, so the project could not be saved.",
+  "persistence_error_unavailable": "Browser storage is unavailable. Your work is kept in memory only and will be lost when you close this tab."
 }

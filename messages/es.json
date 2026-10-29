@@ -23,5 +23,9 @@
   "import_error_not_a_project": "El archivo no es un proyecto NAND.",
   "import_error_unsupported_version": "La versión {version} del archivo de proyecto no es compatible.",
   "import_error_future_version": "Este proyecto fue guardado con una versión más nueva de la aplicación (versión del archivo {version}, compatible {supported}).",
-  "import_error_invalid_project": "El archivo de proyecto está dañado o no es válido."
+  "import_error_invalid_project": "El archivo de proyecto está dañado o no es válido.",
+  "persistence_error_not_found": "No se encontró ese proyecto en este navegador.",
+  "persistence_error_corrupt": "El proyecto guardado está dañado y no se pudo abrir. {reason}",
+  "persistence_error_quota": "El almacenamiento del navegador está lleno, así que no se pudo guardar el proyecto.",
+  "persistence_error_unavailable": "El almacenamiento del navegador no está disponible. Tu trabajo solo se conserva en memoria y se perderá al cerrar esta pestaña."
 }
