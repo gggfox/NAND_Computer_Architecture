@@ -7,6 +7,8 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { z } from "zod";
+
 interface Canary {
   readonly file: string;
   readonly rule: string;
@@ -20,8 +22,9 @@ interface Diagnostic {
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CANARY_DIR = path.join(ROOT, "tooling", "lint-canaries");
 const OXLINT = path.join(ROOT, "node_modules", ".bin", "oxlint");
-const EXPECT_HEADER = /^\/\/ (?<mode>expect|expect-not): (?<rule>\S+)/u;
-const SOURCE_FILE = /\.tsx?$/u;
+const STYLELINT = path.join(ROOT, "node_modules", ".bin", "stylelint");
+const EXPECT_HEADER = /^(?:\/\/|\/\*) (?<mode>expect|expect-not): (?<rule>\S+)/u;
+const SOURCE_FILE = /\.(?:tsx?|css)$/u;
 const DIAGNOSTIC_CODE = /^(?<plugin>[\w-]+)\((?<rule>[\w-]+)\)$/u;
 // Plugins whose rules are referenced without a prefix in `// expect:` headers.
 const UNPREFIXED_PLUGINS = new Set(["eslint", "local"]);
@@ -62,6 +65,35 @@ function isDiagnosticList(value: unknown): value is readonly Diagnostic[] {
   return Array.isArray(value) && value.every((item) => isDiagnostic(item));
 }
 
+const StylelintWarningSchema = z.object({ rule: z.string() });
+const StylelintResultSchema = z.object({
+  ignored: z.boolean().optional(),
+  warnings: z.array(StylelintWarningSchema),
+});
+const StylelintOutputSchema = z.array(StylelintResultSchema);
+
+// Stylelint's JSON formatter writes to stderr when there are problems, to stdout otherwise.
+function parseStylelintOutput(stdout: string, stderr: string): ReadonlySet<string> | undefined {
+  const raw = stderr.trim() || stdout.trim();
+  const jsonStart = raw.indexOf("[");
+  const json: unknown = jsonStart === -1 ? undefined : JSON.parse(raw.slice(jsonStart));
+  const parsed = StylelintOutputSchema.safeParse(json);
+  const first = parsed.success && parsed.data.length === 1 ? parsed.data[0] : undefined;
+  return first === undefined || first.ignored === true
+    ? undefined
+    : new Set(first.warnings.map((warning) => warning.rule));
+}
+
+// Returns undefined when Stylelint did not lint the file (ignored, crashed or unparsable output).
+function reportedStylelintRules(file: string): ReadonlySet<string> | undefined {
+  const result = spawnSync(
+    STYLELINT,
+    ["--config", path.join(ROOT, ".stylelintrc.json"), "--formatter", "json", file],
+    { cwd: ROOT, encoding: "utf-8" },
+  );
+  return parseStylelintOutput(result.stdout, result.stderr);
+}
+
 // Returns undefined when oxlint did not lint the file, so `expect-not` can never pass vacuously.
 function reportedRules(file: string): ReadonlySet<string> | undefined {
   const result = spawnSync(
@@ -95,13 +127,15 @@ function reportedRules(file: string): ReadonlySet<string> | undefined {
 
 // Lints one canary, prints its verdict and returns whether it behaved as declared.
 function checkCanary({ file, rule, mustReport }: Canary): boolean {
-  const rules = reportedRules(file);
+  const rules = file.endsWith(".css") ? reportedStylelintRules(file) : reportedRules(file);
   const passed = rules !== undefined && rules.has(rule) === mustReport;
   const verdict = mustReport ? "caught" : "allowed";
   const expectation = mustReport ? "expect" : "expect-not";
-  console.log(`${passed ? verdict : "FAILED"}  ${path.relative(ROOT, file)}  (${expectation} ${rule})`);
+  console.log(
+    `${passed ? verdict : "FAILED"}  ${path.relative(ROOT, file)}  (${expectation} ${rule})`,
+  );
   if (!passed) {
-    const reported = rules === undefined ? "<oxlint did not lint the file>" : [...rules].join(", ");
+    const reported = rules === undefined ? "<linter did not lint the file>" : [...rules].join(", ");
     console.log(`        reported: ${reported || "nothing"}`);
   }
   return passed;

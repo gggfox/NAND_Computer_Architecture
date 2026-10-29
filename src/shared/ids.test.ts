@@ -1,4 +1,6 @@
 import { expect, test } from "vitest";
+
+import { assertNever } from "./assert-never";
 import {
   ChipIdSchema,
   InstanceIdSchema,
@@ -12,7 +14,6 @@ import {
   newWireId,
 } from "./ids";
 import type { ChipId } from "./ids";
-import { assertNever } from "./assert-never";
 
 test("branded ids reject non-uuids and accept generated ids", () => {
   expect(ChipIdSchema.safeParse("nope").success).toBe(false);

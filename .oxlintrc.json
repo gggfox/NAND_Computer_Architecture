@@ -132,7 +132,9 @@
             "allow": [
               {
                 "to": {
-                  "element": { "types": { "anyOf": ["shared", "shared-ui", "i18n", "convex", "routes"] } }
+                  "element": {
+                    "types": { "anyOf": ["shared", "shared-ui", "i18n", "convex", "routes"] }
+                  }
                 }
               },
               { "to": { "element": { "type": "feature", "fileInternalPath": "index.ts" } } }
@@ -173,7 +175,12 @@
           {
             "patterns": [
               {
-                "group": ["react-aria-components", "react-aria-components/*", "react-aria", "react-aria/*"],
+                "group": [
+                  "react-aria-components",
+                  "react-aria-components/*",
+                  "react-aria",
+                  "react-aria/*"
+                ],
                 "message": "Only src/shared/ui may import React Aria (ADR 26)."
               }
             ]
@@ -189,7 +196,12 @@
           {
             "patterns": [
               {
-                "group": ["react-aria-components", "react-aria-components/*", "react-aria", "react-aria/*"],
+                "group": [
+                  "react-aria-components",
+                  "react-aria-components/*",
+                  "react-aria",
+                  "react-aria/*"
+                ],
                 "message": "Only src/shared/ui may import React Aria (ADR 26)."
               },
               {

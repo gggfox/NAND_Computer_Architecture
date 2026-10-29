@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+
 import type { Result } from "./result";
 import { err, isErr, isOk, mapResult, ok } from "./result";
 
