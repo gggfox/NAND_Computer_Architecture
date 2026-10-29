@@ -17,5 +17,11 @@
   "export": "Exportar",
   "import": "Importar",
   "project_not_found_title": "Proyecto no encontrado",
-  "project_not_found_body": "Este proyecto no existe o su enlace no es válido."
+  "project_not_found_body": "Este proyecto no existe o su enlace no es válido.",
+  "import_error_too_large": "El archivo es demasiado grande para importar (máximo 5 MB).",
+  "import_error_invalid_json": "El archivo no es un JSON válido.",
+  "import_error_not_a_project": "El archivo no es un proyecto NAND.",
+  "import_error_unsupported_version": "La versión {version} del archivo de proyecto no es compatible.",
+  "import_error_future_version": "Este proyecto fue guardado con una versión más nueva de la aplicación (versión del archivo {version}, compatible {supported}).",
+  "import_error_invalid_project": "El archivo de proyecto está dañado o no es válido."
 }
