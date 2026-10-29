@@ -1,6 +1,7 @@
 /*
- * Proves each lint enforcement still fires: every canary under tooling/lint-canaries
- * declares `// expect: <rule-id>` on its first line and must be reported with that rule.
+ * Proves each lint enforcement still fires. Every canary under tooling/lint-canaries starts with
+ * `// expect: <rule-id>` (must be reported with that rule) or `// expect-not: <rule-id>`
+ * (an allowed pattern that must NOT be reported with that rule, e.g. shared/ui -> shared).
  */
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
@@ -8,7 +9,8 @@ import path from "node:path";
 
 interface Canary {
   readonly file: string;
-  readonly expected: string;
+  readonly rule: string;
+  readonly mustReport: boolean;
 }
 
 interface Diagnostic {
@@ -18,7 +20,7 @@ interface Diagnostic {
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CANARY_DIR = path.join(ROOT, "tooling", "lint-canaries");
 const OXLINT = path.join(ROOT, "node_modules", ".bin", "oxlint");
-const EXPECT_HEADER = /^\/\/ expect: (?<rule>\S+)/u;
+const EXPECT_HEADER = /^\/\/ (?<mode>expect|expect-not): (?<rule>\S+)/u;
 const SOURCE_FILE = /\.tsx?$/u;
 const DIAGNOSTIC_CODE = /^(?<plugin>[\w-]+)\((?<rule>[\w-]+)\)$/u;
 // Plugins whose rules are referenced without a prefix in `// expect:` headers.
@@ -31,8 +33,9 @@ function findCanaries(): readonly Canary[] {
     .flatMap((relative) => {
       const file = path.join(CANARY_DIR, relative);
       const firstLine = readFileSync(file, "utf-8").split("\n", 1)[0] ?? "";
-      const rule = EXPECT_HEADER.exec(firstLine)?.groups?.["rule"];
-      return rule === undefined ? [] : [{ expected: rule, file }];
+      const groups = EXPECT_HEADER.exec(firstLine)?.groups;
+      const rule = groups?.["rule"];
+      return rule === undefined ? [] : [{ file, mustReport: groups?.["mode"] === "expect", rule }];
     });
 }
 
@@ -59,7 +62,8 @@ function isDiagnosticList(value: unknown): value is readonly Diagnostic[] {
   return Array.isArray(value) && value.every((item) => isDiagnostic(item));
 }
 
-function reportedRules(file: string): ReadonlySet<string> {
+// Returns undefined when oxlint did not lint the file, so `expect-not` can never pass vacuously.
+function reportedRules(file: string): ReadonlySet<string> | undefined {
   const result = spawnSync(
     OXLINT,
     ["--config", path.join(ROOT, ".oxlintrc.json"), "--type-aware", "--format", "json", file],
@@ -67,16 +71,21 @@ function reportedRules(file: string): ReadonlySet<string> {
   );
   const jsonStart = result.stdout.indexOf("{");
   if (jsonStart === -1) {
-    return new Set([`<no oxlint output: ${result.stderr.trim()}>`]);
+    console.error(result.stderr.trim());
+    return undefined;
   }
   const parsed: unknown = JSON.parse(result.stdout.slice(jsonStart));
-  const diagnostics: unknown =
-    typeof parsed === "object" && parsed !== null && "diagnostics" in parsed
-      ? parsed.diagnostics
-      : [];
-  if (!isDiagnosticList(diagnostics)) {
-    return new Set();
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("number_of_files" in parsed) ||
+    parsed.number_of_files !== 1 ||
+    !("diagnostics" in parsed) ||
+    !isDiagnosticList(parsed.diagnostics)
+  ) {
+    return undefined;
   }
+  const { diagnostics } = parsed;
   return new Set(
     diagnostics.flatMap((diagnostic) =>
       diagnostic.code === undefined ? [] : [toRuleId(diagnostic.code)],
@@ -84,29 +93,39 @@ function reportedRules(file: string): ReadonlySet<string> {
   );
 }
 
+// Lints one canary, prints its verdict and returns whether it behaved as declared.
+function checkCanary({ file, rule, mustReport }: Canary): boolean {
+  const rules = reportedRules(file);
+  const passed = rules !== undefined && rules.has(rule) === mustReport;
+  const verdict = mustReport ? "caught" : "allowed";
+  const expectation = mustReport ? "expect" : "expect-not";
+  console.log(`${passed ? verdict : "FAILED"}  ${path.relative(ROOT, file)}  (${expectation} ${rule})`);
+  if (!passed) {
+    const reported = rules === undefined ? "<oxlint did not lint the file>" : [...rules].join(", ");
+    console.log(`        reported: ${reported || "nothing"}`);
+  }
+  return passed;
+}
+
+function printFailures(failed: readonly Canary[]): void {
+  console.error(`\n${failed.length} canary file(s) did not lint as expected:`);
+  for (const { file, rule, mustReport } of failed) {
+    const why = mustReport ? "should be reported with" : "must not be reported with";
+    console.error(`  ${path.relative(ROOT, file)} ${why} ${rule}`);
+  }
+}
+
 function main(): void {
   const canaries = findCanaries();
-  const missed = canaries.filter(({ file, expected }) => {
-    const rules = reportedRules(file);
-    const caught = rules.has(expected);
-    const relative = path.relative(ROOT, file);
-    console.log(`${caught ? "caught" : "MISSED"}  ${relative}  (expect ${expected})`);
-    if (!caught) {
-      console.log(`        reported: ${[...rules].join(", ") || "nothing"}`);
-    }
-    return !caught;
-  });
+  const failed = canaries.filter((canary) => !checkCanary(canary));
   if (canaries.length === 0) {
     console.error("No canaries found under tooling/lint-canaries.");
     process.exitCode = 1;
-  } else if (missed.length > 0) {
-    console.error(`\n${missed.length} canary file(s) passed lint but should have failed:`);
-    for (const { file, expected } of missed) {
-      console.error(`  ${path.relative(ROOT, file)} (expected ${expected})`);
-    }
+  } else if (failed.length > 0) {
+    printFailures(failed);
     process.exitCode = 1;
   } else {
-    console.log(`\nAll ${canaries.length} lint canaries were reported.`);
+    console.log(`\nAll ${canaries.length} lint canaries behaved as expected.`);
   }
 }
 
