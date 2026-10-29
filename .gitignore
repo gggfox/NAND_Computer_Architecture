@@ -1,2 +1,10 @@
 .DS_Store
 *.app/
+node_modules
+dist
+.output
+.tanstack
+src/i18n/paraglide
+coverage
+test-results
+playwright-report
