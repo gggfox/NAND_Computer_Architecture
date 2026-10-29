@@ -2,6 +2,7 @@ catalogMode: strict
 catalog:
   babel-plugin-react-compiler: 1.0.0
   "@babel/core": 7.29.0
+  "@inlang/paraglide-js": 2.29.3
   cspell: 10.4.0
   "@cspell/dict-es-es": 3.0.9
   "@double-great/stylelint-a11y": 3.8.1

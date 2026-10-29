@@ -1,3 +1,4 @@
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import babel from "@rolldown/plugin-babel";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
@@ -7,6 +8,11 @@ import { patchCssModules } from "vite-css-modules";
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
+    paraglideVitePlugin({
+      project: "./project.inlang",
+      outdir: "./src/i18n/paraglide",
+      strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+    }),
     tanstackStart({ spa: { enabled: true } }),
     patchCssModules({ generateSourceTypes: true }),
     react(),

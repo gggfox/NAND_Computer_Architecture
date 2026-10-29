@@ -1,0 +1,19 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "app_title": "Arquitectura de Computadoras NAND",
+  "language_label": "Idioma",
+  "language_en": "English",
+  "language_es": "Español",
+  "theme_label": "Tema",
+  "theme_light": "Claro",
+  "theme_dark": "Oscuro",
+  "theme_high_contrast": "Alto contraste",
+  "add_nand": "Añadir NAND",
+  "undo": "Deshacer",
+  "redo": "Rehacer",
+  "input_a": "Entrada A",
+  "input_b": "Entrada B",
+  "output": "Salida",
+  "export": "Exportar",
+  "import": "Importar"
+}

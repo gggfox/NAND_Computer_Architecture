@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { m } from "~/i18n/paraglide/messages";
+
 export const Route = createFileRoute("/")({
   component: Home,
 });
@@ -8,7 +10,7 @@ export const Route = createFileRoute("/")({
 function Home(): ReactNode {
   return (
     <main>
-      <h1>NAND Computer Architecture</h1>
+      <h1>{m.app_title()}</h1>
     </main>
   );
 }
