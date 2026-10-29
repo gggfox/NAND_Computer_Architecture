@@ -135,3 +135,34 @@ describe("createEditorStore undo and inputs", () => {
     expect(store.getState().history.past).toHaveLength(0);
   });
 });
+
+const rejectingRepo = (sync: boolean): ProjectRepository => ({
+  save: () => {
+    if (sync) {
+      throw new Error("boom");
+    }
+    return Promise.reject(new Error("boom"));
+  },
+  load: () => Promise.resolve(err({ type: "Unavailable" })),
+  list: () => Promise.resolve(ok([])),
+});
+
+describe("createEditorStore save rejection", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([false, true])(
+    "sets lastError when save fails (sync=%s) and editing continues",
+    async (sync) => {
+      const store = createEditorStore(createDemoProject("x"), rejectingRepo(sync));
+      store.getState().dispatch(place());
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+      expect(store.getState().lastError).toEqual({ type: "Unavailable" });
+      expect(store.getState().dispatch(place()).ok).toBe(true);
+    },
+  );
+});

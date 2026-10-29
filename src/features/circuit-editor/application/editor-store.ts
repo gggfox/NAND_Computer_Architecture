@@ -59,9 +59,14 @@ const createCommit = (
 ): ((next: History<Project>) => void) => {
   const schedule = createDebounce(SAVE_DEBOUNCE_MS);
   const persist = async (): Promise<void> => {
-    const result = await repo.save(get().history.present);
-    if (!result.ok) {
-      set({ lastError: result.error });
+    try {
+      const result = await repo.save(get().history.present);
+      if (!result.ok) {
+        set({ lastError: result.error });
+      }
+    } catch {
+      // A repository that rejects or throws is treated as unavailable storage.
+      set({ lastError: { type: "Unavailable" } });
     }
   };
   return (next) => {

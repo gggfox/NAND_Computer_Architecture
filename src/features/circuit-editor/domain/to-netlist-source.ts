@@ -1,12 +1,13 @@
-import type { ChipInstance, Circuit } from "~/features/projects";
+import type { ChipInstance, Circuit, Wire } from "~/features/projects";
 import type { NetlistSource, SignalRef } from "~/features/simulation";
-import type { InstanceId } from "~/shared/ids";
+import type { InstanceId, WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 export type NetlistSourceError =
   | { readonly type: "UnsupportedPart"; readonly instanceId: InstanceId }
-  | { readonly type: "UnconnectedPin"; readonly instanceId: InstanceId; readonly pin: number };
+  | { readonly type: "UnconnectedPin"; readonly instanceId: InstanceId; readonly pin: number }
+  | { readonly type: "InvalidWire"; readonly wireId: WireId };
 
 type Outcome<T> = Result<T, NetlistSourceError>;
 
@@ -14,7 +15,19 @@ const SUPPORTED = new Set(["input", "nand", "output"]);
 const NAND_PIN_A = 0;
 const NAND_PIN_B = 1;
 const SINGLE_PIN = 0;
+const NAND_PIN_OUT = 2;
 const NOT_FOUND = -1;
+
+/** Pins a wire may start from: an `input` drives pin 0, a NAND drives pin 2. */
+const SOURCE_PINS: Readonly<Record<string, readonly number[]>> = {
+  input: [SINGLE_PIN],
+  nand: [NAND_PIN_OUT],
+};
+/** Pins a wire may end on: a NAND takes pins 0 and 1, an `output` takes pin 0. */
+const TARGET_PINS: Readonly<Record<string, readonly number[]>> = {
+  nand: [NAND_PIN_A, NAND_PIN_B],
+  output: [SINGLE_PIN],
+};
 
 const builtinOf = (instance: ChipInstance): string =>
   instance.kind.type === "builtin" ? instance.kind.builtin : "custom";
@@ -72,6 +85,21 @@ const resolveNand = (
   return b.ok ? ok({ a: a.value, b: b.value }) : b;
 };
 
+const endpointOk = (
+  circuit: Circuit,
+  table: Readonly<Record<string, readonly number[]>>,
+  endpoint: Wire["from"],
+): boolean => {
+  const part = circuit.instances.find((item) => item.id === endpoint.instanceId);
+  return part !== undefined && (table[builtinOf(part)]?.includes(endpoint.pin) ?? false);
+};
+
+const firstInvalidWire = (circuit: Circuit): Wire | undefined =>
+  circuit.wires.find(
+    (wire) =>
+      !endpointOk(circuit, SOURCE_PINS, wire.from) || !endpointOk(circuit, TARGET_PINS, wire.to),
+  );
+
 const build = (circuit: Circuit): Outcome<NetlistSource> => {
   const inputs = ofKind(circuit, "input");
   const nands = ofKind(circuit, "nand");
@@ -88,14 +116,16 @@ const build = (circuit: Circuit): Outcome<NetlistSource> => {
 };
 
 /**
- * Pin mapping: a wire's `to.pin` 0 is a NAND's input `a` and 1 is input `b`;
- * `input`/`output` parts have the single pin 0. Each instance has one output
- * signal, so a wire's `from.pin` only identifies the source instance.
+ * Each instance has one pin index space. NAND: 0 = a, 1 = b, 2 = out. `input`:
+ * pin 0 is its output. `output`: pin 0 is its input. A wire must start on a
+ * source's output pin and end on a target's input pin, otherwise `InvalidWire`.
  * Inputs, NANDs and outputs are indexed by their order in `circuit.instances`.
  */
 export const toNetlistSource = (circuit: Circuit): Outcome<NetlistSource> => {
   const unsupported = circuit.instances.find((item) => !SUPPORTED.has(builtinOf(item)));
-  return unsupported === undefined
-    ? build(circuit)
-    : err({ type: "UnsupportedPart", instanceId: unsupported.id });
+  if (unsupported !== undefined) {
+    return err({ type: "UnsupportedPart", instanceId: unsupported.id });
+  }
+  const invalid = firstInvalidWire(circuit);
+  return invalid === undefined ? build(circuit) : err({ type: "InvalidWire", wireId: invalid.id });
 };

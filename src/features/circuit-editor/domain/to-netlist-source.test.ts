@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { createDemoProject } from "~/features/projects";
-import type { ChipInstance, Circuit } from "~/features/projects";
-import { newChipId } from "~/shared/ids";
+import type { ChipInstance, Circuit, Wire } from "~/features/projects";
+import { newChipId, newInstanceId } from "~/shared/ids";
 
 import { toNetlistSource } from "./to-netlist-source";
 
@@ -64,5 +64,75 @@ describe("toNetlistSource unconnected pins", () => {
     const circuit = demo();
     const result = toNetlistSource({ ...circuit, wires: circuit.wires.slice(0, 2) });
     expect(!result.ok && result.error.type).toBe("UnconnectedPin");
+  });
+});
+
+const withWire = (circuit: Circuit, index: number, patch: (wire: Wire) => Wire): Circuit => ({
+  ...circuit,
+  wires: circuit.wires.map((wire, at) => (at === index ? patch(wire) : wire)),
+});
+
+describe("toNetlistSource pin validation", () => {
+  it("rejects a NAND output wired from pin 0 (its input a)", () => {
+    const circuit = withWire(demo(), 2, (wire) => ({
+      ...wire,
+      from: { ...wire.from, pin: 0 },
+    }));
+    const result = toNetlistSource(circuit);
+    expect(!result.ok && result.error).toEqual({
+      type: "InvalidWire",
+      wireId: circuit.wires[2]?.id,
+    });
+  });
+
+  it("rejects an input wired from pin 1", () => {
+    const circuit = withWire(demo(), 0, (wire) => ({
+      ...wire,
+      from: { ...wire.from, pin: 1 },
+    }));
+    const result = toNetlistSource(circuit);
+    expect(!result.ok && result.error).toEqual({
+      type: "InvalidWire",
+      wireId: circuit.wires[0]?.id,
+    });
+  });
+
+  it("rejects a wire into NAND pin 2 (its output)", () => {
+    const circuit = withWire(demo(), 1, (wire) => ({ ...wire, to: { ...wire.to, pin: 2 } }));
+    const result = toNetlistSource(circuit);
+    expect(!result.ok && result.error.type).toBe("InvalidWire");
+  });
+
+  it("rejects a wire into output pin 1", () => {
+    const circuit = withWire(demo(), 2, (wire) => ({ ...wire, to: { ...wire.to, pin: 1 } }));
+    const result = toNetlistSource(circuit);
+    expect(!result.ok && result.error.type).toBe("InvalidWire");
+  });
+});
+
+describe("toNetlistSource endpoint validation", () => {
+  it("rejects a wire from an output part or into an input part", () => {
+    const circuit = demo();
+    const [inputA] = circuit.instances;
+    const output = circuit.instances.find((item) => item.id === circuit.wires[2]?.to.instanceId);
+    const fromOutput = withWire(circuit, 0, (wire) => ({
+      ...wire,
+      from: { instanceId: output?.id ?? wire.from.instanceId, pin: 0 },
+    }));
+    const intoInput = withWire(circuit, 0, (wire) => ({
+      ...wire,
+      to: { instanceId: inputA?.id ?? wire.to.instanceId, pin: 0 },
+    }));
+    expect(toNetlistSource(fromOutput).ok).toBe(false);
+    expect(toNetlistSource(intoInput).ok).toBe(false);
+  });
+
+  it("rejects a wire whose endpoint instance does not exist", () => {
+    const circuit = withWire(demo(), 0, (wire) => ({
+      ...wire,
+      from: { ...wire.from, instanceId: newInstanceId() },
+    }));
+    const result = toNetlistSource(circuit);
+    expect(!result.ok && result.error.type).toBe("InvalidWire");
   });
 });
