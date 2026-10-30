@@ -51,6 +51,14 @@ const sourceLevel = (circuit: Circuit, known: KnownLevels, source: PinRef): Leve
   return reported === undefined ? undefined : levelOf(circuit, known, reported.to.instanceId);
 };
 
+const DASH_ON_PX = 6;
+const DASH_OFF_PX = 4;
+const SOLID: readonly number[] = [];
+const LOW_DASH: readonly number[] = [DASH_ON_PX, DASH_OFF_PX];
+
+/** Low wires are dashed, so wire state is never shown by colour alone (WCAG 1.4.1). */
+export const wireDash = (level?: Level): readonly number[] => (level === 0 ? LOW_DASH : SOLID);
+
 export const wireLevel = (circuit: Circuit, known: KnownLevels, wire: Wire): Level | undefined =>
   sourceLevel(circuit, known, wire.from);
 

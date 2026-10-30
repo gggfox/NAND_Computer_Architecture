@@ -4,7 +4,7 @@ import { createDemoProject } from "~/features/projects";
 import type { Circuit, Wire } from "~/features/projects";
 import { newInstanceId, newWireId } from "~/shared/ids";
 
-import { instanceLevel, wireLevel } from "./signals";
+import { instanceLevel, wireDash, wireLevel } from "./signals";
 
 const demo = (): Circuit => createDemoProject("x").rootCircuit;
 
@@ -55,5 +55,16 @@ describe("signals", () => {
       undefined,
       1,
     ]);
+  });
+});
+
+describe("wireDash", () => {
+  it("dashes low wires so wire state never relies on colour alone", () => {
+    expect(wireDash(0).length).toBeGreaterThan(0);
+  });
+
+  it("draws high and unknown wires solid", () => {
+    expect(wireDash(1)).toEqual([]);
+    expect(wireDash()).toEqual([]);
   });
 });

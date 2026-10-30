@@ -5,8 +5,8 @@
   --color-text-muted: #474c66;
   --color-accent: #3a46d6;
   --color-focus-ring: #2d3bd0;
-  --color-signal-high: #0b7f3f;
-  --color-signal-low: #6a6f86;
+  --color-signal-high: #00451f;
+  --color-signal-low: #858a9f;
   --color-wire: #585d78;
   --color-chip-nand: #c92a64;
   --color-chip-text: #ffffff;
@@ -36,7 +36,7 @@
   --color-accent: #5fd7ff;
   --color-focus-ring: #ffff00;
   --color-signal-high: #00ff6a;
-  --color-signal-low: #8a8aff;
+  --color-signal-low: #5c5cff;
   --color-wire: #ffffff;
   --color-chip-nand: #ff4f9a;
   --color-chip-text: #000000;

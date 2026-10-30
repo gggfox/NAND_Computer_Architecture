@@ -45,6 +45,29 @@ describe("theme legibility", () => {
   });
 });
 
+describe("pairwise legibility", () => {
+  test.each(themeIds)("%s: signal-high vs signal-low >= 3", (id) => {
+    const tokens = themes[id];
+    expect(contrastRatio(tokens.colorSignalHigh, tokens.colorSignalLow)).toBeGreaterThanOrEqual(
+      MIN_UI,
+    );
+  });
+
+  test.each(themeIds)("%s: chip text on accent >= 4.5", (id) => {
+    const tokens = themes[id];
+    expect(contrastRatio(tokens.colorChipText, tokens.colorAccent)).toBeGreaterThanOrEqual(
+      MIN_TEXT,
+    );
+  });
+
+  test.each(themeIds)("%s: accent and wire vs surface >= 3", (id) => {
+    const tokens = themes[id];
+    for (const color of [tokens.colorAccent, tokens.colorWire]) {
+      expect(contrastRatio(color, tokens.colorSurface)).toBeGreaterThanOrEqual(MIN_UI);
+    }
+  });
+});
+
 describe("tokens", () => {
   test("tokenToCssVar kebab-cases", () => {
     expect(tokenToCssVar("colorSignalHigh")).toBe("--color-signal-high");

@@ -4,7 +4,7 @@ import { m } from "~/i18n/paraglide/messages";
 
 import { GRID, partOf, rectOf, wireRoute } from "../domain/geometry";
 import type { Rect, Size } from "../domain/geometry";
-import { instanceLevel, wireLevel } from "../domain/signals";
+import { instanceLevel, wireDash, wireLevel } from "../domain/signals";
 import type { KnownLevels, Level } from "../domain/signals";
 import type { EditorSearch } from "../domain/view-search";
 
@@ -101,9 +101,12 @@ const drawWires = (frame: Frame): void => {
   ctx.lineWidth = WIRE_WIDTH;
   ctx.lineJoin = "round";
   for (const wire of circuit.wires) {
-    ctx.strokeStyle = levelColor(frame.palette, wireLevel(circuit, frame.known, wire));
+    const level = wireLevel(circuit, frame.known, wire);
+    ctx.strokeStyle = levelColor(frame.palette, level);
+    ctx.setLineDash(wireDash(level));
     drawPolyline(ctx, wireRoute(circuit, wire));
   }
+  ctx.setLineDash(wireDash());
 };
 
 const inputLetter = (index: number): string => String.fromCodePoint("A".codePointAt(0)! + index);
