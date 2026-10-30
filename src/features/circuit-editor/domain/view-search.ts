@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { ChipIdSchema } from "~/shared/ids";
 
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 4;
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 4;
 
 export const EditorSearchSchema = z.object({
   // oxlint-disable-next-line unicorn/no-useless-undefined -- Zod .catch() needs an explicit fallback value

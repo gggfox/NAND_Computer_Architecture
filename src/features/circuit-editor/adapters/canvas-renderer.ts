@@ -2,6 +2,7 @@
 import type { ChipInstance, Circuit, Point, Project } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
 
+import { SCREEN_PAD } from "../domain/camera";
 import { createLayoutCache } from "../domain/chip-layout";
 import type { LayoutCache } from "../domain/chip-layout";
 import { GRID, partOf, rectOf, wireRoute } from "../domain/geometry";
@@ -48,8 +49,6 @@ const readPalette = (): Palette => {
   return Object.fromEntries(entries) as Palette;
 };
 
-/** Screen padding (CSS px) so chips at world (0, 0) are not glued to the canvas edge. */
-const PAD = 48;
 const WIRE_WIDTH = 3;
 const CHIP_RADIUS = 6;
 const LABEL_GAP = 8;
@@ -79,8 +78,8 @@ const GRID_DOT = 2;
 const drawGrid = (frame: Frame, viewport: Size, view: EditorSearch): void => {
   const { ctx, palette } = frame;
   const step = GRID * view.zoom;
-  const offsetX = (PAD - view.x * view.zoom) % step;
-  const offsetY = (PAD - view.y * view.zoom) % step;
+  const offsetX = (SCREEN_PAD - view.x * view.zoom) % step;
+  const offsetY = (SCREEN_PAD - view.y * view.zoom) % step;
   ctx.fillStyle = palette.grid;
   for (let x = offsetX; x < viewport.width; x += step) {
     for (let y = offsetY; y < viewport.height; y += step) {
@@ -211,8 +210,8 @@ const drawScene = (frame: Frame, viewport: Viewport, view: EditorSearch): void =
     0,
     0,
     scale,
-    (PAD - view.x * view.zoom) * dpr,
-    (PAD - view.y * view.zoom) * dpr,
+    (SCREEN_PAD - view.x * view.zoom) * dpr,
+    (SCREEN_PAD - view.y * view.zoom) * dpr,
   );
   drawWires(frame);
   drawChips(frame);
