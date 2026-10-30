@@ -77,5 +77,15 @@
   "engine_error_bad_message": "The simulator received a request it could not understand.",
   "engine_error_worker_failed": "The simulator stopped working. Reload the page to try again.",
   "update_ready": "A new version of the app is ready.",
-  "update_reload": "Reload to update"
+  "update_reload": "Reload to update",
+  "canvas_roledescription": "circuit canvas",
+  "canvas_hint": "Press ] and [ to select chips, arrow keys to move them, Delete to remove them, P to hear their pins and Enter for the chip menu.",
+  "canvas_selected_one": "{name} selected",
+  "canvas_selected_many": "Items selected: {count}",
+  "canvas_selection_cleared": "Selection cleared",
+  "canvas_moved": "Chips moved: {count}",
+  "canvas_deleted": "Items deleted: {count}",
+  "canvas_tool_pan": "Dragging the canvas pans",
+  "canvas_tool_select": "Dragging the canvas selects",
+  "canvas_pin": "Pin {name} of {chip}: {value}. Connections: {count}"
 }

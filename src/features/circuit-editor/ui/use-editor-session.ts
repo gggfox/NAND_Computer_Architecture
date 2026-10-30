@@ -5,55 +5,14 @@ import type { Project } from "~/features/projects";
 import { createEngineClient } from "~/features/simulation";
 import { registerPendingWrite } from "~/shared/pending-writes";
 
-import { createEditorStore } from "../application/editor-store";
-import type { EditorStore } from "../application/editor-store";
-import { connectSimulation, createSimulationStore } from "../application/simulation-bridge";
-import type { ClockControls, SimulationStore } from "../application/simulation-bridge";
+import { createEditorSession } from "../application/editor-session";
+import type { EditorSession, ViewLink } from "../application/editor-session";
+import { connectSimulation } from "../application/simulation-bridge";
+import type { Tool } from "../domain/interaction";
 
-export interface EditorSession {
-  readonly editor: EditorStore;
-  readonly simulation: SimulationStore;
-  /** Clock play/pause/step/speed; a no-op until the engine worker is connected. */
-  readonly clock: ClockControls;
-}
-
-const noop = (): void => {
-  // No worker is connected (pre-render, or after unmount).
-};
-const DISCONNECTED: ClockControls = { play: noop, pause: noop, step: noop, setSpeed: noop };
-
-interface ClockRelay {
-  /** Stable controls that forward to the attached connection, or do nothing. */
-  readonly clock: ClockControls;
-  /** Forwards to `controls` until the returned function detaches them. */
-  readonly attach: (controls: ClockControls) => () => void;
-}
-
-const createClockRelay = (): ClockRelay => {
-  let target = DISCONNECTED;
-  return {
-    clock: {
-      play: () => {
-        target.play();
-      },
-      pause: () => {
-        target.pause();
-      },
-      step: () => {
-        target.step();
-      },
-      setSpeed: (stepsPerSecond) => {
-        target.setSpeed(stepsPerSecond);
-      },
-    },
-    attach: (controls) => {
-      target = controls;
-      return () => {
-        target = DISCONNECTED;
-      };
-    },
-  };
-};
+/** A finger has no hover, so on a phone a drag on empty canvas pans by default. */
+const defaultTool = (): Tool =>
+  typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? "pan" : "select";
 
 /**
  * Creates the open project's stores once per mount (remount with a `key` to open another
@@ -62,17 +21,28 @@ const createClockRelay = (): ClockRelay => {
  * unmount and on `pagehide` (tab close, browser reload). In-app reloads (locale switch, app update)
  * await it through the pending-writes registry, because a `pagehide` write may not commit.
  */
-export const useEditorSession = (project: Project, repo: ProjectRepository): EditorSession => {
+export const useEditorSession = (
+  project: Project,
+  repo: ProjectRepository,
+  view: ViewLink,
+): EditorSession => {
   // oxlint-disable-next-line react/hook-use-state -- created once and never replaced, so there is no setter to name
-  const [{ session, relay }] = useState(() => {
-    const clockRelay = createClockRelay();
-    const stores: EditorSession = {
-      editor: createEditorStore(project, repo),
-      simulation: createSimulationStore(),
-      clock: clockRelay.clock,
+  const [{ session, relay, sync, setWrite }] = useState(() =>
+    createEditorSession(project, repo, [view, defaultTool()]),
+  );
+
+  useEffect(() => {
+    setWrite(view.write);
+  }, [setWrite, view.write]);
+
+  useEffect(() => {
+    const disconnect = session.interaction.connect();
+    return () => {
+      disconnect();
+      // Drop, never write, a pending camera: writing while leaving would navigate back here.
+      sync.dispose();
     };
-    return { session: stores, relay: clockRelay };
-  });
+  }, [session, sync]);
 
   useEffect(() => {
     const client = createEngineClient();

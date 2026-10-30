@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   boundsOf,
+  cameraForUrl,
   clampZoom,
   fitBounds,
   panBy,
@@ -104,5 +105,15 @@ describe("boundsOf and fitBounds", () => {
     expect(fitBounds(dot, { width: 800, height: 600 }).zoom).toBe(MAX_ZOOM);
     expect(fitBounds(undefined, { width: 800, height: 600 })).toEqual({ zoom: 1, x: 0, y: 0 });
     expect(fitBounds(dot, { width: 10, height: 10 }).zoom).toBe(1);
+  });
+});
+
+describe("cameraForUrl", () => {
+  it("rounds offsets to hundredths and zoom to thousandths", () => {
+    expect(cameraForUrl({ zoom: 1.2346, x: -12.346, y: 0.004 })).toEqual({
+      zoom: 1.235,
+      x: -12.35,
+      y: 0,
+    });
   });
 });

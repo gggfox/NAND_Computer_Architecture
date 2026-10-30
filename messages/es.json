@@ -77,5 +77,15 @@
   "engine_error_bad_message": "El simulador recibió una petición que no pudo entender.",
   "engine_error_worker_failed": "El simulador dejó de funcionar. Recarga la página para intentarlo de nuevo.",
   "update_ready": "Hay una nueva versión de la aplicación lista.",
-  "update_reload": "Recargar para actualizar"
+  "update_reload": "Recargar para actualizar",
+  "canvas_roledescription": "lienzo del circuito",
+  "canvas_hint": "Pulsa ] y [ para seleccionar chips, las flechas para moverlos, Supr para eliminarlos, P para oír sus pines e Intro para el menú del chip.",
+  "canvas_selected_one": "{name} seleccionado",
+  "canvas_selected_many": "Elementos seleccionados: {count}",
+  "canvas_selection_cleared": "Selección vacía",
+  "canvas_moved": "Chips movidos: {count}",
+  "canvas_deleted": "Elementos eliminados: {count}",
+  "canvas_tool_pan": "Arrastrar el lienzo lo desplaza",
+  "canvas_tool_select": "Arrastrar el lienzo selecciona",
+  "canvas_pin": "Pin {name} de {chip}: {value}. Conexiones: {count}"
 }

@@ -45,7 +45,8 @@ export interface InteractionHandle {
   /** Shared with the renderer, so a chip is laid out once per change. */
   readonly layout: LayoutCache;
   readonly sceneOf: (editor: EditorState) => Scene;
-  readonly dispose: () => void;
+  /** Prunes the selection whenever the editor's history changes; returns the disconnect. */
+  readonly connect: () => () => void;
 }
 
 /** Builds the hit-test index only when an input needs it, and once per circuit. */
@@ -107,6 +108,14 @@ const latestAnnouncement = (
   return said === undefined ? previous : { id: count + 1, announcement: said.announcement };
 };
 
+/** Sends `historyChanged` whenever the open chip or its history changes; returns the stop. */
+const watchHistory = (editor: EditorStore, store: InteractionStore): (() => void) =>
+  editor.subscribe((state, previous) => {
+    if (state.history.present !== previous.history.present || state.chipId !== previous.chipId) {
+      store.getState().send({ type: "historyChanged" });
+    }
+  });
+
 /**
  * The canvas interaction store (spec §5.3): runs `interact`, applies its effects (edits go to the
  * editor, so undo works as usual), mirrors camera moves to the URL through `view`, and prunes the
@@ -123,7 +132,8 @@ export const createInteractionStore = (deps: InteractionDeps): InteractionHandle
   const contextOf = (): InteractionContext => {
     const editor = deps.editor.getState();
     const scene = sceneOf(editor);
-    return { scene, chipId: editor.chipId, viewport: deps.viewport(), index: () => indexOf(scene) };
+    const index = (): SpatialIndex => indexOf(scene);
+    return { scene, chipId: editor.chipId, viewport: deps.viewport(), index };
   };
   let announced = 0;
   const store = createStore<InteractionStoreState>((set, get) => ({
@@ -151,11 +161,5 @@ export const createInteractionStore = (deps: InteractionDeps): InteractionHandle
     },
   }));
 
-  const unsubscribe = deps.editor.subscribe((editor, previous) => {
-    if (editor.history.present !== previous.history.present || editor.chipId !== previous.chipId) {
-      store.getState().send({ type: "historyChanged" });
-    }
-  });
-
-  return { store, layout, sceneOf, dispose: unsubscribe };
+  return { store, layout, sceneOf, connect: () => watchHistory(deps.editor, store) };
 };

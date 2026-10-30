@@ -79,3 +79,13 @@ export const fitBounds = (bounds: Rect | undefined, viewport: Size): Camera => {
   const centre = { x: bounds.x + bounds.width * HALF, y: bounds.y + bounds.height * HALF };
   return anchoredAt(centre, { x: viewport.width * HALF, y: viewport.height * HALF }, zoom);
 };
+
+const URL_PLACES = 100;
+const ZOOM_PLACES = 1000;
+
+/** The camera as the URL holds it: offsets to 0.01, zoom to 0.001, so links stay short. */
+export const cameraForUrl = (camera: Camera): Camera => ({
+  zoom: Math.round(camera.zoom * ZOOM_PLACES) / ZOOM_PLACES,
+  x: Math.round(camera.x * URL_PLACES) / URL_PLACES,
+  y: Math.round(camera.y * URL_PLACES) / URL_PLACES,
+});

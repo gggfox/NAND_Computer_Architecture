@@ -559,7 +559,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 10: Pointer adapter and the focusable canvas host
+### Task 10: Pointer adapter and the focusable canvas host ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/adapters/pointer-input.ts`
@@ -580,8 +580,27 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 - **Live region:** a visually hidden `aria-live="polite"` region shows the latest `announce` effect, e.g. "NAND gate 2 selected", "2 chips moved", "3 items deleted", or the pin card text.
 - Messages (en / es) for the role description, the hint, and each announcement: `canvas_selected_one`, `canvas_selected_many`, `canvas_moved`, `canvas_deleted`, `canvas_selection_cleared`, `canvas_tool_pan`, `canvas_tool_select`.
 
-- [ ] **Step 1:** Implement. Run `pnpm dev`, then check by hand: a mouse drag moves the NAND; undo restores it; a wheel with Ctrl zooms; touch emulation in devtools long-presses.
-- [ ] **Step 2: Verify** with `pnpm check`. **Step 3: Commit** `feat(circuit-editor): pointer and keyboard input on a focusable canvas host`
+- [x] **Step 1:** Implement. Run `pnpm dev`, then check by hand: a mouse drag moves the NAND; undo restores it; a wheel with Ctrl zooms; touch emulation in devtools long-presses.
+- [x] **Step 2: Verify** with `pnpm check`. **Step 3: Commit** `feat(circuit-editor): pointer and keyboard input on a focusable canvas host`
+
+**As built:**
+- `domain/keymap.ts` (`commandForKey`) and `domain/announcements.ts` (`announcementText`, `chipLabel`) are pure and tested. Spoken chip names match the summary ("NAND gate 1").
+- `application/editor-session.ts` builds the editor, simulation, interaction store and view sync outside React. `EditorSession` gains `interaction` and `attachViewport`. `useEditorSession(project, repo, { camera, write })` connects them in effects, so StrictMode-safe re-runs reattach. On unmount a pending camera is dropped, never written, because writing would navigate back.
+- `ui/use-canvas.ts` attaches the renderer and pointer input, and provides `useUrlCamera` and `useSpoken`. `CircuitCanvas` is the `role="application"` host.
+- The URL camera is rounded (`cameraForUrl`). The canvas follows outside URL changes, and ignores echoes of its own writes.
+- `pointer-input.ts`:
+  - the 16 px touch edge guard;
+  - pointer capture;
+  - coalesced moves;
+  - the long-press timer;
+  - wheel: Ctrl/⌘ zooms by `e^(-Δy/500)` (about 20% per 100 px notch); otherwise it pans, with Shift sideways.
+- The default tool is Pan with a coarse pointer and Select otherwise.
+- **Checked in a real browser** (production build, Chromium desktop and Pixel 7 emulation):
+  - mouse: click to select, drag (one undo step), box select, hover ring;
+  - keyboard: `]`, Delete, Ctrl+Z, `0` to fit;
+  - Ctrl+wheel zooms;
+  - touch: tap, drag, long-press pin card with announcement, pinch (URL `zoom=2`), one-finger pan.
+- **Follow-up noticed:** chips can be dropped overlapping each other. The spec does not forbid it in Phase 2; DLS cancels such drops.
 
 ---
 

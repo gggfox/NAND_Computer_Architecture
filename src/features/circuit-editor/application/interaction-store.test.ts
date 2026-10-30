@@ -31,12 +31,13 @@ const setup = (tool: "pan" | "select" = "select") => {
     viewport: () => ({ width: 800, height: 600 }),
     view,
   });
+  const disconnect = handle.connect();
   const send = (gesture: Gesture) => {
     handle.store.getState().send({ type: "gesture", gesture });
   };
   const nand = openCircuit(editor.getState()).instances.find((item) => item.kind.type === "nand");
   assert(nand !== undefined);
-  return { editor, view, handle, send, nand, store: handle.store };
+  return { editor, view, handle, send, nand, store: handle.store, disconnect };
 };
 
 const dragFrom = (
@@ -119,11 +120,11 @@ describe("createInteractionStore camera", () => {
   });
 
   it("reuses the hit index until the circuit changes, and stops listening when disposed", () => {
-    const { send, handle, editor, store } = setup();
+    const { send, editor, store, disconnect } = setup();
     send({ type: "tap", point: at(220, 80), kind: "mouse", modifiers: NONE });
     send({ type: "hover", point: at(160, 60) });
     expect(store.getState().card).toMatchObject({ pin: 0 });
-    handle.dispose();
+    disconnect();
     send({ type: "tap", point: at(220, 80), kind: "mouse", modifiers: NONE });
     editor.getState().undo();
     expect(store.getState().selection.instances.size).toBe(1);

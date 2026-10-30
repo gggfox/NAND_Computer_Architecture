@@ -3,10 +3,10 @@ import type { Circuit, Point, Project } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import { SCREEN_PAD, screenToWorld } from "../domain/camera";
+import type { Camera } from "../domain/camera";
 import { createLayoutCache, GRID } from "../domain/chip-layout";
-import type { Rect, Size } from "../domain/chip-layout";
+import type { LayoutCache, Rect, Size } from "../domain/chip-layout";
 import type { KnownLevels } from "../domain/signals";
-import type { EditorSearch } from "../domain/view-search";
 import { drawOverlays, drawWireHalos } from "./draw-overlays";
 import type { OverlayView } from "./draw-overlays";
 import { drawChips, drawWires } from "./draw-parts";
@@ -19,7 +19,7 @@ export interface RenderState extends KnownLevels {
   readonly overlay?: OverlayView & { readonly positions?: ReadonlyMap<InstanceId, Point> };
   readonly project: Project;
   readonly circuit: Circuit;
-  readonly view: EditorSearch;
+  readonly view: Camera;
 }
 
 export interface CanvasRenderer {
@@ -34,7 +34,7 @@ const GRID_DOT = 2;
 const MIN_DOT_SPACING = 8;
 const SPARSE_GRID = 4;
 
-const drawGrid = (frame: Frame, viewport: Size, view: EditorSearch): void => {
+const drawGrid = (frame: Frame, viewport: Size, view: Camera): void => {
   const { ctx, palette } = frame;
   const dense = GRID * view.zoom;
   const step = dense < MIN_DOT_SPACING ? dense * SPARSE_GRID : dense;
@@ -67,7 +67,7 @@ const fitBackingStore = (canvas: HTMLCanvasElement): Viewport => {
 };
 
 /** The world rect on screen, so off-screen chips and wires are skipped. */
-const visibleWorld = (view: EditorSearch, viewport: Size): Rect => {
+const visibleWorld = (view: Camera, viewport: Size): Rect => {
   const topLeft = screenToWorld(view, { x: 0, y: 0 });
   return {
     ...topLeft,
@@ -77,12 +77,12 @@ const visibleWorld = (view: EditorSearch, viewport: Size): Rect => {
 };
 
 interface Layers {
-  readonly view: EditorSearch;
+  readonly view: Camera;
   readonly overlay: OverlayView;
 }
 
 /** Clears to the background and draws the grid, in screen space. */
-const drawBackdrop = (frame: Frame, viewport: Viewport, view: EditorSearch): void => {
+const drawBackdrop = (frame: Frame, viewport: Viewport, view: Camera): void => {
   const { ctx, palette } = frame;
   const { dpr } = viewport;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -117,10 +117,10 @@ const drawScene = (frame: Frame, viewport: Viewport, { view, overlay }: Layers):
 export const createCanvasRenderer = (
   canvas: HTMLCanvasElement,
   read: () => RenderState,
+  layout: LayoutCache = createLayoutCache(),
 ): CanvasRenderer => {
   const ctx = canvas.getContext("2d");
   let palette = readPalette();
-  const layout = createLayoutCache();
   let frameId: number | undefined = undefined;
   let unwatch: (() => void) | undefined = undefined;
 

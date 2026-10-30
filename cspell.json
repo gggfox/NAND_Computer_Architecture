@@ -50,6 +50,10 @@
     "rrggbb",
     "netlist",
     "nands",
-    "dppx"
+    "dppx",
+    "keymap",
+    "noninteractive",
+    "roledescription",
+    "Supr"
   ]
 }

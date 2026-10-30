@@ -5,6 +5,7 @@ import { useStore } from "zustand";
 
 import { CircuitSummary } from "~/features/accessibility";
 import {
+  cameraForUrl,
   CircuitCanvas,
   EditorLayout,
   EditorSearchSchema,
@@ -13,7 +14,7 @@ import {
   simulationErrorMessage,
   useEditorSession,
 } from "~/features/circuit-editor";
-import type { EditorSession } from "~/features/circuit-editor";
+import type { Camera, EditorSession } from "~/features/circuit-editor";
 import {
   getAppProjectRepository,
   persistenceErrorMessage,
@@ -172,7 +173,14 @@ interface EditorProps {
 
 function Editor({ project }: EditorProps): ReactNode {
   const view = Route.useSearch();
-  const session = useEditorSession(project, getAppProjectRepository());
+  const navigate = Route.useNavigate();
+  const write = (camera: Camera): void => {
+    void navigate({
+      search: (previous) => ({ ...previous, ...cameraForUrl(camera) }),
+      replace: true,
+    });
+  };
+  const session = useEditorSession(project, getAppProjectRepository(), { camera: view, write });
   const { failure, onImport } = useImport(project.id, session.editor);
   const notices = useNotices(session, failure);
   const { editor, simulation } = session;
@@ -189,7 +197,7 @@ function Editor({ project }: EditorProps): ReactNode {
       <EditorLayout
         toolbar={toolbar}
         status={<StatusMessages messages={notices} />}
-        canvas={<CircuitCanvas editor={editor} simulation={simulation} view={view} />}
+        canvas={<CircuitCanvas session={session} view={view} />}
         panel={<CircuitSummary editor={editor} simulation={simulation} />}
       />
     </main>

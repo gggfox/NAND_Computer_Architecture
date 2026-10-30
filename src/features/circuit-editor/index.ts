@@ -37,7 +37,9 @@ export {
   type SimulationState,
   type SimulationStore,
 } from "./application/simulation-bridge";
+export { cameraForUrl, type Camera } from "./domain/camera";
 export { CircuitCanvas } from "./ui/CircuitCanvas";
 export { EditorLayout } from "./ui/EditorLayout";
 export { EditorToolbar } from "./ui/EditorToolbar";
-export { useEditorSession, type EditorSession } from "./ui/use-editor-session";
+export type { EditorSession } from "./application/editor-session";
+export { useEditorSession } from "./ui/use-editor-session";
