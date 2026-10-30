@@ -1,67 +1,9 @@
 import { assert, describe, expect, it } from "vitest";
 
-import type { ProjectRepository } from "~/features/persistence";
-import { createDemoProject, newChip, piece, wire } from "~/features/projects";
+import { createDemoProject, piece, wire } from "~/features/projects";
 import type { Project } from "~/features/projects";
-import type { EngineClient, EngineEvent, ToEngine } from "~/features/simulation";
-import { newChipId } from "~/shared/ids";
-import { ok } from "~/shared/result";
 
-import { createEditorStore, openCircuit } from "./editor-store";
-import { connectSimulation, createSimulationStore } from "./simulation-bridge";
-
-const repo: ProjectRepository = {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
-  save: () => Promise.resolve(ok(undefined)),
-  load: () => Promise.reject(new Error("unused")),
-  list: () => Promise.resolve(ok([])),
-};
-
-const fakeClient = () => {
-  const sent: ToEngine[] = [];
-  const listeners = new Set<(event: EngineEvent) => void>();
-  const client: EngineClient = {
-    send: (msg) => {
-      sent.push(msg);
-    },
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    dispose: () => {
-      listeners.clear();
-    },
-  };
-  const reply = (event: EngineEvent): void => {
-    for (const listener of listeners) {
-      listener(event);
-    }
-  };
-  return { client, sent, reply, listeners };
-};
-
-const setup = (project: Project = createDemoProject("Bridge")) => {
-  const editor = createEditorStore(project, repo);
-  const simulation = createSimulationStore();
-  const fake = fakeClient();
-  const { disconnect, clock } = connectSimulation(editor, simulation, fake.client);
-  return { project, editor, simulation, disconnect, clock, ...fake };
-};
-
-const pinsOf = (editor: ReturnType<typeof setup>["editor"]) => {
-  const [pinA, pinB, pinOut] = openCircuit(editor.getState()).pins;
-  assert(pinA !== undefined && pinB !== undefined && pinOut !== undefined);
-  return { pinA, pinB, pinOut };
-};
-
-const placeNand = (editor: ReturnType<typeof setup>["editor"]) => ({
-  type: "placeChip" as const,
-  chipId: editor.getState().chipId,
-  /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-  instance: piece({ type: "nand" }, { x: 480, y: 0 }),
-});
+import { pinsOf, placeNand, setup } from "./simulation-bridge.fixtures";
 
 /** The demo with its NAND's `b` input fed by a clock instead of input B. */
 const clockedDemo = (): Project => {
@@ -137,32 +79,6 @@ describe("connectSimulation inputs and outputs", () => {
     expect(simulation.getState().outputs.get(pinOut.id)).toBe(1);
     expect(simulation.getState()).toMatchObject({ clock: 1, running: true });
     expect(simulation.getState().error).toBeNull();
-  });
-});
-
-describe("connectSimulation reloads", () => {
-  it("opening another chip reloads", () => {
-    const project = createDemoProject("Two");
-    const [first] = project.chips;
-    assert(first !== undefined);
-    const other = newChip("Other");
-    const { editor, sent, simulation } = setup({ ...project, chips: [first, other] });
-    sent.length = 0;
-    expect(editor.getState().openChip(other.id).ok).toBe(true);
-    expect(sent.map((msg) => msg.type)).toEqual(["load"]);
-    expect(simulation.getState().error).toBeNull();
-  });
-
-  it("a nested chip's save reloads the open chip", () => {
-    const { editor, sent } = setup();
-    sent.length = 0;
-    const created = newChipId();
-    editor
-      .getState()
-      .dispatch({ type: "createChip", chipId: created, name: "N", color: "#123456" });
-    sent.length = 0;
-    editor.getState().dispatch({ type: "saveChip", chipId: created });
-    expect(sent[0]?.type).toBe("load");
   });
 });
 

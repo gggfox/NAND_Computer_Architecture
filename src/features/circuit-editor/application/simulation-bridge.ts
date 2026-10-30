@@ -14,6 +14,7 @@ import type { IoLayout } from "../domain/io-layout";
 import type { SimulationError } from "../domain/messages";
 import type { Level } from "../domain/signals";
 import { toNetlistSource } from "../domain/to-netlist-source";
+import type { Flattened } from "../domain/to-netlist-source";
 import type { EditorState, EditorStore } from "./editor-store";
 
 export interface SimulationState {
@@ -81,35 +82,83 @@ const createClockControls = (simulation: SimulationStore, client: EngineClient):
 });
 
 /** Anything the open chip's flattened netlist depends on, saved nested chips included. */
-const needsReload = (state: EditorState, previous: EditorState): boolean =>
+const mayNeedReload = (state: EditorState, previous: EditorState): boolean =>
   state.history.present !== previous.history.present || state.chipId !== previous.chipId;
 
 interface EngineLink {
-  /** Flattens the open chip and loads it, then replays every input bit. */
+  /**
+   * Flattens the open chip and, when its netlist, layout or seed differs from the last one
+   * loaded, loads it and replays every input bit. Cosmetic edits (moves, names, colours) keep
+   * the engine and its running state.
+   */
   readonly load: (state: EditorState) => void;
   /** Sends the input bits that changed since the last load or send. */
   readonly sendInputs: (state: EditorState) => void;
   readonly onEvent: (event: EngineEvent) => void;
 }
 
+/** Remembers what the engine runs, so reloading an identical netlist is skipped. */
+const createLoadedNetlist = () => {
+  // Empty means unknown: no JSON key is empty, so the next netlist always differs.
+  let loadedKey = "";
+  return {
+    /** Whether this netlist, layout and seed differ from the last loaded; remembers them. */
+    replace: (flattened: Flattened, seed: number): boolean => {
+      const key = JSON.stringify({ source: flattened.source, layout: flattened.layout, seed });
+      const changed = key !== loadedKey;
+      loadedKey = key;
+      return changed;
+    },
+    /** The engine's netlist is unknown (invalid circuit, engine error): the next load sends. */
+    forget: () => {
+      loadedKey = "";
+    },
+  };
+};
+
+/** Sends only the input bits that changed since the last send or reset. */
+const createInputSender = (client: EngineClient) => {
+  let sentBits: readonly Level[] = [];
+  return {
+    send: (layout: IoLayout, inputs: ReadonlyMap<PinId, number>): void => {
+      const bits = packInputs(layout, inputs);
+      for (const [index, value] of bits.entries()) {
+        if (sentBits[index] !== value) {
+          client.send({ type: "setInput", index, value });
+        }
+      }
+      sentBits = bits;
+    },
+    reset: () => {
+      sentBits = [];
+    },
+  };
+};
+
 /** The bridge's state: the open chip's I/O layout, the bits sent, and whether it compiled. */
 const createEngineLink = (simulation: SimulationStore, client: EngineClient): EngineLink => {
   // While the circuit cannot be compiled, replies to earlier requests are stale and ignored.
   let invalid = false;
   let layout = EMPTY_LAYOUT;
-  let sentBits: readonly Level[] = [];
+  const loaded = createLoadedNetlist();
+  const inputs = createInputSender(client);
 
   const sendInputs = (state: EditorState): void => {
-    if (invalid) {
-      return;
+    if (!invalid) {
+      inputs.send(layout, state.inputs);
     }
-    const bits = packInputs(layout, state.inputs);
-    for (const [index, value] of bits.entries()) {
-      if (sentBits[index] !== value) {
-        client.send({ type: "setInput", index, value });
-      }
-    }
-    sentBits = bits;
+  };
+
+  const fail = (error: SimulationError): void => {
+    loaded.forget();
+    simulation.setState({ outputs: NO_OUTPUTS, error });
+  };
+
+  const reload = (state: EditorState, flattened: Flattened): void => {
+    ({ layout } = flattened);
+    client.send({ type: "load", source: flattened.source, seed: state.history.present.seed });
+    inputs.reset();
+    sendInputs(state);
   };
 
   return {
@@ -117,19 +166,15 @@ const createEngineLink = (simulation: SimulationStore, client: EngineClient): En
       const flattened = toNetlistSource(state.history.present, state.chipId);
       invalid = !flattened.ok;
       if (!flattened.ok) {
-        simulation.setState({ outputs: NO_OUTPUTS, error: flattened.error });
-        return;
+        fail(flattened.error);
+      } else if (loaded.replace(flattened.value, state.history.present.seed)) {
+        reload(state, flattened.value);
       }
-      ({ layout } = flattened.value);
-      const { seed } = state.history.present;
-      client.send({ type: "load", source: flattened.value.source, seed });
-      sentBits = [];
-      sendInputs(state);
     },
     sendInputs,
     onEvent: (event) => {
       if (event.type === "error") {
-        simulation.setState({ outputs: NO_OUTPUTS, error: event.error });
+        fail(event.error);
       } else if (!invalid) {
         const { clock, running } = event;
         const outputs = unpackOutputs(layout, event.outputs);
@@ -140,9 +185,9 @@ const createEngineLink = (simulation: SimulationStore, client: EngineClient): En
 };
 
 /**
- * Keeps the engine in step with the editor: every project or open-chip change reloads the
- * netlist (then replays the input bits), every input change is forwarded bit by bit, and every
- * engine reply lands in `simulation`. A reload never pauses: the engine keeps its run state.
+ * Keeps the engine in step with the editor: a project or open-chip change that alters the
+ * flattened netlist reloads it (then replays the input bits), every input change is forwarded
+ * bit by bit, and every engine reply lands in `simulation`. A reload never pauses: the engine keeps its run state.
  * The caller owns and disposes `client`.
  */
 export const connectSimulation = (
@@ -153,7 +198,7 @@ export const connectSimulation = (
   const link = createEngineLink(simulation, client);
   const unsubscribeEngine = client.subscribe(link.onEvent);
   const unsubscribeEditor = editor.subscribe((state, previous) => {
-    if (needsReload(state, previous)) {
+    if (mayNeedReload(state, previous)) {
       link.load(state);
     } else if (state.inputs !== previous.inputs) {
       link.sendInputs(state);
