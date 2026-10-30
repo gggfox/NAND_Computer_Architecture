@@ -1,0 +1,141 @@
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { createDemoProject, newChip, pinDef, projectWith } from "~/features/projects";
+import type { Project } from "~/features/projects";
+import { newChipId, newInstanceId } from "~/shared/ids";
+
+import { createEditorStore, openCircuit } from "./editor-store";
+import type { EditorStore } from "./editor-store";
+import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
+
+const COLOR = "#123456";
+
+const demoStore = (): EditorStore =>
+  createEditorStore(createDemoProject("x"), fakeRepo(SAVED).repo);
+
+const demoPins = (store: EditorStore) => {
+  const [pinA, pinB] = openCircuit(store.getState()).pins;
+  assert(pinA !== undefined && pinB !== undefined);
+  return { pinA, pinB };
+};
+
+/** The demo chip plus an empty one, opened on the empty one. */
+const twoChips = (): Project => {
+  const [first] = createDemoProject("first").chips;
+  assert(first !== undefined);
+  const other = newChip("other");
+  return { ...projectWith("two", [first, other]), lastOpenedChipId: other.id };
+};
+
+describe("createEditorStore pins", () => {
+  it("input values follow their pins across reorder", () => {
+    const store = demoStore();
+    const { pinA, pinB } = demoPins(store);
+    store.getState().setInput(pinA.id, 1);
+    const { chipId } = store.getState();
+    store.getState().dispatch({ type: "reorderPin", chipId, pinId: pinB.id, toIndex: 0 });
+    expect(openCircuit(store.getState()).pins[0]?.id).toBe(pinB.id);
+    expect(store.getState().inputs.get(pinA.id)).toBe(1);
+    expect(store.getState().inputs.get(pinB.id)).toBeUndefined();
+  });
+
+  it("undo after removePin restores the pin and its wires", () => {
+    const store = demoStore();
+    const before = openCircuit(store.getState());
+    const { pinA } = demoPins(store);
+    store
+      .getState()
+      .dispatch({ type: "removePin", chipId: store.getState().chipId, pinId: pinA.id });
+    expect(openCircuit(store.getState()).wires).toHaveLength(2);
+    store.getState().undo();
+    expect(openCircuit(store.getState())).toBe(before);
+    expect(openCircuit(store.getState()).wires).toHaveLength(3);
+  });
+});
+
+describe("createEditorStore open chip", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("opens on the project's lastOpenedChipId", () => {
+    const project = twoChips();
+    const store = createEditorStore(project, fakeRepo(SAVED).repo);
+    expect(store.getState().chipId).toBe(project.chips[1]?.id);
+    expect(openCircuit(store.getState())).toBe(project.chips[1]?.draft);
+  });
+
+  it("openChip switches chips and autosave records it", async () => {
+    const { repo, saved } = fakeRepo(SAVED);
+    const store = createEditorStore(twoChips(), repo);
+    const first = store.getState().history.present.chips[0]?.id;
+    assert(first !== undefined);
+    expect(store.getState().openChip(first).ok).toBe(true);
+    expect(store.getState().chipId).toBe(first);
+    expect(store.getState().history.past).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(saved.at(-1)?.lastOpenedChipId).toBe(first);
+  });
+
+  it("openChip of an unknown chip is ChipNotFound and changes nothing", () => {
+    const store = demoStore();
+    const before = store.getState();
+    const missing = newChipId();
+    expect(store.getState().openChip(missing)).toEqual({
+      ok: false,
+      error: { type: "ChipNotFound", chipId: missing },
+    });
+    expect(store.getState()).toBe(before);
+  });
+
+  it("undoing createChip while it is open falls back to the first chip", () => {
+    const store = demoStore();
+    const first = store.getState().chipId;
+    const created = newChipId();
+    store.getState().dispatch({ type: "createChip", chipId: created, name: "New", color: COLOR });
+    store.getState().openChip(created);
+    store.getState().undo();
+    expect(store.getState().chipId).toBe(first);
+    store.getState().redo();
+    expect(store.getState().chipId).toBe(first);
+  });
+});
+
+/** Adds input C to the open demo chip and returns its id. */
+const addPinC = (store: EditorStore) => {
+  const pinC = pinDef("C", "input");
+  store.getState().dispatch({
+    type: "addPin",
+    chipId: store.getState().chipId,
+    pin: pinC,
+    instanceId: newInstanceId(),
+    // oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names
+    position: { x: 0, y: 160 },
+  });
+  return pinC.id;
+};
+
+describe("createEditorStore saveChip", () => {
+  it("saveChip is not on the undo stack; undo keeps the new saved version", () => {
+    const store = demoStore();
+    const { chipId } = store.getState();
+    const pinC = addPinC(store);
+    const pastBefore = store.getState().history.past.length;
+    expect(store.getState().dispatch({ type: "saveChip", chipId }).ok).toBe(true);
+    expect(store.getState().history.past).toHaveLength(pastBefore);
+    store.getState().undo();
+    const chip = store.getState().history.present.chips.find((item) => item.id === chipId);
+    expect(chip?.saved?.pins.map((pin) => pin.id)).toContain(pinC);
+    expect(chip?.draft.pins.map((pin) => pin.id)).not.toContain(pinC);
+  });
+
+  it("a rejected saveChip records the error", () => {
+    const store = demoStore();
+    const missing = newChipId();
+    expect(store.getState().dispatch({ type: "saveChip", chipId: missing }).ok).toBe(false);
+    expect(store.getState().lastError).toEqual({ type: "ChipNotFound", chipId: missing });
+  });
+});

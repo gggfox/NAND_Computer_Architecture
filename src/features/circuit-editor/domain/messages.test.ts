@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 
 import { persistenceErrorMessage } from "~/features/persistence";
+import { createDemoProject, EMPTY_CIRCUIT } from "~/features/projects";
 import { newChipId, newInstanceId, newPinId, newWireId, ProjectIdSchema } from "~/shared/ids";
 
 import type { EditorError } from "./actions";
 import { editorErrorMessage } from "./editor-error-messages";
-import { editorStoreErrorMessage, simulationErrorMessage } from "./messages";
+import { editorStoreErrorMessage, partName, simulationErrorMessage } from "./messages";
 import type { SimulationError } from "./messages";
 
 const instanceId = newInstanceId();
@@ -82,5 +83,27 @@ describe("editorStoreErrorMessage", () => {
     ] as const) {
       expect(editorStoreErrorMessage(error)).toBe(persistenceErrorMessage(error));
     }
+  });
+});
+
+describe("partName", () => {
+  it("names built-ins, custom chips and pin pieces, and leaves missing ones empty", () => {
+    const project = createDemoProject("Demo");
+    const [chip] = project.chips;
+    assert(chip !== undefined);
+    const circuit = chip.draft;
+    const [pinA] = circuit.pins;
+    expect(pinA).toBeDefined();
+    const names = [
+      partName(project, circuit, { type: "nand" }),
+      partName(project, circuit, { type: "clock" }),
+      partName(project, circuit, { type: "split", width: 8 }),
+      partName(project, circuit, { type: "merge", width: 4 }),
+      partName(project, circuit, { type: "custom", chipId: chip.id }),
+      partName(project, circuit, { type: "pin", pinId: pinA?.id ?? newPinId() }),
+    ];
+    expect(names).toEqual(["NAND", "Clock", "Split 8", "Merge 4", "Demo", "A"]);
+    expect(partName(project, EMPTY_CIRCUIT, { type: "custom", chipId: newChipId() })).toBe("");
+    expect(partName(project, EMPTY_CIRCUIT, { type: "pin", pinId: newPinId() })).toBe("");
   });
 });

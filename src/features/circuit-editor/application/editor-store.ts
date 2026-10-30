@@ -2,21 +2,19 @@ import { createStore } from "zustand/vanilla";
 import type { StoreApi } from "zustand/vanilla";
 
 import type { PersistenceError, ProjectRepository } from "~/features/persistence";
-import { EMPTY_CIRCUIT, findChip } from "~/features/projects";
+import { applySavedVersion, EMPTY_CIRCUIT, findChip } from "~/features/projects";
 import type { Circuit, Project } from "~/features/projects";
-import type { ChipId } from "~/shared/ids";
+import type { ChipId, PinId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "../domain/actions";
-import { partOf } from "../domain/geometry";
-import { createHistory, pushHistory, redo, undo } from "../domain/history";
+import { createHistory, mapHistory, pushHistory, redo, undo } from "../domain/history";
 import type { History } from "../domain/history";
 import { applyAction } from "../domain/reducer";
 
 const SAVE_DEBOUNCE_MS = 300;
 
-type Level = 0 | 1;
 type LastError = EditorError | PersistenceError | null;
 
 export interface EditorState {
@@ -24,11 +22,15 @@ export interface EditorState {
   /** The chip being edited; starts at the project's `lastOpenedChipId`. */
   readonly chipId: ChipId;
   readonly lastError: LastError;
-  readonly inputs: readonly Level[];
+  /** The value set on each of the open chip's input pins; a missing pin reads as 0. */
+  readonly inputs: ReadonlyMap<PinId, number>;
   readonly dispatch: (action: EditorAction) => Result<void, EditorError>;
+  /** Opens another chip for editing. It is not an edit: history is untouched. */
+  readonly openChip: (chipId: ChipId) => Result<void, EditorError>;
   readonly undo: () => void;
   readonly redo: () => void;
-  readonly setInput: (index: number, value: Level) => void;
+  /** Sets an input pin of the open chip; any other pin id is ignored. */
+  readonly setInput: (pinId: PinId, value: number) => void;
   /** Saves a pending (debounced) autosave now; resolves once it is written. No-op when none. */
   readonly flush: () => Promise<void>;
 }
@@ -45,12 +47,9 @@ const draftOf = (project: Project, chipId: ChipId): Circuit =>
 export const openCircuit = (state: EditorState): Circuit =>
   draftOf(state.history.present, state.chipId);
 
-const countInputs = (circuit: Circuit): number =>
-  circuit.instances.filter((item) => partOf(circuit, item) === "input").length;
-
-/** Keeps existing levels, pads new inputs with 0 and drops removed ones. */
-const resizeInputs = (inputs: readonly Level[], count: number): readonly Level[] =>
-  Array.from({ length: count }, (_unused, index) => inputs[index] ?? 0);
+/** The open chip, or the first chip when an undo or redo removed it. */
+const openableChip = (project: Project, chipId: ChipId): ChipId =>
+  findChip(project, chipId) === undefined ? (project.chips[0]?.id ?? chipId) : chipId;
 
 interface Debounce {
   readonly schedule: (run: () => Promise<void>) => void;
@@ -84,6 +83,8 @@ type Set = StoreApi<EditorState>["setState"];
 
 interface Commit {
   readonly commit: (next: History<Project>) => void;
+  /** Autosaves without an edit, for a change that lives outside history (the open chip). */
+  readonly touch: () => void;
   readonly flush: () => Promise<void>;
 }
 type Get = StoreApi<EditorState>["getState"];
@@ -92,7 +93,8 @@ const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
   const { schedule, flush } = createDebounce(SAVE_DEBOUNCE_MS);
   const persist = async (): Promise<void> => {
     try {
-      const result = await repo.save(get().history.present);
+      const { history, chipId } = get();
+      const result = await repo.save({ ...history.present, lastOpenedChipId: chipId });
       if (!result.ok) {
         set({ lastError: result.error });
       }
@@ -103,24 +105,45 @@ const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
   };
   return {
     commit: (next) => {
-      set((state) => ({
-        history: next,
-        inputs: resizeInputs(state.inputs, countInputs(draftOf(next.present, state.chipId))),
-      }));
+      set((state) => ({ history: next, chipId: openableChip(next.present, state.chipId) }));
+      schedule(persist);
+    },
+    touch: () => {
       schedule(persist);
     },
     flush,
   };
 };
 
-const withInput = (state: EditorState, index: number, value: Level): Partial<EditorState> =>
-  index >= 0 && index < state.inputs.length
-    ? { inputs: state.inputs.map((level, at) => (at === index ? value : level)) }
+const isOpenInput = (state: EditorState, pinId: PinId): boolean =>
+  openCircuit(state).pins.some((pin) => pin.id === pinId && pin.direction === "input");
+
+const withInput = (state: EditorState, pinId: PinId, value: number): Partial<EditorState> =>
+  isOpenInput(state, pinId) && state.inputs.get(pinId) !== value
+    ? { inputs: new Map(state.inputs).set(pinId, value) }
     : {};
+
+/**
+ * Saving rewrites every snapshot (spec §5.11): the saved version is the same across the whole
+ * history, so undo never reverts a save and the save itself is not an undo step.
+ */
+const savedEverywhere = (history: History<Project>, chipId: ChipId): History<Project> => {
+  const saved = draftOf(history.present, chipId);
+  return mapHistory(history, (snapshot) => applySavedVersion(snapshot, chipId, saved));
+};
+
+const nextHistory = (
+  history: History<Project>,
+  action: EditorAction,
+  project: Project,
+): History<Project> =>
+  action.type === "saveChip"
+    ? savedEverywhere(history, action.chipId)
+    : pushHistory(history, project);
 
 export const createEditorStore = (project: Project, repo: ProjectRepository): EditorStore =>
   createStore<EditorState>((set, get) => {
-    const { commit, flush } = createCommit(set, get, repo);
+    const { commit, touch, flush } = createCommit(set, get, repo);
     const step = (move: (history: History<Project>) => History<Project>): void => {
       const next = move(get().history);
       if (next !== get().history) {
@@ -131,7 +154,7 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       history: createHistory(project),
       chipId: project.lastOpenedChipId,
       lastError: NO_ERROR,
-      inputs: resizeInputs([], countInputs(draftOf(project, project.lastOpenedChipId))),
+      inputs: new Map(),
       dispatch: (action) => {
         const result = applyAction(get().history.present, action);
         if (!result.ok) {
@@ -139,7 +162,16 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
           return err(result.error);
         }
         set({ lastError: NO_ERROR });
-        commit(pushHistory(get().history, result.value));
+        commit(nextHistory(get().history, action, result.value));
+        // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
+        return ok(undefined);
+      },
+      openChip: (chipId) => {
+        if (findChip(get().history.present, chipId) === undefined) {
+          return err({ type: "ChipNotFound", chipId });
+        }
+        set({ chipId });
+        touch();
         // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
         return ok(undefined);
       },
@@ -149,8 +181,8 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       redo: () => {
         step(redo);
       },
-      setInput: (index, value) => {
-        set((state) => withInput(state, index, value));
+      setInput: (pinId, value) => {
+        set((state) => withInput(state, pinId, value));
       },
       flush,
     };

@@ -1,7 +1,10 @@
 import { persistenceErrorMessage } from "~/features/persistence";
 import type { PersistenceError } from "~/features/persistence";
+import { findChip } from "~/features/projects";
+import type { Circuit, InstanceKind, Project } from "~/features/projects";
 import type { EngineEventError } from "~/features/simulation";
 import { m } from "~/i18n/paraglide/messages";
+import { assertNever } from "~/shared/assert-never";
 
 import type { EditorError } from "./actions";
 import { editorErrorMessage } from "./editor-error-messages";
@@ -43,3 +46,39 @@ export const editorStoreErrorMessage = (storeError: EditorError | PersistenceErr
   isPersistenceError(storeError)
     ? persistenceErrorMessage(storeError)
     : editorErrorMessage(storeError);
+
+type BuiltInKind = Exclude<InstanceKind, { readonly type: "custom" | "pin" }>;
+
+const builtInName = (kind: BuiltInKind): string => {
+  switch (kind.type) {
+    case "nand": {
+      return m.chip_nand();
+    }
+    case "clock": {
+      return m.chip_clock();
+    }
+    case "split": {
+      return m.chip_split({ width: kind.width });
+    }
+    case "merge": {
+      return m.chip_merge({ width: kind.width });
+    }
+    default: {
+      return assertNever(kind);
+    }
+  }
+};
+
+/**
+ * The display name of a part: the built-in's name, a custom chip's name, or a pin piece's pin
+ * name. A missing chip or pin has an empty name.
+ */
+export const partName = (project: Project, circuit: Circuit, kind: InstanceKind): string => {
+  if (kind.type === "custom") {
+    return findChip(project, kind.chipId)?.name ?? "";
+  }
+  if (kind.type === "pin") {
+    return circuit.pins.find((pin) => pin.id === kind.pinId)?.name ?? "";
+  }
+  return builtInName(kind);
+};

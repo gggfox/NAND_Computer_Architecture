@@ -1,36 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectRepository } from "~/features/persistence";
 import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
-import type { Project } from "~/features/projects";
-import { newChipId, newInstanceId } from "~/shared/ids";
+import { newChipId, newInstanceId, newPinId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 
 import { createEditorStore, openCircuit } from "./editor-store";
-
-const DEBOUNCE_MS = 300;
-
-// oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
-const SAVED = ok(undefined);
+import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
 
 const place = (store: ReturnType<typeof createEditorStore>) => ({
   type: "placeChip" as const,
   chipId: store.getState().chipId,
   instance: piece({ type: "nand" }),
 });
-
-const fakeRepo = (saveResult: Awaited<ReturnType<ProjectRepository["save"]>>) => {
-  const saved: Project[] = [];
-  const repo: ProjectRepository = {
-    save: (project) => {
-      saved.push(project);
-      return Promise.resolve(saveResult);
-    },
-    load: () => Promise.resolve(err({ type: "Unavailable" })),
-    list: () => Promise.resolve(ok([])),
-  };
-  return { repo, saved };
-};
 
 describe("openCircuit", () => {
   it("opens the project's last opened chip and falls back to an empty circuit", () => {
@@ -140,11 +122,13 @@ describe("createEditorStore undo and inputs", () => {
   it("setInput updates only the signal level, not history", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    expect(store.getState().inputs).toEqual([0, 0]);
-    store.getState().setInput(1, 1);
-    expect(store.getState().inputs).toEqual([0, 1]);
-    store.getState().setInput(5, 1);
-    expect(store.getState().inputs).toEqual([0, 1]);
+    const [pinA, pinB] = openCircuit(store.getState()).pins;
+    assert(pinA !== undefined && pinB !== undefined);
+    expect(store.getState().inputs.size).toBe(0);
+    store.getState().setInput(pinB.id, 1);
+    expect([...store.getState().inputs]).toEqual([[pinB.id, 1]]);
+    store.getState().setInput(newPinId(), 1);
+    expect(store.getState().inputs.size).toBe(1);
     expect(store.getState().history.past).toHaveLength(0);
   });
 });
@@ -194,7 +178,7 @@ describe("createEditorStore flush", () => {
     store.getState().dispatch(place(store));
     await store.getState().flush();
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toBe(store.getState().history.present);
+    expect(saved[0]).toEqual(store.getState().history.present);
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(saved).toHaveLength(1);
   });

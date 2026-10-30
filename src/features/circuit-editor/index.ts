@@ -23,6 +23,7 @@ export {
 } from "./application/editor-store";
 export {
   editorStoreErrorMessage,
+  partName,
   simulationErrorMessage,
   type SimulationError,
 } from "./domain/messages";
@@ -31,6 +32,8 @@ export type { Level } from "./domain/signals";
 export {
   connectSimulation,
   createSimulationStore,
+  type ClockControls,
+  type SimulationConnection,
   type SimulationState,
   type SimulationStore,
 } from "./application/simulation-bridge";

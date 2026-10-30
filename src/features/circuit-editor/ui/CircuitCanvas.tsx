@@ -45,6 +45,7 @@ export function CircuitCanvas({ editor, simulation, view }: CircuitCanvasProps):
     const renderer = createCanvasRenderer(canvas, () => {
       const state = editor.getState();
       return {
+        project: state.history.present,
         circuit: openCircuit(state),
         inputs: state.inputs,
         outputs: simulation.getState().outputs,
