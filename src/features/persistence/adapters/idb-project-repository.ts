@@ -1,7 +1,7 @@
 import { openDB } from "idb";
 import type { IDBPDatabase } from "idb";
 
-import { parseProjectFile, serializeProject } from "~/features/projects";
+import { parseStoredProject, serializeStoredProject } from "~/features/projects";
 import type { Project } from "~/features/projects";
 import type { ProjectId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
@@ -26,7 +26,7 @@ const parseRecord = (id: ProjectId, text: unknown): Result<Project, PersistenceE
   if (typeof text !== "string") {
     return err({ type: "Corrupt", id, cause: { type: "NotAProjectFile" } });
   }
-  const parsed = parseProjectFile(text);
+  const parsed = parseStoredProject(text);
   return parsed.ok ? parsed : err({ type: "Corrupt", id, cause: parsed.error });
 };
 
@@ -36,7 +36,7 @@ const summarize = (texts: readonly unknown[]): ProjectSummary[] =>
     if (typeof text !== "string") {
       return [];
     }
-    const parsed = parseProjectFile(text);
+    const parsed = parseStoredProject(text);
     return parsed.ok ? [{ id: parsed.value.id, name: parsed.value.name }] : [];
   });
 
@@ -70,7 +70,7 @@ export const createProjectRepository = (dbName = "nand"): ProjectRepository => (
       dbName,
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- idb handle
       async (db) => {
-        await db.put(STORE, serializeProject(project), project.id);
+        await db.put(STORE, serializeStoredProject(project), project.id);
         return SAVED;
       },
     ),
@@ -99,7 +99,7 @@ export const createMemoryProjectRepository = (): ProjectRepository => {
   return {
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Project is a branded-id shape
     save: (project) => {
-      records.set(project.id, serializeProject(project));
+      records.set(project.id, serializeStoredProject(project));
       return Promise.resolve(SAVED);
     },
     load: (id) => {

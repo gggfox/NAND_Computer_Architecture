@@ -28,12 +28,17 @@ const EnvelopeSchema = z.looseObject({
 });
 
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
+const toFile = (project: Project) =>
+  ({ format: "nand-project", version: CURRENT_FORMAT_VERSION, project }) as const;
+
+/** The exported file: pretty-printed for people. */
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
 export const serializeProject = (project: Project): string =>
-  JSON.stringify(
-    { format: "nand-project", version: CURRENT_FORMAT_VERSION, project },
-    undefined,
-    JSON_INDENT,
-  );
+  JSON.stringify(toFile(project), undefined, JSON_INDENT);
+
+/** The same file format, compact, for this browser's own storage. */
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
+export const serializeStoredProject = (project: Project): string => JSON.stringify(toFile(project));
 
 const parseJson = (text: string): Result<unknown, ImportError> => {
   try {
@@ -97,15 +102,28 @@ const migrateAndValidate = (
       });
 };
 
+/**
+ * Parses a record this app wrote to its own storage. It is validated and migrated like an import,
+ * but not size-capped: the cap guards against hostile files, and a project the user built must
+ * always reopen, however large it grew.
+ */
+export const parseStoredProject = (
+  text: string,
+  chain: MigrationChain = defaultChain,
+  current: number = CURRENT_FORMAT_VERSION,
+): Result<Project, ImportError> => {
+  const envelope = parseEnvelope(text);
+  return envelope.ok ? migrateAndValidate(envelope.value, chain, current) : envelope;
+};
+
+/** Parses an untrusted file: rejected over `MAX_IMPORT_BYTES` before any JSON parsing. */
 export const parseProjectFile = (
   text: string,
   chain: MigrationChain = defaultChain,
   current: number = CURRENT_FORMAT_VERSION,
 ): Result<Project, ImportError> => {
   const bytes = new TextEncoder().encode(text).byteLength;
-  if (bytes > MAX_IMPORT_BYTES) {
-    return err({ type: "TooLarge", bytes });
-  }
-  const envelope = parseEnvelope(text);
-  return envelope.ok ? migrateAndValidate(envelope.value, chain, current) : envelope;
+  return bytes > MAX_IMPORT_BYTES
+    ? err({ type: "TooLarge", bytes })
+    : parseStoredProject(text, chain, current);
 };

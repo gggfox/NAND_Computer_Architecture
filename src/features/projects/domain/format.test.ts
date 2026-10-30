@@ -7,7 +7,13 @@ import { z } from "zod";
 import { createDemoProject } from "./demo";
 import { importErrorMessage } from "./errors";
 import type { ImportError } from "./errors";
-import { MAX_IMPORT_BYTES, parseProjectFile, serializeProject } from "./format";
+import {
+  MAX_IMPORT_BYTES,
+  parseProjectFile,
+  parseStoredProject,
+  serializeProject,
+  serializeStoredProject,
+} from "./format";
 import type { Migration } from "./migrations";
 import type { Project } from "./model";
 
@@ -95,6 +101,28 @@ describe("parseProjectFile limits", () => {
   test("size counts bytes, not characters", () => {
     const result = parseProjectFile("é".repeat(MAX_IMPORT_BYTES / 2 + 1));
     expect(!result.ok && result.error.type).toBe("TooLarge");
+  });
+});
+
+describe("stored projects", () => {
+  test("a record larger than the import cap still parses: our own saves are trusted", () => {
+    const project = createDemoProject("x".repeat(MAX_IMPORT_BYTES));
+    const text = serializeStoredProject(project);
+    expect(new TextEncoder().encode(text).byteLength).toBeGreaterThan(MAX_IMPORT_BYTES);
+    expect(parseProjectFile(text).ok).toBe(false);
+    expect(parseStoredProject(text)).toEqual({ ok: true, value: project });
+  });
+
+  test("stored records are compact and parse back like an export", () => {
+    const project = createDemoProject("Compact");
+    const stored = serializeStoredProject(project);
+    expect(stored.length).toBeLessThan(serializeProject(project).length);
+    expect(stored).not.toContain("\n");
+    expect(parseStoredProject(stored)).toEqual(parseProjectFile(serializeProject(project)));
+  });
+
+  test("stored records are still validated", () => {
+    expect(parseStoredProject("{")).toEqual({ ok: false, error: { type: "InvalidJson" } });
   });
 });
 

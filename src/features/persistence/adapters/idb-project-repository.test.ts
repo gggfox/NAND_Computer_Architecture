@@ -2,7 +2,7 @@ import "fake-indexeddb/auto"; // oxlint-disable-line import/no-unassigned-import
 import { openDB } from "idb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createDemoProject, serializeProject } from "~/features/projects";
+import { createDemoProject, MAX_IMPORT_BYTES, serializeProject } from "~/features/projects";
 import { newProjectId } from "~/shared/ids";
 
 import type { ProjectRepository } from "../domain/repository";
@@ -34,6 +34,18 @@ const sharedBehaviour = (label: string, make: () => ProjectRepository): void => 
     it("returns NotFound for an unknown id", async () => {
       const id = newProjectId();
       expect(await make().load(id)).toEqual({ ok: false, error: { type: "NotFound", id } });
+    });
+
+    it("reopens a saved project larger than the import cap", async () => {
+      const repo = make();
+      const project = createDemoProject("x".repeat(MAX_IMPORT_BYTES));
+      const saved = await repo.save(project);
+      expect(saved.ok).toBe(true);
+      expect(await repo.load(project.id)).toEqual({ ok: true, value: project });
+      expect(await repo.list()).toEqual({
+        ok: true,
+        value: [{ id: project.id, name: project.name }],
+      });
     });
 
     it("lists saved project names", async () => {
@@ -115,12 +127,16 @@ describe("idb repository environment failures", () => {
     expect(result).toEqual({ ok: false, error: { type: "QuotaExceeded" } });
   });
 
-  it("stores the serialized file text under the projects store", async () => {
+  it("stores compact file text under the projects store", async () => {
     const name = freshDbName();
     const project = createDemoProject("Stored");
     await createProjectRepository(name).save(project);
     const raw = await openDB(name);
-    expect(await raw.get("projects", project.id)).toBe(serializeProject(project));
+    const stored: unknown = await raw.get("projects", project.id);
+    expect(typeof stored === "string" && JSON.parse(stored)).toEqual(
+      JSON.parse(serializeProject(project)),
+    );
+    expect(stored).not.toContain("\n");
     raw.close();
   });
 });

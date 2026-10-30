@@ -6,7 +6,9 @@ export {
   MAX_IMPORT_BYTES,
   ProjectFileSchema,
   parseProjectFile,
+  parseStoredProject,
   serializeProject,
+  serializeStoredProject,
 } from "./domain/format";
 export {
   defaultChain,
