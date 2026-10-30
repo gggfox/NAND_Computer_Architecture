@@ -14,9 +14,12 @@ const projectId = ProjectIdSchema.parse("11111111-1111-4111-8111-111111111111");
 describe("simulationErrorMessage", () => {
   it("gives every netlist and engine error its own non-empty message", () => {
     const errors: readonly SimulationError[] = [
-      { type: "UnsupportedPart", instanceId },
-      { type: "UnconnectedPin", instanceId, pin: 1 },
-      { type: "InvalidWire", wireId: newWireId() },
+      { type: "ChipNotFound", chipId: newChipId() },
+      { type: "ChipNotSaved", chipId: newChipId() },
+      { type: "RecursiveChip", chipId: newChipId() },
+      { type: "UnconnectedPin", path: [], instanceId, pin: 1, bit: 0 },
+      { type: "InvalidWire", path: [instanceId], wireId: newWireId() },
+      { type: "WireLoop", path: [], instanceId },
       { type: "SignalOutOfRange", ref: { kind: "nand", index: 3 } },
       { type: "BadMessage" },
       { type: "WorkerFailed" },

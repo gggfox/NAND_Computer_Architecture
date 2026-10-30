@@ -45,13 +45,13 @@ export const connectSimulation = (
   };
 
   const load = (state: EditorState): void => {
-    const source = toNetlistSource(openCircuit(state));
-    invalid = !source.ok;
-    if (!source.ok) {
-      simulation.setState({ outputs: [], error: source.error });
+    const flattened = toNetlistSource(state.history.present, state.chipId);
+    invalid = !flattened.ok;
+    if (!flattened.ok) {
+      simulation.setState({ outputs: [], error: flattened.error });
       return;
     }
-    client.send({ type: "load", source: source.value, seed: state.history.present.seed });
+    client.send({ type: "load", source: flattened.value.source, seed: state.history.present.seed });
     sendInputs(state.inputs);
   };
 

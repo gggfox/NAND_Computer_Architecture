@@ -1,61 +1,144 @@
-import type { ChipInstance, Circuit, Wire } from "~/features/projects";
+import { findChip } from "~/features/projects";
+import type { InstanceKind, Project } from "~/features/projects";
 import type { NetlistSource, SignalRef } from "~/features/simulation";
-import type { InstanceId, WireId } from "~/shared/ids";
+import { assertNever } from "~/shared/assert-never";
+import type { ChipId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
-import { partOf } from "./geometry";
-import type { Part } from "./geometry";
+import { enumerate, keyOf, pieceOf, unconnected } from "./flatten-walk";
+import type { Frame, NetlistSourceError, PinBit, Walk } from "./flatten-walk";
+import { ioLayout } from "./io-layout";
+import type { IoLayout } from "./io-layout";
 
-export type NetlistSourceError =
-  | { readonly type: "UnsupportedPart"; readonly instanceId: InstanceId }
-  | { readonly type: "UnconnectedPin"; readonly instanceId: InstanceId; readonly pin: number }
-  | { readonly type: "InvalidWire"; readonly wireId: WireId };
+export type { NetlistSourceError } from "./flatten-walk";
+
+/** The engine's netlist and where each of the open chip's pins sits in its inputs and outputs. */
+export interface Flattened {
+  readonly source: NetlistSource;
+  readonly layout: IoLayout;
+}
 
 type Outcome<T> = Result<T, NetlistSourceError>;
 
-const SUPPORTED: ReadonlySet<Part> = new Set(["input", "nand", "output"]);
-const NAND_PIN_A = 0;
-const NAND_PIN_B = 1;
-const SINGLE_PIN = 0;
-const NAND_PIN_OUT = 2;
-const NOT_FOUND = -1;
+/** The walk plus the resolution memo and the sinks being resolved right now. */
+interface Resolver {
+  readonly walk: Walk;
+  readonly layout: IoLayout;
+  readonly memo: Map<string, SignalRef>;
+  readonly active: Set<string>;
+}
 
-/** Pins a wire may start from: an `input` drives pin 0, a NAND drives pin 2. */
-const SOURCE_PINS: Readonly<Partial<Record<Part, readonly number[]>>> = {
-  input: [SINGLE_PIN],
-  nand: [NAND_PIN_OUT],
+const NAND_A = 0;
+const NAND_B = 1;
+const CLOCK: SignalRef = { kind: "clock" };
+
+const sinkKey = (frame: Frame, at: PinBit): string =>
+  `${frame.path.join("/")}/${at.instanceId}:${String(at.pin)}:${String(at.bit)}`;
+
+/** The signal driving one sink bit, memoised. */
+const sink = (resolver: Resolver, frame: Frame, at: PinBit): Outcome<SignalRef> => {
+  const known = resolver.memo.get(sinkKey(frame, at));
+  return known === undefined ? resolveSink(resolver, frame, at) : ok(known);
 };
-/** Pins a wire may end on: a NAND takes pins 0 and 1, an `output` takes pin 0. */
-const TARGET_PINS: Readonly<Partial<Record<Part, readonly number[]>>> = {
-  nand: [NAND_PIN_A, NAND_PIN_B],
-  output: [SINGLE_PIN],
+
+/** Re-entering a sink bit that is still being resolved is a `WireLoop`. */
+const resolveSink = (resolver: Resolver, frame: Frame, at: PinBit): Outcome<SignalRef> => {
+  const key = sinkKey(frame, at);
+  if (resolver.active.has(key)) {
+    return err({ type: "WireLoop", path: frame.path, instanceId: at.instanceId });
+  }
+  resolver.active.add(key);
+  const resolved = drive(resolver, frame, at);
+  resolver.active.delete(key);
+  if (resolved.ok) {
+    resolver.memo.set(key, resolved.value);
+  }
+  return resolved;
 };
 
-const ofKind = (circuit: Circuit, part: Part): readonly ChipInstance[] =>
-  circuit.instances.filter((item) => partOf(circuit, item) === part);
+/** Follows the one wire into the sink bit back to the bit of the source that drives it. */
+const drive = (resolver: Resolver, frame: Frame, at: PinBit): Outcome<SignalRef> => {
+  const driver = frame.circuit.wires.find(
+    (item) =>
+      item.to.instanceId === at.instanceId &&
+      item.to.pin === at.pin &&
+      (item.to.bit === undefined || item.to.bit === at.bit),
+  );
+  if (driver === undefined) {
+    return err(unconnected(frame, at));
+  }
+  const bit = driver.from.bit ?? (driver.to.bit === undefined ? at.bit : 0);
+  return source(resolver, frame, { instanceId: driver.from.instanceId, pin: driver.from.pin, bit });
+};
 
-type Resolver = (instanceId: InstanceId, pin: number) => Outcome<SignalRef>;
+const source = (resolver: Resolver, frame: Frame, at: PinBit): Outcome<SignalRef> => {
+  // `findInvalidWire` already checked that every wire starts on a source pin of a real instance.
+  const instance = frame.circuit.instances.find((item) => item.id === at.instanceId);
+  return instance === undefined
+    ? err(unconnected(frame, at))
+    : sourceOfKind(resolver, { frame, kind: instance.kind, at });
+};
 
-const indexOfId = (parts: readonly ChipInstance[], id: InstanceId | undefined): number =>
-  parts.findIndex((item) => item.id === id);
+interface SourcePin {
+  readonly frame: Frame;
+  readonly kind: InstanceKind;
+  readonly at: PinBit;
+}
 
-const createResolver =
-  (circuit: Circuit, inputs: readonly ChipInstance[], nands: readonly ChipInstance[]): Resolver =>
-  (instanceId, pin) => {
-    const wire = circuit.wires.find(
-      (candidate) => candidate.to.instanceId === instanceId && candidate.to.pin === pin,
-    );
-    const inputIndex = indexOfId(inputs, wire?.from.instanceId);
-    if (inputIndex !== NOT_FOUND) {
-      return ok({ kind: "input", index: inputIndex });
+const sourceOfKind = (resolver: Resolver, { frame, kind, at }: SourcePin): Outcome<SignalRef> => {
+  const { instanceId, bit } = at;
+  switch (kind.type) {
+    case "nand": {
+      return ok({
+        kind: "nand",
+        index: resolver.walk.nandIndex.get(keyOf(frame.path, instanceId)) ?? 0,
+      });
     }
-    const nandIndex = indexOfId(nands, wire?.from.instanceId);
-    if (nandIndex !== NOT_FOUND) {
-      return ok({ kind: "nand", index: nandIndex });
+    case "clock": {
+      return ok(CLOCK);
     }
-    return err({ type: "UnconnectedPin", instanceId, pin });
-  };
+    case "pin": {
+      return inputSource(resolver, frame, { instanceId, pin: kind.pinId, bit });
+    }
+    case "split": {
+      return sink(resolver, frame, { instanceId, pin: 0, bit: Number(at.pin) - 1 });
+    }
+    case "merge": {
+      return sink(resolver, frame, { instanceId, pin: bit, bit: 0 });
+    }
+    case "custom": {
+      return customSource(resolver, frame, at);
+    }
+    default: {
+      return assertNever(kind);
+    }
+  }
+};
+
+/** An input pin piece carries whatever drives that pin outside its chip, or an engine input at the top. */
+const inputSource = (
+  resolver: Resolver,
+  frame: Frame,
+  { instanceId, pin, bit }: PinBit,
+): Outcome<SignalRef> => {
+  if (frame.host !== undefined) {
+    return sink(resolver, frame.host.frame, { instanceId: frame.host.instanceId, pin, bit });
+  }
+  const slot = resolver.layout.inputs.find((item) => item.pinId === pin);
+  return slot === undefined
+    ? err(unconnected(frame, { instanceId, pin: 0, bit }))
+    : ok({ kind: "input", index: slot.offset + bit });
+};
+
+/** A custom chip's output pin carries whatever drives that pin's piece inside its saved version. */
+const customSource = (resolver: Resolver, frame: Frame, at: PinBit): Outcome<SignalRef> => {
+  const child = resolver.walk.frames.get(keyOf(frame.path, at.instanceId));
+  const pieceId = child && pieceOf(child.circuit, at.pin);
+  return child === undefined || pieceId === undefined
+    ? err(unconnected(frame, at))
+    : sink(resolver, child, { instanceId: pieceId, pin: 0, bit: at.bit });
+};
 
 /** Maps every item, stopping at the first failure. */
 const mapAll = <T, U>(
@@ -74,63 +157,59 @@ const mapAll = <T, U>(
 };
 
 const resolveNand = (
-  resolve: Resolver,
-  nand: ChipInstance,
+  resolver: Resolver,
+  { frame, instanceId }: Walk["nands"][number],
 ): Outcome<NetlistSource["nands"][number]> => {
-  const a = resolve(nand.id, NAND_PIN_A);
-  const b = resolve(nand.id, NAND_PIN_B);
-  if (!a.ok) {
-    return a;
+  const first = sink(resolver, frame, { instanceId, pin: NAND_A, bit: 0 });
+  if (!first.ok) {
+    return first;
   }
-  return b.ok ? ok({ a: a.value, b: b.value }) : b;
+  const second = sink(resolver, frame, { instanceId, pin: NAND_B, bit: 0 });
+  return second.ok ? ok({ a: first.value, b: second.value }) : second;
 };
 
-const endpointOk = (
-  circuit: Circuit,
-  table: Readonly<Partial<Record<Part, readonly number[]>>>,
-  endpoint: Wire["from"],
-): boolean => {
-  const { pin } = endpoint;
-  const part = circuit.instances.find((item) => item.id === endpoint.instanceId);
-  return (
-    part !== undefined &&
-    typeof pin === "number" &&
-    (table[partOf(circuit, part)]?.includes(pin) ?? false)
-  );
+/** Every bit of every output pin's piece, in layout order. */
+const outputBits = (top: Frame, layout: IoLayout): readonly PinBit[] =>
+  layout.outputs.flatMap((slot) => {
+    // The schema gives every pin exactly one piece, so the lookup always finds it.
+    const instanceId = pieceOf(top.circuit, slot.pinId);
+    return instanceId === undefined
+      ? []
+      : Array.from({ length: slot.width }, (_unused, bit) => ({ instanceId, pin: 0, bit }));
+  });
+
+const inputCountOf = (layout: IoLayout): number => {
+  const last = layout.inputs.at(-1);
+  return last === undefined ? 0 : last.offset + last.width;
 };
 
-const firstInvalidWire = (circuit: Circuit): Wire | undefined =>
-  circuit.wires.find(
-    (wire) =>
-      !endpointOk(circuit, SOURCE_PINS, wire.from) || !endpointOk(circuit, TARGET_PINS, wire.to),
-  );
-
-const build = (circuit: Circuit): Outcome<NetlistSource> => {
-  const inputs = ofKind(circuit, "input");
-  const nands = ofKind(circuit, "nand");
-  const resolve = createResolver(circuit, inputs, nands);
-  const nandRefs = mapAll(nands, (nand) => resolveNand(resolve, nand));
-  if (!nandRefs.ok) {
-    return nandRefs;
+const build = (walk: Walk, top: Frame): Outcome<Flattened> => {
+  const layout = ioLayout(top.circuit);
+  const resolver: Resolver = { walk, layout, memo: new Map(), active: new Set() };
+  const nands = mapAll(walk.nands, (nand) => resolveNand(resolver, nand));
+  if (!nands.ok) {
+    return nands;
   }
-  const outputRefs = mapAll(ofKind(circuit, "output"), (output) => resolve(output.id, SINGLE_PIN));
-  if (!outputRefs.ok) {
-    return outputRefs;
+  const outputs = mapAll(outputBits(top, layout), (at) => sink(resolver, top, at));
+  if (!outputs.ok) {
+    return outputs;
   }
-  return ok({ inputCount: inputs.length, nands: nandRefs.value, outputs: outputRefs.value });
+  const netlist = { inputCount: inputCountOf(layout), nands: nands.value, outputs: outputs.value };
+  return ok({ source: netlist, layout });
 };
 
 /**
- * Each instance has one pin index space. NAND: 0 = a, 1 = b, 2 = out. An input pin piece:
- * pin 0 is its output. An output pin piece: pin 0 is its input. A wire must start on a
- * source's output pin and end on a target's input pin, otherwise `InvalidWire`.
- * Inputs, NANDs and outputs are indexed by their order in `circuit.instances`.
+ * Flattens the chip's draft, expanding every nested custom chip from its saved version, into the
+ * engine's 1-bit netlist. NANDs are numbered pre-order in instance order; inputs and outputs follow
+ * `ioLayout` of the draft. Buses, bit taps, SPLIT and MERGE are pure wiring; the clock is one signal.
  */
-export const toNetlistSource = (circuit: Circuit): Outcome<NetlistSource> => {
-  const unsupported = circuit.instances.find((item) => !SUPPORTED.has(partOf(circuit, item)));
-  if (unsupported !== undefined) {
-    return err({ type: "UnsupportedPart", instanceId: unsupported.id });
+export const toNetlistSource = (project: Project, chipId: ChipId): Outcome<Flattened> => {
+  const chip = findChip(project, chipId);
+  if (chip === undefined) {
+    return err({ type: "ChipNotFound", chipId });
   }
-  const invalid = firstInvalidWire(circuit);
-  return invalid === undefined ? build(circuit) : err({ type: "InvalidWire", wireId: invalid.id });
+  const walk: Walk = { project, nands: [], nandIndex: new Map(), frames: new Map() };
+  const top: Frame = { path: [], circuit: chip.draft };
+  const failure = enumerate(walk, top, [chip.id]);
+  return failure === undefined ? build(walk, top) : err(failure);
 };
