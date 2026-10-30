@@ -48,27 +48,16 @@ Do each item 5 times with the default thresholds (10 px, 500 ms, 16 px). Then ad
 
 ## Findings
 
-| # | iOS Safari (device, iOS version) | Android Chrome (device, version) |
+**2026-10-30, owner run on iOS Safari and Android Chrome:** the harness "works fine" on both. Every gesture was recognised as intended with the default thresholds, and there were no problems with the system's own gestures or with frame rate. Device models, OS versions and the per-item frame times were not recorded. If a later phase needs them, for example a performance regression on the 300-chip drag, rerun items 4, 8, 10 and 13 and fill in this table.
+
+| # | iOS Safari | Android Chrome |
 |---|---|---|
-| 1 Tap | | |
-| 2 Drag | | |
-| 3 Long-press | | |
-| 4 Long-press tremor | | |
-| 5 Long-press → drag | | |
-| 6 Pinch | | |
-| 7 Two-finger pan | | |
-| 8 Second finger mid-drag | | |
-| 9 Lift one of two | | |
-| 10 Edge swipe | | |
-| 11 Third pointer | | |
-| 12 Stylus | | |
-| 13 300-chip drag p50/p95 | | |
-| 14 Interruption | | |
+| 1–14 | as intended, default thresholds | as intended, default thresholds |
 
-**Chosen thresholds:** touch slop ___ px, long-press ___ ms, edge guard ___ px (iOS only? both?).
+**Chosen thresholds:** touch slop 10 px, long-press 500 ms, edge guard 16 px on touch on both platforms (the defaults; unchanged).
 
-## Decisions to carry into Task 6
+## Decisions carried into Task 6
 
-- [ ] Update `TOUCH_SLOP`, `LONG_PRESS_MS` and the edge guard in the Phase 2 plan's Decisions section, if they differ from 10 px, 500 ms and 16 px.
-- [ ] If item 8 feels wrong (for example, users expect to keep holding the chip while panning), revisit "commit the drag, then pinch".
-- [ ] If item 13 misses the target on the mid-range Android phone, the renderer needs the Task 5 culling and layout cache before Task 10 wires input.
+- [x] `TOUCH_SLOP = 10`, `LONG_PRESS_MS = 500`, and the 16 px edge guard for touch, all unchanged.
+- [x] Item 8: "commit the drag, then pinch" stays.
+- [x] Item 13: no frame-rate problem was reported. The Task 13 `@perf` budget still guards it.

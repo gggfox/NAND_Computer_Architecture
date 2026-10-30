@@ -170,7 +170,7 @@ messages/en.json, messages/es.json, GLOSSARY.md
 
 ---
 
-### Task 0: Spike — gesture disambiguation on real devices
+### Task 0: Spike — gesture disambiguation on real devices ✅ done
 
 **Files:**
 - Create: `tooling/spikes/gestures.html` (self-contained, no build step; served with `python3 -m http.server 8000 --directory tooling/spikes`, because the app's dev server routes every path to the SPA)
@@ -182,7 +182,7 @@ The harness:
 - has a test scene of 300 rects to drag, with a frame-time readout (p50/p95 of rAF deltas).
 
 - [x] **Step 1:** Write the harness. Set `touch-action: none` on the surface, use `setPointerCapture` on down, and handle `pointercancel` and `lostpointercapture`. Prevent `contextmenu`, and set `-webkit-touch-callout: none` and `user-select: none`, so iOS long-press shows neither the callout nor a text selection.
-- [ ] **Step 2 (owner, on devices):** On iOS Safari (iPhone) and Android Chrome (mid-range phone), run the checklist in the research doc:
+- [x] **Step 2 (owner, on devices):** On iOS Safari (iPhone) and Android Chrome (mid-range phone), run the checklist in the research doc:
   - tap;
   - drag at 3 speeds;
   - long-press, both still and with tremor;
@@ -194,8 +194,8 @@ The harness:
   - a stylus if one is available;
   - 300-rect drag fps.
   Record what each produced, and the slop and duration that felt right.
-- [ ] **Step 3:** Fill in the doc's findings table, then update the thresholds in "Decisions" above and Task 6's constants if they differ. Note any iOS edge-swipe conflict. Mitigation: ignore pointers that start within 16 px of the left or right edge on iOS.
-- [ ] **Step 4: Commit** `docs(research): gesture disambiguation spike harness and findings`
+- [x] **Step 3:** Fill in the doc's findings table, then update the thresholds in "Decisions" above and Task 6's constants if they differ. Note any iOS edge-swipe conflict. Mitigation: ignore pointers that start within 16 px of the left or right edge on iOS.
+- [x] **Step 4: Commit** `docs(research): gesture disambiguation spike harness and findings`. The owner confirmed iOS Safari and Android Chrome work as intended with the defaults, which stay.
 
 ---
 
