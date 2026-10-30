@@ -5,7 +5,8 @@ import { defineConfig, devices } from "@playwright/test";
  * `pnpm build`, so the offline test needs the preview server, not `vite dev`.
  */
 const PORT = 4319;
-const BASE_URL = `http://localhost:${String(PORT)}`;
+// Matches `preview.host` in vite.config.ts.
+const BASE_URL = `http://127.0.0.1:${String(PORT)}`;
 const isCI = "CI" in process.env;
 const CI_RETRIES = 2;
 const BUILD_TIMEOUT_MS = 300_000;

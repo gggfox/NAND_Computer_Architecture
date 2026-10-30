@@ -4,7 +4,7 @@
   "jsPlugins": [
     "eslint-plugin-sonarjs",
     "eslint-plugin-boundaries",
-    "./tooling/lint-rules/no-throw-in-domain.js"
+    "./tooling/lint-rules/index.js"
   ],
   "categories": {
     "correctness": "error",
@@ -218,10 +218,27 @@
       }
     },
     {
-      "files": ["**/*.ts", "**/*.tsx"],
+      // Every script extension, and dynamic `import()` too (no-restricted-imports only sees static imports).
+      "files": ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
       "excludeFiles": ["**/src/shared/ui/**"],
       "rules": {
         "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react-aria-components",
+                  "react-aria-components/*",
+                  "react-aria",
+                  "react-aria/*"
+                ],
+                "message": "Only src/shared/ui may import React Aria (ADR 26)."
+              }
+            ]
+          }
+        ],
+        "local/no-restricted-dynamic-import": [
           "error",
           {
             "patterns": [
@@ -267,6 +284,181 @@
                 "message": "simulation is pure TS: no React, DOM or TanStack (ADR 23)."
               }
             ]
+          }
+        ],
+        "local/no-restricted-dynamic-import": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react-aria-components",
+                  "react-aria-components/*",
+                  "react-aria",
+                  "react-aria/*"
+                ],
+                "message": "Only src/shared/ui may import React Aria (ADR 26)."
+              },
+              {
+                "group": ["react", "react/*", "react-dom", "react-dom/*", "@tanstack/*"],
+                "message": "simulation is pure TS: no React, DOM or TanStack (ADR 23)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // `env.browser` is global, so without this DOM globals would lint (and type-check) in simulation (ADR 23).
+      // adapters/ is the Worker boundary (new Worker, the worker's globalThis), as for no-throw-in-domain.
+      "files": ["**/features/simulation/**"],
+      "excludeFiles": ["**/features/simulation/adapters/**"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "self",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "globalThis",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "document",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "navigator",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "location",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "history",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "localStorage",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "sessionStorage",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "indexedDB",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "caches",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "fetch",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "XMLHttpRequest",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "WebSocket",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "Worker",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "SharedWorker",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "BroadcastChannel",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "postMessage",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "addEventListener",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "removeEventListener",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "dispatchEvent",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "cancelAnimationFrame",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "requestIdleCallback",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "matchMedia",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "getComputedStyle",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "customElements",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "alert",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "confirm",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "prompt",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "Node",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "Element",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "HTMLElement",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "HTMLCanvasElement",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "CanvasRenderingContext2D",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
+          },
+          {
+            "name": "OffscreenCanvas",
+            "message": "simulation is pure TS: no DOM or browser globals (ADR 23); adapters/ passes in what it needs."
           }
         ]
       }

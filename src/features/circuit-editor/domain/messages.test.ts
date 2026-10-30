@@ -63,6 +63,15 @@ describe("editorErrorMessage", () => {
   });
 });
 
+describe("unknown errors", () => {
+  it("are rejected by assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => simulationErrorMessage(unknown)).toThrow("Unexpected value");
+    expect(() => editorStoreErrorMessage(unknown)).toThrow("Unexpected value");
+  });
+});
+
 describe("editorStoreErrorMessage", () => {
   it("routes editor errors to the editor messages", () => {
     for (const error of [

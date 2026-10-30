@@ -26,4 +26,10 @@ describe("persistenceErrorMessage", () => {
       importErrorMessage(cause),
     );
   });
+
+  it("rejects an unknown error with assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => persistenceErrorMessage(unknown)).toThrow("Unexpected value");
+  });
 });

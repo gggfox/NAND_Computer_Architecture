@@ -1,17 +1,23 @@
+# Lefthook 2 matches `exclude` as globs, not regular expressions.
 pre-commit:
   parallel: true
   commands:
     format:
       glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css,md,yml,yaml}"
-      exclude: 'src/routeTree\.gen\.ts|pnpm-lock\.yaml'
+      exclude:
+        - "src/routeTree.gen.ts"
+        - "pnpm-lock.yaml"
       run: pnpm exec oxfmt --check --no-error-on-unmatched-pattern {staged_files}
     lint:
       glob: "*.{ts,tsx,js,jsx,mjs,cjs}"
-      exclude: 'src/routeTree\.gen\.ts|tooling/lint-canaries/'
+      exclude:
+        - "src/routeTree.gen.ts"
+        - "tooling/lint-canaries/**"
       run: pnpm exec oxlint --type-aware --deny-warnings {staged_files}
     stylelint:
       glob: "*.css"
-      exclude: "tooling/lint-canaries/"
+      exclude:
+        - "tooling/lint-canaries/**"
       run: pnpm exec stylelint {staged_files}
     spell:
       glob:
@@ -19,7 +25,10 @@ pre-commit:
         - "messages/**/*"
         - "docs/**/*"
         - "GLOSSARY.md"
-      exclude: 'src/routeTree\.gen\.ts|tooling/lint-canaries/|pnpm-lock\.yaml'
+      exclude:
+        - "src/routeTree.gen.ts"
+        - "tooling/lint-canaries/**"
+        - "pnpm-lock.yaml"
       run: pnpm exec cspell --no-progress --no-must-find-files {staged_files}
 commit-msg:
   commands:

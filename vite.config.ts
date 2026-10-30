@@ -7,6 +7,12 @@ import { patchCssModules } from "vite-css-modules";
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  /*
+   * Bind IPv4 loopback explicitly. With the default `localhost`, Node can listen on ::1 while
+   * fetch resolves localhost to 127.0.0.1 only (ADDRCONFIG in IPv6-less CI containers), so
+   * TanStack Start's build-time prerender of `_shell.html` gets ECONNREFUSED.
+   */
+  preview: { host: "127.0.0.1" },
   plugins: [
     paraglideVitePlugin({
       project: "./project.inlang",

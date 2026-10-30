@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { piece, pinDef } from "~/features/projects";
+import { createDemoProject, piece, pinDef } from "~/features/projects";
 import { newChipId, newInstanceId, newPinId, newWireId } from "~/shared/ids";
 
 import type { PlaceableInstance } from "./actions";
@@ -117,5 +117,19 @@ describe("editorErrorMessage", () => {
     for (const error of errors) {
       expect(editorErrorMessage(error).length).toBeGreaterThan(0);
     }
+  });
+
+  it("rejects an unknown error with assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => editorErrorMessage(unknown)).toThrow("Unexpected value");
+  });
+});
+
+describe("applyAction exhaustiveness", () => {
+  it("rejects an unknown action with assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => applyAction(createDemoProject("x"), unknown)).toThrow("Unexpected value");
   });
 });

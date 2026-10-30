@@ -7,7 +7,7 @@
     "src/shared/ui/index.ts",
     "src/**/*.test.{ts,tsx}",
     "scripts/*.ts",
-    "tooling/lint-rules/*.js"
+    "tooling/lint-rules/index.js"
   ],
   "project": ["src/**", "scripts/**", "tooling/lint-rules/**"],
   "ignoreDependencies": ["@inlang/plugin-message-format"]
