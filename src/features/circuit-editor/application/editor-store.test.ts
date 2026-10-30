@@ -6,8 +6,9 @@ import { newChipId, newInstanceId, newPinId, newWireId } from "~/shared/ids";
 import type { WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 
+import { savingProject } from "../domain/route-edits.fixtures";
 import { link, NAND_A, NAND_OUT, nandAt } from "../domain/routing/routing.fixtures";
-import { projectOf, wireIn } from "../domain/wire-edits.fixtures";
+import { draftIn, projectOf, wireIn } from "../domain/wire-edits.fixtures";
 import { createEditorStore, openCircuit } from "./editor-store";
 import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
 
@@ -245,5 +246,20 @@ describe("createEditorStore routing", () => {
     const before = store.getState().history;
     store.getState().openChip(chipId);
     expect(store.getState().history).toBe(before);
+  });
+});
+
+describe("createEditorStore saving", () => {
+  it("re-routes a parent draft shared by several snapshots once, so they keep sharing it", () => {
+    const { project, child, parent, bystander, wire } = savingProject();
+    const store = createEditorStore(project, fakeRepo(SAVED).repo);
+    store.getState().dispatch({ type: "renameChip", chipId: bystander.id, name: "renamed" });
+    const before = wireIn(store.getState().history.present, parent.id, wire.id);
+    expect(store.getState().dispatch({ type: "saveChip", chipId: child.id }).ok).toBe(true);
+    const { past, present } = store.getState().history;
+    const [first] = past;
+    assert(first !== undefined);
+    expect(draftIn(first, parent.id)).toBe(draftIn(present, parent.id));
+    expect(wireIn(present, parent.id, wire.id)).not.toBe(before);
   });
 });

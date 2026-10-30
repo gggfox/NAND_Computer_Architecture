@@ -215,14 +215,30 @@ export const rerouted = (scene: Scene, wireIds: ReadonlySet<WireId>): Circuit =>
   return { ...scene.circuit, wires };
 };
 
-/** Automatic wires whose current route enters an inflated chip rect (other than their own stubs). */
-export const blockedWires = (scene: Scene): ReadonlySet<WireId> => {
-  const rects = scene.circuit.instances.map((item) => layoutIn(scene, item).rect);
-  const blocked = scene.circuit.wires.filter(
-    (wire) => !wire.manualWaypoints && entersAny(withoutStubs(wireRoute(scene, wire)), rects),
-  );
+const blockedAmong = (scene: Scene, instances: readonly ChipInstance[]): ReadonlySet<WireId> => {
+  const rects = instances.map((item) => layoutIn(scene, item).rect);
+  const blocked =
+    rects.length === 0
+      ? []
+      : scene.circuit.wires.filter(
+          (wire) => !wire.manualWaypoints && entersAny(withoutStubs(wireRoute(scene, wire)), rects),
+        );
   return new Set(blocked.map((wire) => wire.id));
 };
+
+/** Automatic wires whose current route enters an inflated chip rect (other than their own stubs). */
+export const blockedWires = (scene: Scene): ReadonlySet<WireId> =>
+  blockedAmong(scene, scene.circuit.instances);
+
+/** Automatic wires whose current route enters the inflated rect of one of `instanceIds`. */
+export const blockedBy = (
+  scene: Scene,
+  instanceIds: ReadonlySet<InstanceId>,
+): ReadonlySet<WireId> =>
+  blockedAmong(
+    scene,
+    scene.circuit.instances.filter((item) => instanceIds.has(item.id)),
+  );
 
 /** Automatic wires with no waypoints. */
 export const unroutedWires = (circuit: Circuit): ReadonlySet<WireId> =>

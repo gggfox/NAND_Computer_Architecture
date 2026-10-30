@@ -152,6 +152,21 @@ describe("moveChips carrying hand bends", () => {
   });
 });
 
+describe("moveChips with ends moving apart", () => {
+  it("keeps the hand bends of a wire whose two ends move by different deltas", () => {
+    const { project, chipId } = projectOf([source, sink], [handBent]);
+    const moved = apply(project, {
+      type: "moveChips",
+      chipId,
+      moves: [
+        { instanceId: source.id, position: { x: 40, y: 80 } },
+        { instanceId: sink.id, position: { x: 440, y: 120 } },
+      ],
+    });
+    expect(wireIn(moved, chipId, handBent.id)).toBe(handBent);
+  });
+});
+
 describe("moveChips errors", () => {
   it("an unknown chip moves nothing; an empty move is NothingToMove", () => {
     const { project, host, pieceA } = twoChips();

@@ -44,20 +44,19 @@ export const addPin: Edit<"addPin"> = (project, action) =>
       return err({ type: "DuplicateInstance", instanceId: action.instanceId });
     }
     const at = insertionIndex(circuit.pins, action.pin);
-    return ok(
-      blockedRerouted(project, {
-        ...circuit,
-        pins: [...circuit.pins.slice(0, at), action.pin, ...circuit.pins.slice(at)],
-        instances: [
-          ...circuit.instances,
-          {
-            id: action.instanceId,
-            kind: { type: "pin", pinId: action.pin.id },
-            position: action.position,
-          },
-        ],
-      }),
-    );
+    const added: Circuit = {
+      ...circuit,
+      pins: [...circuit.pins.slice(0, at), action.pin, ...circuit.pins.slice(at)],
+      instances: [
+        ...circuit.instances,
+        {
+          id: action.instanceId,
+          kind: { type: "pin", pinId: action.pin.id },
+          position: action.position,
+        },
+      ],
+    };
+    return ok(blockedRerouted(project, { after: added }, new Set([action.instanceId])));
   });
 
 export const removePin: Edit<"removePin"> = (project, action) =>
@@ -102,7 +101,10 @@ export const setPinWidth: Edit<"setPinWidth"> = (project, action) =>
       !(pieceIds.has(stored.from.instanceId) || pieceIds.has(stored.to.instanceId)) ||
       checkConnection(project, resized, stored.from, stored.to, stored.id).ok;
     const wires = circuit.wires.filter((stored) => fits(stored));
-    return ok(blockedRerouted(project, { ...resized, wires }));
+    // Only the pin's own pieces change shape in this draft.
+    return ok(
+      blockedRerouted(project, { before: circuit, after: { ...resized, wires } }, pieceIds),
+    );
   });
 
 export const reorderPin: Edit<"reorderPin"> = (project, action) =>

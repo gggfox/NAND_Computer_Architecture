@@ -7,9 +7,7 @@ import type { Result } from "~/shared/result";
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
-import type { Scene } from "./geometry";
-import { settled } from "./route-edits";
-import { blockedWires } from "./routing/route";
+import { newlyBlocked, settled } from "./route-edits";
 
 const missingInstance = (
   circuit: Circuit,
@@ -37,18 +35,22 @@ const deltasOf = (
   );
 };
 
-/** Hand bends of a wire whose two ends move by the same delta move with it; else `undefined`. */
+/**
+ * A wire after its chips move, or `undefined` when it must be routed again. Automatic wires and
+ * hand bends with one end moved re-route; hand bends whose two ends move by the same delta move
+ * with them; hand bends whose ends move apart keep their bends (the router never changes them).
+ */
 const carried = (wire: Wire, deltas: Deltas): Wire | undefined => {
   const from = deltas.get(wire.from.instanceId);
   const to = deltas.get(wire.to.instanceId);
-  if (
-    !wire.manualWaypoints ||
-    from === undefined ||
-    to === undefined ||
-    from.x !== to.x ||
-    from.y !== to.y
-  ) {
+  if (from === undefined && to === undefined) {
+    return wire;
+  }
+  if (!wire.manualWaypoints || from === undefined || to === undefined) {
     return undefined;
+  }
+  if (from.x !== to.x || from.y !== to.y) {
+    return wire;
   }
   return {
     ...wire,
@@ -56,12 +58,9 @@ const carried = (wire: Wire, deltas: Deltas): Wire | undefined => {
   };
 };
 
-const touches = (wire: Wire, deltas: Deltas): boolean =>
-  deltas.has(wire.from.instanceId) || deltas.has(wire.to.instanceId);
-
 /**
- * Moves the chips. Hand bends that moved whole are carried; every other wire touching a moved
- * chip, and every automatic wire a moved chip now covers, is routed again, all in this one edit.
+ * Moves the chips. Every wire `carried` hands back to the router, and every automatic wire a moved
+ * chip now covers, is routed again, all in this one edit; wires blocked elsewhere stay put.
  */
 const applyMoves = (
   project: Project,
@@ -72,9 +71,6 @@ const applyMoves = (
   const deltas = deltasOf(circuit, action.moves);
   const stale = new Set<WireId>();
   const wires = circuit.wires.map((wire) => {
-    if (!touches(wire, deltas)) {
-      return wire;
-    }
     const kept = carried(wire, deltas);
     if (kept === undefined) {
       stale.add(wire.id);
@@ -85,8 +81,9 @@ const applyMoves = (
     const position = targets.get(item.id);
     return position === undefined ? item : { ...item, position };
   });
-  const scene: Scene = { project, circuit: { ...circuit, instances, wires } };
-  return settled(scene, new Set([...stale, ...blockedWires(scene)]));
+  const after = { ...circuit, instances, wires };
+  const blocked = newlyBlocked(project, { before: circuit, after }, new Set(deltas.keys()));
+  return settled({ project, circuit: after }, new Set([...stale, ...blocked]));
 };
 
 /** All moves apply or none do. */

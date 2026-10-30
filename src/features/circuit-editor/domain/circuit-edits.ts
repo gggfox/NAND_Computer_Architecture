@@ -38,7 +38,13 @@ export const placeChip: Edit<"placeChip"> = (project, action) => {
   return editDraft(project, action.chipId, (circuit) =>
     circuit.instances.some((item) => item.id === instance.id)
       ? err({ type: "DuplicateInstance", instanceId: instance.id })
-      : ok(blockedRerouted(project, { ...circuit, instances: [...circuit.instances, instance] })),
+      : ok(
+          blockedRerouted(
+            project,
+            { after: { ...circuit, instances: [...circuit.instances, instance] } },
+            new Set([instance.id]),
+          ),
+        ),
   );
 };
 
