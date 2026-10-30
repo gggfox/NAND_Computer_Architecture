@@ -10,7 +10,7 @@
 export const SKIP_WAITING = { type: "SKIP_WAITING" } as const;
 
 /** The parts of the DOM service worker types this module uses; small enough to fake in tests. */
-export interface WorkerHandle {
+interface WorkerHandle {
   readonly state: string;
   readonly postMessage: (message: unknown) => void;
   readonly addEventListener: (type: "statechange", listener: () => void) => void;
