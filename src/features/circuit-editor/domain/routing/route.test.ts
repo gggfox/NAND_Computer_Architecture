@@ -226,8 +226,8 @@ describe("routeWire fallbacks", () => {
 
   it("gives wires of different colours from one pin their own paths past the shared stub", () => {
     const [source, upper, lower] = [nandAt(0, 0), nandAt(400, -120), nandAt(400, 120)];
-    const red = { ...link([source, NAND_OUT], [upper, NAND_A]), color: "red" };
-    const blue = { ...link([source, NAND_OUT], [lower, NAND_A]), color: "blue" };
+    const red = { ...link([source, NAND_OUT], [upper, NAND_A]), color: "red" as const };
+    const blue = { ...link([source, NAND_OUT], [lower, NAND_A]), color: "blue" as const };
     const [first, second] = both(polylinesAfter(sceneOf([source, upper, lower], [red, blue])));
     const [anchor] = first;
     assert(anchor !== undefined);

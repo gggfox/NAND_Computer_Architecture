@@ -28,7 +28,7 @@ export {
   type Migration,
   type MigrationChain,
 } from "./domain/migrations";
-export { isHexColor } from "./domain/model";
+export { isHexColor, WIRE_COLORS, type WireColor } from "./domain/model";
 export { endpointInfo, pinKeys, type EndpointInfo, type PinRole } from "./domain/pins";
 export {
   applySavedVersion,

@@ -139,7 +139,7 @@ describe("wire sets", () => {
     const source = nandAt(0, 0);
     const wire = link([source, NAND_OUT], [nandAt(400, 0), NAND_A]);
     expect(signalOf(wire)).toBe(`${source.id}:2:*:default`);
-    const coloured = { ...wire, from: { ...wire.from, bit: 3 }, color: "red" };
+    const coloured = { ...wire, from: { ...wire.from, bit: 3 }, color: "red" as const };
     expect(signalOf(coloured)).toBe(`${source.id}:2:3:red`);
   });
 });

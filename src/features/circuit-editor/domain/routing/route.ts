@@ -28,14 +28,11 @@ const RIGHT = 0;
 const LEFT = 2;
 const LAST = -1;
 
-const colorOf = (wire: Wire): string =>
-  "color" in wire && typeof wire.color === "string" ? wire.color : "default";
-
 /** Wires of one signal (source pin, bit and colour) may share edges; other signals may not. */
 export const signalOf = (wire: Wire): string => {
   const { instanceId, pin, bit } = wire.from;
   const bitName = bit === undefined ? "*" : String(bit);
-  return `${instanceId}:${String(pin)}:${bitName}:${colorOf(wire)}`;
+  return `${instanceId}:${String(pin)}:${bitName}:${wire.color ?? "default"}`;
 };
 
 interface Context {

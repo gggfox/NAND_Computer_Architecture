@@ -17,6 +17,22 @@ export interface ThemeTokens {
   /** Label colour on a low-signal body: no single chip-text colour clears AA on both signal levels. */
   readonly colorChipTextLow: string;
   readonly colorGrid: string;
+  readonly colorWireBlue: string;
+  readonly colorWireBlueMuted: string;
+  readonly colorWireRed: string;
+  readonly colorWireRedMuted: string;
+  readonly colorWireOrange: string;
+  readonly colorWireOrangeMuted: string;
+  readonly colorWireYellow: string;
+  readonly colorWireYellowMuted: string;
+  readonly colorWireGreen: string;
+  readonly colorWireGreenMuted: string;
+  readonly colorWireTeal: string;
+  readonly colorWireTealMuted: string;
+  readonly colorWirePurple: string;
+  readonly colorWirePurpleMuted: string;
+  readonly colorWirePink: string;
+  readonly colorWirePinkMuted: string;
 }
 
 export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
@@ -34,6 +50,22 @@ export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
     colorChipText: "#ffffff",
     colorChipTextLow: "#14172a",
     colorGrid: "#d8dbe8",
+    colorWireBlue: "#2354c7",
+    colorWireBlueMuted: "#6487d8",
+    colorWireRed: "#b21f1f",
+    colorWireRedMuted: "#d86464",
+    colorWireOrange: "#8b4a18",
+    colorWireOrangeMuted: "#c87332",
+    colorWireYellow: "#6c5b13",
+    colorWireYellowMuted: "#9f8728",
+    colorWireGreen: "#126828",
+    colorWireGreenMuted: "#279b44",
+    colorWireTeal: "#126461",
+    colorWireTealMuted: "#269793",
+    colorWirePurple: "#8624cc",
+    colorWirePurpleMuted: "#ac6cda",
+    colorWirePink: "#a91e6f",
+    colorWirePinkMuted: "#d65ca3",
   },
   dark: {
     colorBackground: "#0d1017",
@@ -49,6 +81,22 @@ export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
     colorChipText: "#0d1017",
     colorChipTextLow: "#ffffff",
     colorGrid: "#1e2331",
+    colorWireBlue: "#94b4ff",
+    colorWireBlueMuted: "#2d5ed2",
+    colorWireRed: "#ff9999",
+    colorWireRedMuted: "#c22929",
+    colorWireOrange: "#ff9a4d",
+    colorWireOrangeMuted: "#9c5621",
+    colorWireYellow: "#dbaf00",
+    colorWireYellowMuted: "#7a671a",
+    colorWireGreen: "#00d134",
+    colorWireGreenMuted: "#197630",
+    colorWireTeal: "#00ccc5",
+    colorWireTealMuted: "#18726f",
+    colorWirePurple: "#d79eff",
+    colorWirePurpleMuted: "#9235d4",
+    colorWirePink: "#ff8fd0",
+    colorWirePinkMuted: "#b9277c",
   },
   "high-contrast": {
     colorBackground: "#000000",
@@ -64,6 +112,22 @@ export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
     colorChipText: "#000000",
     colorChipTextLow: "#ffffff",
     colorGrid: "#3a3a3a",
+    colorWireBlue: "#759fff",
+    colorWireBlueMuted: "#1f62ff",
+    colorWireRed: "#ff7575",
+    colorWireRedMuted: "#e60000",
+    colorWireOrange: "#ff7a14",
+    colorWireOrangeMuted: "#bd5200",
+    colorWireYellow: "#c79f00",
+    colorWireYellowMuted: "#8a6e00",
+    colorWireGreen: "#00bd2f",
+    colorWireGreenMuted: "#008521",
+    colorWireTeal: "#00b3ad",
+    colorWireTealMuted: "#00807b",
+    colorWirePurple: "#ca80ff",
+    colorWirePurpleMuted: "#a424ff",
+    colorWirePink: "#ff6bc1",
+    colorWirePinkMuted: "#db0080",
   },
 };
 

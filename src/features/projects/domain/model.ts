@@ -74,6 +74,18 @@ const ChipInstanceSchema = z
   .readonly();
 export type ChipInstance = z.infer<typeof ChipInstanceSchema>;
 
+export const WIRE_COLORS = [
+  "blue",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "teal",
+  "purple",
+  "pink",
+] as const;
+export type WireColor = (typeof WIRE_COLORS)[number];
+
 const WireSchema = z
   .object({
     id: WireIdSchema,
@@ -82,6 +94,7 @@ const WireSchema = z
     bitWidth: BitWidthSchema,
     waypoints: z.array(PointSchema).readonly(),
     manualWaypoints: z.boolean(),
+    color: z.enum(WIRE_COLORS).optional(),
   })
   .readonly();
 export type Wire = z.infer<typeof WireSchema>;
