@@ -1,0 +1,70 @@
+.field {
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-block-size: 2.75rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.button {
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-block-size: 2.75rem;
+}
+
+.track {
+  display: inline-flex;
+  align-items: center;
+  inline-size: 2.75rem;
+  block-size: 1.5rem;
+  padding: 0.125rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-radius: 1rem;
+}
+
+@media screen and (prefers-reduced-motion: reduce) {
+  .thumb {
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    background-color: var(--color-wire);
+    border-radius: 50%;
+    transition: none;
+  }
+}
+
+.thumb {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background-color: var(--color-wire);
+  border-radius: 50%;
+  transition: transform var(--motion-duration) ease;
+}
+
+.field[data-selected] .track {
+  background-color: var(--color-accent);
+}
+
+.field[data-selected] .thumb {
+  background-color: var(--color-chip-text);
+  transform: translateX(1.25rem);
+}
+
+.button[data-focus-visible] .track {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.field[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .thumb {
+    transition: none;
+  }
+}

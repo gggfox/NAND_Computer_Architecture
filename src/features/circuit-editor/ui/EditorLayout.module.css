@@ -1,0 +1,48 @@
+.layout {
+  display: grid;
+  grid-template:
+    "toolbar" auto
+    "status" auto
+    "canvas" minmax(16rem, 60dvh)
+    "panel" auto
+    / minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: toolbar;
+  gap: 0.75rem;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.status {
+  grid-area: status;
+}
+
+.canvas {
+  grid-area: canvas;
+  min-inline-size: 0;
+}
+
+.panel {
+  grid-area: panel;
+  padding: 0.75rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-grid);
+  border-radius: 0.5rem;
+}
+
+@media (width >= 640px) {
+  .layout {
+    grid-template:
+      "toolbar toolbar" auto
+      "status status" auto
+      "canvas panel" minmax(24rem, 1fr)
+      / minmax(0, 1fr) minmax(16rem, 22rem);
+    min-block-size: 100dvh;
+  }
+}

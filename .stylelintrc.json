@@ -1,0 +1,41 @@
+{
+  "ignoreFiles": ["src/features/theming/tokens.css"],
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-config-css-modules",
+    "stylelint-config-recess-order"
+  ],
+  "plugins": [
+    "stylelint-plugin-use-baseline",
+    "stylelint-declaration-strict-value",
+    "stylelint-use-logical",
+    "stylelint-value-no-unknown-custom-properties",
+    "stylelint-high-performance-animation",
+    "@double-great/stylelint-a11y"
+  ],
+  "rules": {
+    "plugin/use-baseline": true,
+    "scale-unlimited/declaration-strict-value": [
+      ["/color$/", "z-index", "font-size"],
+      {
+        "ignoreValues": ["currentColor", "inherit", "transparent", "initial", "unset"],
+        "disableFix": true
+      }
+    ],
+    "csstools/use-logical": "always",
+    "csstools/value-no-unknown-custom-properties": [
+      true,
+      { "importFrom": ["src/features/theming/tokens.css", "src/styles/global.css"] }
+    ],
+    "plugin/no-low-performance-animation-properties": true,
+    "a11y/media-prefers-reduced-motion": true,
+    "a11y/no-outline-none": true,
+    "a11y/selector-pseudo-class-focus": true,
+    "a11y/content-property-no-static-value": true,
+    "a11y/font-size-is-readable": true,
+    "a11y/no-obsolete-attribute": true,
+    "a11y/no-obsolete-element": true,
+    "a11y/no-spread-text": true,
+    "a11y/no-text-align-justify": true
+  }
+}

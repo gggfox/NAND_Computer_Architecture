@@ -1,0 +1,4 @@
+# Cloudflare Pages / Netlify. Copy next to the contents of dist/client.
+# Static files (sw.js, manifest.webmanifest, assets) win over this rule because redirects
+# without a force flag (!) only apply when no file matches.
+/*  /_shell.html  200

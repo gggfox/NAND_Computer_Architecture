@@ -1,0 +1,49 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 0.5rem;
+  transition: opacity var(--motion-duration) ease;
+}
+
+.primary {
+  color: var(--color-chip-text);
+  background-color: var(--color-accent);
+}
+
+.quiet {
+  border-color: transparent;
+}
+
+.button[data-hovered] {
+  opacity: 0.85;
+}
+
+.button[data-pressed] {
+  opacity: 0.7;
+}
+
+.button[data-focus-visible] {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.button[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+}

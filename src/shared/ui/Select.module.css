@@ -1,0 +1,78 @@
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--color-text);
+}
+
+.label {
+  color: var(--color-text-muted);
+}
+
+.trigger {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 2.75rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  font: inherit;
+  color: var(--color-text);
+  text-align: start;
+  cursor: pointer;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-radius: 0.5rem;
+}
+
+.trigger[data-focus-visible] {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.chevron {
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-block-end: 2px solid var(--color-text);
+  border-inline-end: 2px solid var(--color-text);
+  transform: rotate(45deg);
+}
+
+.popover {
+  min-inline-size: var(--trigger-width, 0);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-radius: 0.5rem;
+}
+
+.listbox {
+  padding: 0.25rem;
+}
+
+.listbox:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+}
+
+.option {
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+.option[data-focused] {
+  color: var(--color-chip-text);
+  outline: 2px solid transparent;
+  background-color: var(--color-accent);
+}
+
+.option[data-selected] {
+  font-weight: 700;
+}
+
+.option[data-focus-visible] {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+}

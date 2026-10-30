@@ -1,0 +1,18 @@
+# Hostinger / Apache. Place in the web root next to the contents of dist/client.
+# Unknown paths get the shell with status 200. Existing files (sw.js, manifest.webmanifest,
+# assets) are served as-is because FallbackResource only applies to missing files.
+FallbackResource /_shell.html
+# A missing hashed asset (a stale tab asking for an old chunk) must be a 404, never the HTML
+# shell, which the browser would try to run as JavaScript.
+<If "%{REQUEST_URI} =~ m#^/assets/#">
+  FallbackResource disabled
+</If>
+# There is no index.html, so serve the shell for `/` too.
+DirectoryIndex _shell.html
+AddType application/manifest+json .webmanifest
+
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache"
+  </IfModule>
+</Files>

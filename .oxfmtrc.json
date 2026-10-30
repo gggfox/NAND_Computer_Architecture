@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "sortImports": {},
+  "ignorePatterns": [
+    "src/routeTree.gen.ts",
+    "tooling/lint-canaries/**",
+    "dist",
+    "coverage",
+    ".superpowers",
+    ".tanstack",
+    "docs/research",
+    "docs/superpowers",
+    "pnpm-lock.yaml",
+    "*.app"
+  ]
+}
