@@ -42,6 +42,13 @@ describe("moving chips", () => {
       action: { moves: [{ instanceId: pieceA.id }, { instanceId: nand.id }] },
     });
   });
+  it("drops the pin hover when a drag starts, so its ring does not stay behind", () => {
+    const { context, state } = setup();
+    const hovering = gesture(state, context, { type: "hover", point: screen(220, 80) });
+    expect(hovering.state.hover).toBeDefined();
+    const [start, move] = drag(screen(220, 80), screen(305, 83));
+    expect(gestures(hovering.state, context, [start!, move!]).state.hover).toBeUndefined();
+  });
 });
 
 describe("moves that do not move", () => {

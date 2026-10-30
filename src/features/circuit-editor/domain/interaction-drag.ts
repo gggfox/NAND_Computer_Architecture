@@ -44,8 +44,10 @@ export const onDragStart = (
   const base = keep
     ? done(withoutOverlays(state))
     : selected(state, selectInstances([instanceId]), instanceId);
+  // The hover ring marks where a pin was; a drag moves chips away from it, so it goes.
+  const { hover: _hover, ...rest } = base.state;
   return onDragMove(
-    { ...base.state, drag, lassoArmed: false },
+    { ...rest, drag, lassoArmed: false },
     { type: "dragMove", point: gesture.point },
     base.effects,
   );
