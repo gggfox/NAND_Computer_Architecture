@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { createDemoProject } from "~/features/projects";
+import { createDemoProject, EMPTY_CIRCUIT } from "~/features/projects";
 import type { ChipInstance, Circuit, Wire } from "~/features/projects";
-import { newChipId, newInstanceId } from "~/shared/ids";
+import { newChipId, newInstanceId, newPinId } from "~/shared/ids";
 
 import { toNetlistSource } from "./to-netlist-source";
 
-const demo = (): Circuit => createDemoProject("x").rootCircuit;
+const demo = (): Circuit => createDemoProject("x").chips[0]?.draft ?? EMPTY_CIRCUIT;
 
 const withFirstKind = (circuit: Circuit, kind: ChipInstance["kind"]): Circuit => ({
   ...circuit,
@@ -35,9 +35,16 @@ describe("toNetlistSource", () => {
   });
 
   it("reports the clock as UnsupportedPart", () => {
-    const circuit = withFirstKind(demo(), { type: "builtin", builtin: "clock" });
+    const circuit = withFirstKind(demo(), { type: "clock" });
     const result = toNetlistSource(circuit);
     expect(!result.ok && result.error.type).toBe("UnsupportedPart");
+  });
+
+  it("reports split and merge as UnsupportedPart", () => {
+    for (const type of ["split", "merge"] as const) {
+      const result = toNetlistSource(withFirstKind(demo(), { type, width: 4 }));
+      expect(!result.ok && result.error.type).toBe("UnsupportedPart");
+    }
   });
 });
 
@@ -99,6 +106,15 @@ describe("toNetlistSource pin validation", () => {
 
   it("rejects a wire into NAND pin 2 (its output)", () => {
     const circuit = withWire(demo(), 1, (wire) => ({ ...wire, to: { ...wire.to, pin: 2 } }));
+    const result = toNetlistSource(circuit);
+    expect(!result.ok && result.error.type).toBe("InvalidWire");
+  });
+
+  it("rejects a wire addressing a built-in pin by id", () => {
+    const circuit = withWire(demo(), 0, (wire) => ({
+      ...wire,
+      to: { ...wire.to, pin: newPinId() },
+    }));
     const result = toNetlistSource(circuit);
     expect(!result.ok && result.error.type).toBe("InvalidWire");
   });

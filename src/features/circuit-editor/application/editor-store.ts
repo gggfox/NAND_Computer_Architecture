@@ -2,11 +2,14 @@ import { createStore } from "zustand/vanilla";
 import type { StoreApi } from "zustand/vanilla";
 
 import type { PersistenceError, ProjectRepository } from "~/features/persistence";
-import type { Project } from "~/features/projects";
+import { EMPTY_CIRCUIT, findChip } from "~/features/projects";
+import type { Circuit, Project } from "~/features/projects";
+import type { ChipId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "../domain/actions";
+import { partOf } from "../domain/geometry";
 import { createHistory, pushHistory, redo, undo } from "../domain/history";
 import type { History } from "../domain/history";
 import { applyAction } from "../domain/reducer";
@@ -18,6 +21,8 @@ type LastError = EditorError | PersistenceError | null;
 
 export interface EditorState {
   readonly history: History<Project>;
+  /** The chip being edited; starts at the project's `lastOpenedChipId`. */
+  readonly chipId: ChipId;
   readonly lastError: LastError;
   readonly inputs: readonly Level[];
   readonly dispatch: (action: EditorAction) => Result<void, EditorError>;
@@ -33,10 +38,15 @@ export type EditorStore = StoreApi<EditorState>;
 // oxlint-disable-next-line unicorn/no-null -- `null` is the documented "no error" value of the store state
 const NO_ERROR: LastError = null;
 
-const countInputs = (project: Project): number =>
-  project.rootCircuit.instances.filter(
-    (item) => item.kind.type === "builtin" && item.kind.builtin === "input",
-  ).length;
+const draftOf = (project: Project, chipId: ChipId): Circuit =>
+  findChip(project, chipId)?.draft ?? EMPTY_CIRCUIT;
+
+/** The draft of the open chip, or an empty circuit when that chip is missing. */
+export const openCircuit = (state: EditorState): Circuit =>
+  draftOf(state.history.present, state.chipId);
+
+const countInputs = (circuit: Circuit): number =>
+  circuit.instances.filter((item) => partOf(circuit, item) === "input").length;
 
 /** Keeps existing levels, pads new inputs with 0 and drops removed ones. */
 const resizeInputs = (inputs: readonly Level[], count: number): readonly Level[] =>
@@ -95,7 +105,7 @@ const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
     commit: (next) => {
       set((state) => ({
         history: next,
-        inputs: resizeInputs(state.inputs, countInputs(next.present)),
+        inputs: resizeInputs(state.inputs, countInputs(draftOf(next.present, state.chipId))),
       }));
       schedule(persist);
     },
@@ -119,8 +129,9 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
     };
     return {
       history: createHistory(project),
+      chipId: project.lastOpenedChipId,
       lastError: NO_ERROR,
-      inputs: resizeInputs([], countInputs(project)),
+      inputs: resizeInputs([], countInputs(draftOf(project, project.lastOpenedChipId))),
       dispatch: (action) => {
         const result = applyAction(get().history.present, action);
         if (!result.ok) {

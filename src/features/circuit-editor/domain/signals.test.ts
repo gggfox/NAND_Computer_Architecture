@@ -1,12 +1,12 @@
 import { assert, describe, expect, it } from "vitest";
 
-import { createDemoProject } from "~/features/projects";
+import { createDemoProject, EMPTY_CIRCUIT } from "~/features/projects";
 import type { Circuit, Wire } from "~/features/projects";
 import { newInstanceId, newWireId } from "~/shared/ids";
 
 import { instanceLevel, wireDash, wireLevel } from "./signals";
 
-const demo = (): Circuit => createDemoProject("x").rootCircuit;
+const demo = (): Circuit => createDemoProject("x").chips[0]?.draft ?? EMPTY_CIRCUIT;
 
 const wiresOf = (circuit: Circuit): readonly [Wire, Wire, Wire] => {
   const [toA, toB, toOut] = circuit.wires;

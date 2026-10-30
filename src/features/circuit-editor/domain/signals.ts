@@ -2,6 +2,7 @@ import type { ChipInstance, Circuit, PinRef, Wire } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import { partOf } from "./geometry";
+import type { Part } from "./geometry";
 
 export type Level = 0 | 1;
 
@@ -12,14 +13,14 @@ export interface KnownLevels {
 }
 
 /** Position of an instance among the parts of its kind, which is its engine index. */
-const indexAmong = (circuit: Circuit, part: string, instanceId: InstanceId): number =>
+const indexAmong = (circuit: Circuit, part: Part, instanceId: InstanceId): number =>
   circuit.instances
-    .filter((item) => partOf(item) === part)
+    .filter((item) => partOf(circuit, item) === part)
     .findIndex((item) => item.id === instanceId);
 
-const partAt = (circuit: Circuit, instanceId: InstanceId): string | undefined => {
+const partAt = (circuit: Circuit, instanceId: InstanceId): Part | undefined => {
   const instance = circuit.instances.find((item) => item.id === instanceId);
-  return instance === undefined ? undefined : partOf(instance);
+  return instance === undefined ? undefined : partOf(circuit, instance);
 };
 
 const levelOf = (

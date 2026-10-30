@@ -1,4 +1,15 @@
 export { downloadProjectFile, readProjectFile } from "./adapters/project-file";
+export {
+  DEFAULT_CHIP_COLOR,
+  EMPTY_CIRCUIT,
+  newChip,
+  piece,
+  pinDef,
+  pinPiece,
+  projectWith,
+  wire,
+} from "./domain/builders";
+export { chipsUsing, findChip, replaceChip } from "./domain/chips";
 export { createDemoProject } from "./domain/demo";
 export { importErrorMessage, type ImportError } from "./domain/errors";
 export {
@@ -16,11 +27,18 @@ export {
   type Migration,
   type MigrationChain,
 } from "./domain/migrations";
+export { isHexColor } from "./domain/model";
 export type {
-  BuiltinKind,
+  BitWidth,
+  BusWidth,
   Chip,
   ChipInstance,
   Circuit,
+  Folder,
+  InstanceKind,
+  PinDef,
+  PinDirection,
+  PinKey,
   PinRef,
   Point,
   Project,

@@ -1,12 +1,12 @@
 import { createStore } from "zustand/vanilla";
 import type { StoreApi } from "zustand/vanilla";
 
-import type { Circuit } from "~/features/projects";
 import type { EngineClient, EngineEvent } from "~/features/simulation";
 
 import type { SimulationError } from "../domain/messages";
 import type { Level } from "../domain/signals";
 import { toNetlistSource } from "../domain/to-netlist-source";
+import { openCircuit } from "./editor-store";
 import type { EditorState, EditorStore } from "./editor-store";
 
 export interface SimulationState {
@@ -22,8 +22,6 @@ const NO_ERROR: SimulationError | null = null;
 
 export const createSimulationStore = (): SimulationStore =>
   createStore<SimulationState>(() => ({ outputs: [], error: NO_ERROR }));
-
-const circuitOf = (state: EditorState): Circuit => state.history.present.rootCircuit;
 
 /**
  * Keeps the engine in step with the editor: every circuit change reloads the netlist (then
@@ -47,7 +45,7 @@ export const connectSimulation = (
   };
 
   const load = (state: EditorState): void => {
-    const source = toNetlistSource(circuitOf(state));
+    const source = toNetlistSource(openCircuit(state));
     invalid = !source.ok;
     if (!source.ok) {
       simulation.setState({ outputs: [], error: source.error });
@@ -67,7 +65,7 @@ export const connectSimulation = (
 
   const unsubscribeEngine = client.subscribe(onEvent);
   const unsubscribeEditor = editor.subscribe((state, previous) => {
-    if (circuitOf(state) !== circuitOf(previous)) {
+    if (openCircuit(state) !== openCircuit(previous)) {
       load(state);
     } else if (state.inputs !== previous.inputs && !invalid) {
       sendInputs(state.inputs, previous.inputs);

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectRepository } from "~/features/persistence";
-import { createDemoProject } from "~/features/projects";
+import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
 import type { Project } from "~/features/projects";
-import { newInstanceId } from "~/shared/ids";
+import { newChipId, newInstanceId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 
-import { createEditorStore } from "./editor-store";
+import { createEditorStore, openCircuit } from "./editor-store";
 
 const DEBOUNCE_MS = 300;
 
@@ -15,12 +15,7 @@ const SAVED = ok(undefined);
 
 const place = () => ({
   type: "placeChip" as const,
-  instance: {
-    id: newInstanceId(),
-    kind: { type: "builtin" as const, builtin: "nand" as const },
-    /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-    position: { x: 0, y: 0 },
-  },
+  instance: piece({ type: "nand" }),
 });
 
 const fakeRepo = (saveResult: Awaited<ReturnType<ProjectRepository["save"]>>) => {
@@ -35,6 +30,17 @@ const fakeRepo = (saveResult: Awaited<ReturnType<ProjectRepository["save"]>>) =>
   };
   return { repo, saved };
 };
+
+describe("openCircuit", () => {
+  it("opens the project's last opened chip and falls back to an empty circuit", () => {
+    const { repo } = fakeRepo(SAVED);
+    const project = createDemoProject("x");
+    const store = createEditorStore(project, repo);
+    expect(store.getState().chipId).toBe(project.lastOpenedChipId);
+    expect(openCircuit(store.getState())).toBe(project.chips[0]?.draft);
+    expect(openCircuit({ ...store.getState(), chipId: newChipId() })).toBe(EMPTY_CIRCUIT);
+  });
+});
 
 describe("createEditorStore", () => {
   beforeEach(() => {
@@ -53,7 +59,7 @@ describe("createEditorStore", () => {
     expect(saved).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(saved).toHaveLength(1);
-    expect(saved[0]?.rootCircuit.instances).toHaveLength(7);
+    expect(saved[0]?.chips[0]?.draft.instances).toHaveLength(7);
     expect(store.getState().lastError).toBeNull();
   });
 
@@ -71,7 +77,7 @@ describe("createEditorStore", () => {
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(store.getState().lastError).toEqual({ type: "QuotaExceeded" });
     expect(store.getState().dispatch(place()).ok).toBe(true);
-    expect(store.getState().history.present.rootCircuit.instances).toHaveLength(6);
+    expect(openCircuit(store.getState()).instances).toHaveLength(6);
   });
 });
 
@@ -108,9 +114,9 @@ describe("createEditorStore undo and inputs", () => {
     const store = createEditorStore(createDemoProject("x"), repo);
     store.getState().dispatch(place());
     store.getState().undo();
-    expect(store.getState().history.present.rootCircuit.instances).toHaveLength(4);
+    expect(openCircuit(store.getState()).instances).toHaveLength(4);
     store.getState().redo();
-    expect(store.getState().history.present.rootCircuit.instances).toHaveLength(5);
+    expect(openCircuit(store.getState()).instances).toHaveLength(5);
   });
 
   it("saves after undo", async () => {

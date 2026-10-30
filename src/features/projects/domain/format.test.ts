@@ -1,8 +1,11 @@
+/* oxlint-disable typescript/prefer-readonly-parameter-types -- projects carry branded ids (mutable object types); none is mutated */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
+
+import { newChipId, newInstanceId } from "~/shared/ids";
 
 import { createDemoProject } from "./demo";
 import { importErrorMessage } from "./errors";
@@ -15,7 +18,8 @@ import {
   serializeStoredProject,
 } from "./format";
 import type { Migration } from "./migrations";
-import type { Project } from "./model";
+import { isHexColor } from "./model";
+import type { Chip, Project } from "./model";
 
 const fixture = readFileSync(
   path.join(import.meta.dirname, "..", "fixtures", "v1-demo.json"),
@@ -29,7 +33,6 @@ const OldFileSchema = z.looseObject({
 const envelope = (version: number, project: unknown = {}): string =>
   JSON.stringify({ format: "nand-project", version, project });
 
-/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
 const oldFile = (project: Project): string => {
   const { name, ...rest } = project;
   return JSON.stringify({ format: "nand-project", version: 1, project: { ...rest, title: name } });
@@ -45,6 +48,58 @@ const renameTitle: Migration = {
     return { ...parsed, version: 2, project: { ...others, name: title } };
   },
 };
+
+type Corrupt = (project: Project) => unknown;
+
+/** Rewrites the demo's only chip; the result is deliberately loose JSON for the parser to reject. */
+const withDemoChip =
+  (patch: (chip: Chip) => unknown): Corrupt =>
+  (project) => ({ ...project, chips: project.chips.map(patch) });
+
+const withDraft = (patch: (draft: Chip["draft"]) => unknown): Corrupt =>
+  withDemoChip((chip) => ({ ...chip, draft: patch(chip.draft) }));
+
+const dropFirstPinDef: Corrupt = withDraft((draft) => ({ ...draft, pins: draft.pins.slice(1) }));
+
+const duplicateFirstPinPiece: Corrupt = withDraft((draft) => ({
+  ...draft,
+  instances: [...draft.instances, { ...draft.instances[0], id: newInstanceId() }],
+}));
+
+const withFirstInstanceKind = (kind: unknown): Corrupt =>
+  withDraft((draft) => ({
+    ...draft,
+    instances: draft.instances.map((item, index) => (index === 0 ? { ...item, kind } : item)),
+  }));
+
+const withFirstWire = (patch: (wire: Chip["draft"]["wires"][number]) => unknown): Corrupt =>
+  withDraft((draft) => ({
+    ...draft,
+    wires: draft.wires.map((item, index) => (index === 0 ? patch(item) : item)),
+  }));
+
+const withFirstWireFromBit = (bit: number): Corrupt =>
+  withFirstWire((item) => ({ ...item, from: { ...item.from, bit } }));
+
+const withFirstWireWidth = (bitWidth: number): Corrupt =>
+  withFirstWire((item) => ({ ...item, bitWidth }));
+
+const withChipColor = (color: string): Corrupt => withDemoChip((chip) => ({ ...chip, color }));
+
+const corruptions: readonly (readonly [string, Corrupt])[] = [
+  ["lastOpenedChipId names no chip", (project) => ({ ...project, lastOpenedChipId: newChipId() })],
+  ["no chips", (project) => ({ ...project, chips: [] })],
+  ["a pin piece without a definition", dropFirstPinDef],
+  ["a pin definition with two pieces", duplicateFirstPinPiece],
+  ["split width 2", withFirstInstanceKind({ type: "split", width: 2 })],
+  ["a bit index of 16", withFirstWireFromBit(16)],
+  ["wire bitWidth 3", withFirstWireWidth(3)],
+  ["color 'red'", withChipColor("red")],
+  [
+    "two chips with one id",
+    (project) => ({ ...project, chips: [...project.chips, ...project.chips] }),
+  ],
+];
 
 describe("parseProjectFile", () => {
   test("round-trips the demo project", () => {
@@ -79,14 +134,39 @@ describe("parseProjectFile", () => {
       error: { type: "FutureVersion", version: 2, supported: 1 },
     });
   });
-  test("wire bitWidth 0", () => {
-    const project = createDemoProject("x");
-    const [first, ...rest] = project.rootCircuit.wires;
-    const bad = {
-      ...project,
-      rootCircuit: { ...project.rootCircuit, wires: [{ ...first, bitWidth: 0 }, ...rest] },
-    };
-    const result = parseProjectFile(envelope(1, bad));
+});
+
+describe("project shape", () => {
+  test("the demo is one draft-only chip the project opens on", () => {
+    const project = createDemoProject("Demo");
+    const [chip] = project.chips;
+    expect(project.chips).toHaveLength(1);
+    expect(chip?.saved).toBeUndefined();
+    expect(project.lastOpenedChipId).toBe(chip?.id);
+    expect(chip?.draft.pins.map((pin) => [pin.name, pin.direction, pin.width])).toEqual([
+      ["A", "input", 1],
+      ["B", "input", 1],
+      ["OUT", "output", 1],
+    ]);
+    expect(chip?.draft.instances.map((item) => item.kind.type)).toEqual([
+      "pin",
+      "pin",
+      "nand",
+      "pin",
+    ]);
+    expect(chip?.draft.wires.every((item) => !item.manualWaypoints)).toBe(true);
+  });
+  test("isHexColor accepts #rrggbb only", () => {
+    expect(["#3b82f6", "#ABCDEF", "red", "#fff"].map((color) => isHexColor(color))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+  test.each(corruptions)("%s is InvalidProject", (_name, corrupt) => {
+    const corrupted = corrupt(createDemoProject("x"));
+    const result = parseProjectFile(envelope(1, corrupted));
     expect(!result.ok && result.error.type).toBe("InvalidProject");
   });
 });

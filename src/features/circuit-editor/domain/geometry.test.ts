@@ -1,13 +1,13 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { assert, describe, expect, it } from "vitest";
 
-import { createDemoProject } from "~/features/projects";
+import { createDemoProject, EMPTY_CIRCUIT, piece, wire } from "~/features/projects";
 import type { ChipInstance, Circuit } from "~/features/projects";
-import { newChipId, newInstanceId, newWireId } from "~/shared/ids";
+import { newChipId, newInstanceId, newPinId } from "~/shared/ids";
 
 import { freeNandPosition, GRID, partOf, pinPosition, rectOf, wireRoute } from "./geometry";
 
-const demo = (): Circuit => createDemoProject("x").rootCircuit;
+const demo = (): Circuit => createDemoProject("x").chips[0]?.draft ?? EMPTY_CIRCUIT;
 
 const at = (circuit: Circuit, index: number): ChipInstance => {
   const instance = circuit.instances[index];
@@ -16,35 +16,38 @@ const at = (circuit: Circuit, index: number): ChipInstance => {
 };
 
 describe("chip geometry", () => {
-  it("names builtin and custom parts", () => {
+  it("names built-in parts, pin pieces by direction, and custom parts", () => {
     const circuit = demo();
-    expect(circuit.instances.map((item) => partOf(item))).toEqual([
+    expect(circuit.instances.map((item) => partOf(circuit, item))).toEqual([
       "input",
       "input",
       "nand",
       "output",
     ]);
-    const custom: ChipInstance = {
-      id: newInstanceId(),
-      kind: { type: "custom", chipId: newChipId() },
-      position: { x: 0, y: 0 },
-    };
-    expect(partOf(custom)).toBe("custom");
+    const custom = piece({ type: "custom", chipId: newChipId() });
+    expect(partOf(circuit, custom)).toBe("custom");
+    expect(partOf(circuit, piece({ type: "split", width: 8 }))).toBe("split");
     expect(rectOf(custom)).toEqual({ x: 0, y: 0, width: GRID, height: GRID });
   });
 
+  it("reads a pin piece without a definition as an input", () => {
+    const orphan = piece({ type: "pin", pinId: newPinId() });
+    expect(partOf(EMPTY_CIRCUIT, orphan)).toBe("input");
+  });
+
   it("places NAND pins on the left (a above b) and the output on the right", () => {
-    const nand = at(demo(), 2);
+    const circuit = demo();
+    const nand = at(circuit, 2);
     expect(rectOf(nand)).toEqual({ x: 160, y: 40, width: 80, height: 60 });
-    expect(pinPosition(nand, 0)).toEqual({ x: 160, y: 55 });
-    expect(pinPosition(nand, 1)).toEqual({ x: 160, y: 85 });
-    expect(pinPosition(nand, 2)).toEqual({ x: 240, y: 70 });
+    expect(pinPosition(circuit, nand, 0)).toEqual({ x: 160, y: 55 });
+    expect(pinPosition(circuit, nand, 1)).toEqual({ x: 160, y: 85 });
+    expect(pinPosition(circuit, nand, 2)).toEqual({ x: 240, y: 70 });
   });
 
   it("drives from an input's right edge and enters an output's left edge", () => {
     const circuit = demo();
-    expect(pinPosition(at(circuit, 0), 0)).toEqual({ x: 40, y: 20 });
-    expect(pinPosition(at(circuit, 3), 0)).toEqual({ x: 320, y: 60 });
+    expect(pinPosition(circuit, at(circuit, 0), 0)).toEqual({ x: 40, y: 20 });
+    expect(pinPosition(circuit, at(circuit, 3), 0)).toEqual({ x: 320, y: 60 });
   });
 });
 
@@ -69,13 +72,10 @@ describe("wireRoute", () => {
 
   it("routes nothing for a wire whose ends are missing", () => {
     const circuit = demo();
-    const dangling = {
-      id: newWireId(),
-      from: { instanceId: newInstanceId(), pin: 0 },
-      to: { instanceId: at(circuit, 2).id, pin: 0 },
-      bitWidth: 1,
-      waypoints: [],
-    };
+    const dangling = wire(
+      { instanceId: newInstanceId(), pin: 0 },
+      { instanceId: at(circuit, 2).id, pin: 0 },
+    );
     expect(wireRoute(circuit, dangling)).toEqual([]);
     expect(wireRoute(circuit, { ...dangling, from: dangling.to, to: dangling.from })).toEqual([]);
   });
@@ -86,22 +86,18 @@ describe("freeNandPosition", () => {
     const circuit = demo();
     const position = freeNandPosition(circuit);
     expect(position).toEqual({ x: 480, y: 0 });
-    expect(freeNandPosition({ instances: [], wires: [] })).toEqual({ x: 160, y: 0 });
+    expect(freeNandPosition(EMPTY_CIRCUIT)).toEqual({ x: 160, y: 0 });
   });
 
   it("goes below everything when every searched cell is taken", () => {
-    const wall: ChipInstance = {
-      id: newInstanceId(),
-      kind: { type: "builtin", builtin: "nand" },
-      position: { x: 0, y: 0 },
-    };
+    const wall = piece({ type: "nand" });
     // One giant fake chip per cell is overkill; a tall column of chips per searched column suffices.
     const instances = Array.from({ length: 8 * 64 }, (_unused, index) => ({
       ...wall,
       id: newInstanceId(),
       position: { x: 160 + (index % 8) * 160, y: Math.floor(index / 8) * 80 },
     }));
-    const position = freeNandPosition({ instances, wires: [] });
+    const position = freeNandPosition({ ...EMPTY_CIRCUIT, instances });
     expect(position).toEqual({ x: 160, y: 63 * 80 + 60 + GRID });
   });
 });

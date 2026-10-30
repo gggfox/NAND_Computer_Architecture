@@ -8,6 +8,7 @@ import { m } from "~/i18n/paraglide/messages";
 import { newInstanceId } from "~/shared/ids";
 import { Button, FileButton, LanguagePicker, Toolbar } from "~/shared/ui";
 
+import { openCircuit } from "../application/editor-store";
 import type { EditorStore } from "../application/editor-store";
 import { freeNandPosition } from "../domain/geometry";
 
@@ -39,13 +40,13 @@ export function EditorToolbar({ editor, onImport }: EditorToolbarProps): ReactNo
     downloadProjectFile(editor.getState().history.present);
   };
   const handleAddNand = (): void => {
-    const { dispatch, history } = editor.getState();
-    dispatch({
+    const state = editor.getState();
+    state.dispatch({
       type: "placeChip",
       instance: {
         id: newInstanceId(),
-        kind: { type: "builtin", builtin: "nand" },
-        position: freeNandPosition(history.present.rootCircuit),
+        kind: { type: "nand" },
+        position: freeNandPosition(openCircuit(state)),
       },
     });
   };

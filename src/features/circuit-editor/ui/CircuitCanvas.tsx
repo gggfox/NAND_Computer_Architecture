@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { createCanvasRenderer } from "../adapters/canvas-renderer";
 import type { CanvasRenderer } from "../adapters/canvas-renderer";
+import { openCircuit } from "../application/editor-store";
 import type { EditorStore } from "../application/editor-store";
 import type { SimulationStore } from "../application/simulation-bridge";
 import type { EditorSearch } from "../domain/view-search";
@@ -42,10 +43,10 @@ export function CircuitCanvas({ editor, simulation, view }: CircuitCanvasProps):
       return noCleanup;
     }
     const renderer = createCanvasRenderer(canvas, () => {
-      const { history, inputs } = editor.getState();
+      const state = editor.getState();
       return {
-        circuit: history.present.rootCircuit,
-        inputs,
+        circuit: openCircuit(state),
+        inputs: state.inputs,
         outputs: simulation.getState().outputs,
         view: viewRef.current,
       };

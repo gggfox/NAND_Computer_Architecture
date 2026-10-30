@@ -2,9 +2,9 @@ import { useId } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
-import { partOf } from "~/features/circuit-editor";
-import type { EditorStore, Level, SimulationStore } from "~/features/circuit-editor";
-import type { ChipInstance } from "~/features/projects";
+import { openCircuit, partOf } from "~/features/circuit-editor";
+import type { EditorStore, Level, Part, SimulationStore } from "~/features/circuit-editor";
+import type { ChipInstance, Circuit } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import { Switch } from "~/shared/ui";
 
@@ -17,15 +17,15 @@ interface CircuitSummaryProps {
 
 interface Entry {
   readonly instance: ChipInstance;
-  readonly part: string;
+  readonly part: Part;
   /** Index among parts of the same kind: the engine's input/output index. */
   readonly ordinal: number;
 }
 
-const toEntries = (instances: readonly ChipInstance[]): readonly Entry[] => {
-  const seen = new Map<string, number>();
-  return instances.map((instance) => {
-    const part = partOf(instance);
+const toEntries = (circuit: Circuit): readonly Entry[] => {
+  const seen = new Map<Part, number>();
+  return circuit.instances.map((instance) => {
+    const part = partOf(circuit, instance);
     const ordinal = seen.get(part) ?? 0;
     seen.set(part, ordinal + 1);
     return { instance, part, ordinal };
@@ -62,7 +62,7 @@ const otherLabel = (entry: Entry): string =>
  * that go through the store, and outputs announced politely when the engine reports them.
  */
 export function CircuitSummary({ editor, simulation }: CircuitSummaryProps): ReactNode {
-  const instances = useStore(editor, (state) => state.history.present.rootCircuit.instances);
+  const circuit = useStore(editor, openCircuit);
   const inputs = useStore(editor, (state) => state.inputs);
   const outputs = useStore(simulation, (state) => state.outputs);
   const headingId = useId();
@@ -96,7 +96,7 @@ export function CircuitSummary({ editor, simulation }: CircuitSummaryProps): Rea
         {m.summary_heading()}
       </h2>
       <ul className={styles.list}>
-        {toEntries(instances).map((entry) => (
+        {toEntries(circuit).map((entry) => (
           <li key={entry.instance.id} className={styles.item}>
             {renderEntry(entry)}
           </li>

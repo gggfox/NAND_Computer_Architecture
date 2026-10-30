@@ -1,22 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { createDemoProject } from "~/features/projects";
-import type { ChipInstance, Project } from "~/features/projects";
+import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
+import type { ChipInstance, Circuit, Project } from "~/features/projects";
 import { newChipId, newInstanceId } from "~/shared/ids";
 
+import { partOf } from "./geometry";
 import { applyAction, editorErrorMessage } from "./reducer";
 
-const nandAt = (left: number): ChipInstance => ({
-  id: newInstanceId(),
-  kind: { type: "builtin", builtin: "nand" },
-  /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-  position: { x: left, y: 0 },
-});
+/* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
+const nandAt = (left: number): ChipInstance => piece({ type: "nand" }, { x: left, y: 0 });
 
-const firstOfKind = (project: Project, builtin: string): ChipInstance => {
-  const found = project.rootCircuit.instances.find(
-    (item) => item.kind.type === "builtin" && item.kind.builtin === builtin,
-  );
+/** The draft of the chip the project opens on. */
+const draft = (project: Project): Circuit => project.chips[0]?.draft ?? EMPTY_CIRCUIT;
+
+const firstOfKind = (project: Project, part: "nand" | "input" | "output"): ChipInstance => {
+  const circuit = draft(project);
+  const found = circuit.instances.find((item) => partOf(circuit, item) === part);
   if (found === undefined) {
     return nandAt(0);
   }
@@ -28,13 +27,13 @@ describe("applyAction", () => {
     const project = createDemoProject("x");
     const instance = nandAt(5);
     const result = applyAction(project, { type: "placeChip", instance });
-    expect(result.ok && result.value.rootCircuit.instances).toHaveLength(5);
-    expect(project.rootCircuit.instances).toHaveLength(4);
+    expect(result.ok && draft(result.value).instances).toHaveLength(5);
+    expect(draft(project).instances).toHaveLength(4);
   });
 
   it("rejects a duplicate instance id", () => {
     const project = createDemoProject("x");
-    const [existing] = project.rootCircuit.instances;
+    const [existing] = draft(project).instances;
     const result = applyAction(project, {
       type: "placeChip",
       instance: { ...nandAt(1), id: existing?.id ?? newInstanceId() },
@@ -49,7 +48,7 @@ describe("applyAction", () => {
     const position = { x: 9, y: 9 };
     const result = applyAction(project, { type: "moveChip", instanceId: target.id, position });
     const moved = result.ok
-      ? result.value.rootCircuit.instances.find((item) => item.id === target.id)
+      ? draft(result.value).instances.find((item) => item.id === target.id)
       : undefined;
     expect(moved?.position).toEqual(position);
   });
@@ -71,8 +70,8 @@ describe("applyAction removeChip", () => {
     const project = createDemoProject("x");
     const nand = firstOfKind(project, "nand");
     const result = applyAction(project, { type: "removeChip", instanceId: nand.id });
-    expect(result.ok && result.value.rootCircuit.instances).toHaveLength(3);
-    expect(result.ok && result.value.rootCircuit.wires).toHaveLength(0);
+    expect(result.ok && draft(result.value).instances).toHaveLength(3);
+    expect(result.ok && draft(result.value).wires).toHaveLength(0);
   });
 
   it("removeChip with an unknown id is InstanceNotFound", () => {
@@ -85,8 +84,8 @@ describe("applyAction removeChip", () => {
 
   it("protects input and output instances", () => {
     const project = createDemoProject("x");
-    for (const builtin of ["input", "output"]) {
-      const target = firstOfKind(project, builtin);
+    for (const part of ["input", "output"] as const) {
+      const target = firstOfKind(project, part);
       const result = applyAction(project, { type: "removeChip", instanceId: target.id });
       expect(result).toEqual({
         ok: false,
@@ -105,6 +104,14 @@ describe("applyAction removeChip", () => {
     const next = added.ok ? added.value : project;
     const result = applyAction(next, { type: "removeChip", instanceId: custom.id });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("applyAction without an open chip", () => {
+  it("edits nothing when the open chip is missing", () => {
+    const project = { ...createDemoProject("x"), lastOpenedChipId: newChipId() };
+    const result = applyAction(project, { type: "placeChip", instance: nandAt(0) });
+    expect(result).toEqual({ ok: true, value: project });
   });
 });
 

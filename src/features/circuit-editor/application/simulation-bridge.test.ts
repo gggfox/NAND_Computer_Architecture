@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { ProjectRepository } from "~/features/persistence";
-import { createDemoProject } from "~/features/projects";
+import { createDemoProject, piece } from "~/features/projects";
 import type { EngineClient, EngineEvent, ToEngine } from "~/features/simulation";
-import { newInstanceId } from "~/shared/ids";
 import { ok } from "~/shared/result";
 
 import { createEditorStore } from "./editor-store";
@@ -52,12 +51,8 @@ const setup = () => {
 
 const placeNand = () => ({
   type: "placeChip" as const,
-  instance: {
-    id: newInstanceId(),
-    kind: { type: "builtin" as const, builtin: "nand" as const },
-    /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-    position: { x: 480, y: 0 },
-  },
+  /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
+  instance: piece({ type: "nand" }, { x: 480, y: 0 }),
 });
 
 describe("connectSimulation", () => {

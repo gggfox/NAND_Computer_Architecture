@@ -156,7 +156,7 @@ const chipText = (part: string, level: Level | undefined): string => {
 const drawChip = (frame: Frame, instance: ChipInstance, inputIndex: number): void => {
   const { ctx, palette } = frame;
   const rect = rectOf(instance);
-  const part = partOf(instance);
+  const part = partOf(frame.circuit, instance);
   const level = instanceLevel(frame.circuit, frame.known, instance);
   drawBody(frame, rect, bodyStyle(palette, part === "nand", level));
   ctx.font = FONT;
@@ -171,7 +171,7 @@ const drawChips = (frame: Frame): void => {
   let inputIndex = 0;
   for (const instance of frame.circuit.instances) {
     drawChip(frame, instance, inputIndex);
-    if (partOf(instance) === "input") {
+    if (partOf(frame.circuit, instance) === "input") {
       inputIndex += 1;
     }
   }

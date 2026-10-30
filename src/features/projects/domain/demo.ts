@@ -1,6 +1,5 @@
-import { newInstanceId, newProjectId, newWireId } from "~/shared/ids";
-
-import type { BuiltinKind, ChipInstance, PinRef, Project, Wire } from "./model";
+import { newChip, pinDef, pinPiece, piece, projectWith, wire } from "./builders";
+import type { Project } from "./model";
 
 const ROW_GAP = 80;
 const NAND_X = 160;
@@ -11,40 +10,25 @@ const NAND_OUT_PIN = 2;
 const randomSeed = (): number =>
   crypto.getRandomValues(new Uint32Array(1)).reduce((sum, word) => sum + word, 0);
 
-const instance = (builtin: BuiltinKind, left: number, top: number): ChipInstance => ({
-  id: newInstanceId(),
-  kind: { type: "builtin", builtin },
-  /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-  position: { x: left, y: top },
-});
-
-/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
-const wire = (from: PinRef, to: PinRef): Wire => ({
-  id: newWireId(),
-  from,
-  to,
-  bitWidth: 1,
-  waypoints: [],
-});
-
+/** One draft-only chip: inputs A and B through a NAND to OUT. */
 export const createDemoProject = (name: string): Project => {
-  const inputA = instance("input", 0, 0);
-  const inputB = instance("input", 0, ROW_GAP);
-  const nand = instance("nand", NAND_X, NAND_Y);
-  const output = instance("output", OUTPUT_X, NAND_Y);
-  return {
-    id: newProjectId(),
-    name,
-    seed: randomSeed(),
-    rootCircuit: {
-      instances: [inputA, inputB, nand, output],
-      wires: [
-        wire({ instanceId: inputA.id, pin: 0 }, { instanceId: nand.id, pin: 0 }),
-        wire({ instanceId: inputB.id, pin: 0 }, { instanceId: nand.id, pin: 1 }),
-        wire({ instanceId: nand.id, pin: NAND_OUT_PIN }, { instanceId: output.id, pin: 0 }),
-      ],
-    },
-    chips: [],
-    folders: [],
+  const pinA = pinDef("A", "input");
+  const pinB = pinDef("B", "input");
+  const pinOut = pinDef("OUT", "output");
+  /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+  const inputA = pinPiece(pinA, { x: 0, y: 0 });
+  const inputB = pinPiece(pinB, { x: 0, y: ROW_GAP });
+  const nand = piece({ type: "nand" }, { x: NAND_X, y: NAND_Y });
+  const output = pinPiece(pinOut, { x: OUTPUT_X, y: NAND_Y });
+  /* oxlint-enable eslint/id-length */
+  const draft = {
+    pins: [pinA, pinB, pinOut],
+    instances: [inputA, inputB, nand, output],
+    wires: [
+      wire({ instanceId: inputA.id, pin: 0 }, { instanceId: nand.id, pin: 0 }),
+      wire({ instanceId: inputB.id, pin: 0 }, { instanceId: nand.id, pin: 1 }),
+      wire({ instanceId: nand.id, pin: NAND_OUT_PIN }, { instanceId: output.id, pin: 0 }),
+    ],
   };
+  return projectWith(name, [newChip(name, draft)], randomSeed());
 };

@@ -20,3 +20,5 @@ export const newChipId = (): ChipId => ChipIdSchema.parse(crypto.randomUUID());
 export const newInstanceId = (): InstanceId => InstanceIdSchema.parse(crypto.randomUUID());
 export const newPinId = (): PinId => PinIdSchema.parse(crypto.randomUUID());
 export const newWireId = (): WireId => WireIdSchema.parse(crypto.randomUUID());
+
+export const FolderIdSchema = z.uuid().brand<"FolderId">();
