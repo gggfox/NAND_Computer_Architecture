@@ -2,6 +2,7 @@ import { err } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { ImportError } from "../domain/errors";
+import { projectFileName } from "../domain/file-name";
 import { MAX_IMPORT_BYTES, parseProjectFile, serializeProject } from "../domain/format";
 import type { Project } from "../domain/model";
 
@@ -14,6 +15,8 @@ export const readProjectFile = async (file: File): Promise<Result<Project, Impor
   return parseProjectFile(await file.text());
 };
 
+const REVOKE_DELAY_MS = 60_000;
+
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
 export const downloadProjectFile = (project: Project): void => {
   const url = URL.createObjectURL(
@@ -21,7 +24,10 @@ export const downloadProjectFile = (project: Project): void => {
   );
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${project.name}.nand.json`;
+  link.download = projectFileName(project.name);
   link.click();
-  URL.revokeObjectURL(url);
+  // Revoking synchronously can abort the download in Safari; give it time to start.
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, REVOKE_DELAY_MS);
 };

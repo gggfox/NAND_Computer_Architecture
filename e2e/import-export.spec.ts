@@ -28,6 +28,7 @@ test("an exported project imports back to the same circuit", async ({ page }, te
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export" }).click();
   const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe("NAND demo.nand.json");
   const exported = testInfo.outputPath("exported.nand.json");
   await download.saveAs(exported);
 
