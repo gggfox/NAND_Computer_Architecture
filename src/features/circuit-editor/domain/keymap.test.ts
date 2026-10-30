@@ -62,6 +62,16 @@ describe("commandForKey", () => {
   });
 });
 
+describe("wire stepping keys", () => {
+  it.each([
+    [press("n"), { type: "nextWire", backwards: false }],
+    [press("n", { shift: true }), { type: "nextWire", backwards: true }],
+    [press("N", { shift: true }), { type: "nextWire", backwards: true }],
+  ])("steps wires: %o → %o", (key, command) => {
+    expect(commandForKey(key)).toEqual(command);
+  });
+});
+
 describe("wiring keys", () => {
   it("w arms the pin in the card", () => {
     const { context, state, nand } = wiring();

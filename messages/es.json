@@ -178,5 +178,9 @@
   "help_keys_bend_step": "] y [ (moviendo dobleces)",
   "help_bend_step": "Elige un segmento",
   "help_keys_bend_move": "Flechas (moviendo dobleces)",
-  "help_bend_move": "Mueve el segmento"
+  "help_bend_move": "Mueve el segmento",
+  "canvas_wire_selected": "Cable de {from} a {to}",
+  "canvas_wire_end": "{pin} de {chip}",
+  "help_keys_wire": "N",
+  "help_wire": "Recorre los cables del chip"
 }

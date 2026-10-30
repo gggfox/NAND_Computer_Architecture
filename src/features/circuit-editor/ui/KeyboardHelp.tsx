@@ -15,6 +15,7 @@ const rows = (): readonly (readonly [string, string])[] => [
   [m.help_keys_zoom(), m.help_zoom()],
   [m.help_keys_menu(), m.help_menu()],
   [m.help_keys_pins(), m.help_pins()],
+  [m.help_keys_wire(), m.help_wire()],
   [m.help_keys_tools(), m.help_tools()],
   [m.help_keys_space(), m.help_space()],
   [m.help_keys_escape(), m.help_escape()],

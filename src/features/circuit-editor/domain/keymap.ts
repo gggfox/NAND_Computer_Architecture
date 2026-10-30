@@ -44,6 +44,8 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
   ["h", () => ({ type: "setTool", tool: "pan" })],
   ["?", () => ({ type: "showHelp" })],
   ["w", () => ({ type: "arm" })],
+  ["n", (backwards) => ({ type: "nextWire", backwards })],
+  ["N", () => ({ type: "nextWire", backwards: true })],
 ]);
 
 /** What the map reads from the canvas: `Enter` wires an armed pin instead of opening a menu. */

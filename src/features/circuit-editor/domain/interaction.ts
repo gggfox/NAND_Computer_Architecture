@@ -131,6 +131,8 @@ export type InteractionCommand =
   | { readonly type: "jumpTo"; readonly camera: Camera; readonly settle: boolean }
   | { readonly type: "openMenu" }
   | { readonly type: "nextPin"; readonly backwards: boolean }
+  /** Selects the next (or previous) wire touching the focused chip. */
+  | { readonly type: "nextWire"; readonly backwards: boolean }
   | { readonly type: "showHelp" | "hideHelp" }
   /** Arms the pin in the card, else the focused chip's first pin. */
   | { readonly type: "arm" }
@@ -169,6 +171,8 @@ export type Announcement =
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "wired" }
   | { readonly type: "disarmed" }
+  /** A wire was selected from the keyboard: its ends are named. */
+  | { readonly type: "wireSelected"; readonly wireId: WireId }
   /** Bend mode began (`active`) or ended. */
   | { readonly type: "bends"; readonly active: boolean };
 

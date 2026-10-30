@@ -13,6 +13,7 @@ import type {
   Menu,
 } from "./interaction";
 import { enterBends } from "./interaction-bends";
+import { WIRE_KEY_COMMANDS } from "./interaction-wire-keys";
 import { arm } from "./interaction-wiring";
 import { selectWire } from "./selection";
 
@@ -127,18 +128,17 @@ const editBends = (state: InteractionState, wireId: WireId, context: Interaction
 type Of<Type extends InteractionCommand["type"]> = Extract<InteractionCommand, { type: Type }>;
 
 type MenuHandlers = {
-  readonly [Type in "recolorSelection" | "rerouteWire" | "tidyWires" | "branch" | "editBends"]: (
-    state: InteractionState,
-    command: Of<Type>,
-    context: InteractionContext,
-  ) => Interpreted;
+  readonly [
+    Type in "recolorSelection" | "rerouteWire" | "tidyWires" | "branch" | "editBends" | "nextWire"
+  ]: (state: InteractionState, command: Of<Type>, context: InteractionContext) => Interpreted;
 };
 
-/** The wire and canvas menu commands, for the command table. */
+/** The wire and canvas menu commands, and `n` to reach a wire's menu, for the command table. */
 export const MENU_COMMANDS: MenuHandlers = {
   recolorSelection: (state, command, context) => recolorSelection(state, command.color, context),
   rerouteWire: (state, command, context) => reroute(state, [command.wireId], context),
   tidyWires: (state, _command, context) => tidy(state, context),
   branch: (state, command, context) => branch(state, command.wireId, context),
   editBends: (state, command, context) => editBends(state, command.wireId, context),
+  ...WIRE_KEY_COMMANDS,
 };
