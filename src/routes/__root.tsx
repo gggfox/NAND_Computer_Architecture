@@ -49,7 +49,7 @@ function RootComponent(): ReactNode {
   }, []);
 
   return (
-    <html lang={baseLocale}>
+    <html lang={baseLocale} suppressHydrationWarning>
       <head>
         {/* Server-only: sets data-theme before first paint; renders nothing on the client. */}
         <ScriptOnce>{themeBootScript}</ScriptOnce>
