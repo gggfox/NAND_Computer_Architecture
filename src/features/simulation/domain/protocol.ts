@@ -11,6 +11,7 @@ const BitSchema = z.union([z.literal(0), z.literal(1)]);
 
 const SignalRefSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("input"), index: IndexSchema }).readonly(),
+  z.object({ kind: z.literal("clock") }).readonly(),
   z.object({ kind: z.literal("nand"), index: IndexSchema }).readonly(),
 ]);
 

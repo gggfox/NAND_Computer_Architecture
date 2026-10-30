@@ -3,6 +3,7 @@ import type { Result } from "~/shared/result";
 
 export type SignalRef =
   | { readonly kind: "input"; readonly index: number }
+  | { readonly kind: "clock" }
   | { readonly kind: "nand"; readonly index: number };
 
 /** The engine's own input format; it knows nothing about projects or chips. */
@@ -12,7 +13,7 @@ export interface NetlistSource {
   readonly outputs: readonly SignalRef[];
 }
 
-/** Signal index layout is `[inputs..., nand outputs...]`. */
+/** Signal index layout is `[inputs..., clock, nand outputs...]`. */
 export interface Netlist {
   readonly inputCount: number;
   readonly nandCount: number;
@@ -38,7 +39,10 @@ const signalIndexer =
     if (ref.kind === "input") {
       return inRange(ref.index, inputCount) ? ref.index : NOT_FOUND;
     }
-    return inRange(ref.index, nandCount) ? inputCount + ref.index : NOT_FOUND;
+    if (ref.kind === "clock") {
+      return inputCount;
+    }
+    return inRange(ref.index, nandCount) ? inputCount + 1 + ref.index : NOT_FOUND;
   };
 
 /** Resolves every ref into a typed array; returns the first out-of-range ref instead, if any. */

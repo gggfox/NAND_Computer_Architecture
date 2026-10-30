@@ -153,4 +153,21 @@ describe("SR latch released from S̄ = R̄ = 0", () => {
     const { result } = releaseLatch(1, { raceHoldProbability: 0 });
     expect(result).toEqual({ stable: false, ticks: 500 });
   });
+
+  test("the clock starts low and setClock drives it", () => {
+    const engine = createEngine(
+      compile({
+        inputCount: 0,
+        nands: [{ a: { kind: "clock" }, b: { kind: "clock" } }],
+        outputs: [{ kind: "nand", index: 0 }],
+      }),
+      1,
+      { raceHoldProbability: 0 },
+    );
+    engine.runUntilStable(10);
+    expect(engine.readOutput(0)).toBe(1);
+    engine.setClock(1);
+    engine.runUntilStable(10);
+    expect(engine.readOutput(0)).toBe(0);
+  });
 });
