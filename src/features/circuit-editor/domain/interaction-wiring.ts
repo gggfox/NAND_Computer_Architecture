@@ -52,7 +52,7 @@ const colorOf = (color: WireColor | undefined): { readonly color?: WireColor } =
   color === undefined ? {} : { color };
 
 /** Arms `end` with its legal targets, worked out once here. */
-const arm = (
+export const arm = (
   state: InteractionState,
   { end, color }: Start,
   context: InteractionContext,

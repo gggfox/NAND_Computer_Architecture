@@ -31,11 +31,16 @@ export type Drag =
       readonly color?: WireColor;
       readonly point: Point;
     }
-  /** Moves interior segment `index` of the wire in bend mode by `offset` world px. */
+  /**
+   * Moves interior segment `index` of the wire in bend mode by `offset` world px along `axis`
+   * (perpendicular to the segment), measured from where the drag started (`origin`).
+   */
   | {
       readonly kind: "segment";
       readonly wireId: WireId;
       readonly index: number;
+      readonly axis: "x" | "y";
+      readonly origin: Point;
       readonly offset: number;
     };
 
@@ -126,7 +131,16 @@ export type InteractionCommand =
   /** Wires the armed pin to the pin in the card. */
   | { readonly type: "connect" }
   | { readonly type: "pickBit"; readonly bit: number }
-  | { readonly type: "setWireColor"; readonly color?: WireColor };
+  | { readonly type: "setWireColor"; readonly color?: WireColor }
+  /** Recolours every selected wire; no colour is the default. */
+  | { readonly type: "recolorSelection"; readonly color?: WireColor }
+  | { readonly type: "rerouteWire"; readonly wireId: WireId }
+  /** Re-routes every automatic wire in the open chip. */
+  | { readonly type: "tidyWires" }
+  /** Arms the wire's source, in its colour, for a new wire. */
+  | { readonly type: "branch"; readonly wireId: WireId }
+  /** Enters bend mode for the wire. */
+  | { readonly type: "editBends"; readonly wireId: WireId };
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }

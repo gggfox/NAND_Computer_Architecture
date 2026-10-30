@@ -127,11 +127,11 @@ describe("long-press and context menu", () => {
     expect(gesture(pan.state, pan.context, empty).state.lassoArmed).toBe(false);
   });
 
-  it("a context menu off any chip just closes overlays", () => {
+  it("a context menu off any chip closes the chip menu for the canvas menu", () => {
     const { context, state } = setup();
     const opened = gesture(state, context, { type: "contextMenu", point: screen(220, 80) }).state;
     const closed = gesture(opened, context, { type: "contextMenu", point: screen(600, 400) });
-    expect(closed.state.menu).toBeUndefined();
+    expect(closed.state.menu).toEqual({ kind: "canvas", screen: screen(600, 400) });
     expect(closed.effects).toEqual([]);
   });
 });

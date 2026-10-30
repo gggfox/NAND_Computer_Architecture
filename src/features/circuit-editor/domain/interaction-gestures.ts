@@ -1,14 +1,13 @@
-import { assertNever } from "~/shared/assert-never";
-
 import { panBy, worldToScreen, zoomAt } from "./camera";
 import type { Gesture } from "./gesture-types";
 import type { Hit } from "./hit-test";
 import { done, selected, withoutOverlays } from "./interaction";
-import type { InteractionContext, InteractionState, Interpreted, Menu } from "./interaction";
+import type { InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { onDragCancel, onDragEnd, onDragMove, onDragStart } from "./interaction-drag";
 import { chipOf, hitAt } from "./interaction-hits";
-import { disarmed, onPinTap } from "./interaction-wiring";
-import { selectInstances, selectWire, toggleInstance, toggleWire } from "./selection";
+import { openCanvasMenu, openWireMenu, withMenu } from "./interaction-menus";
+import { onTap } from "./interaction-tap";
+import { selectInstances } from "./selection";
 
 type Of<Type extends Gesture["type"]> = Extract<Gesture, { type: Type }>;
 type PinHit = Extract<Hit, { type: "pin" }>;
@@ -24,59 +23,6 @@ const withCard = (result: Interpreted, hit: PinHit): Interpreted => {
       { type: "announce", announcement: { type: "pin", instanceId, pin } },
     ],
   };
-};
-
-/** A tap on a chip, a wire or empty canvas, with nothing armed. */
-const plainTap = (
-  state: InteractionState,
-  gesture: Of<"tap">,
-  hit: Exclude<Hit, PinHit>,
-): Interpreted => {
-  const { shift } = gesture.modifiers;
-  switch (hit.type) {
-    case "chip": {
-      const selection = shift
-        ? toggleInstance(state.selection, hit.instanceId)
-        : selectInstances([hit.instanceId]);
-      return selected(state, selection, hit.instanceId);
-    }
-    case "wire": {
-      return selected(
-        state,
-        shift ? toggleWire(state.selection, hit.wireId) : selectWire(hit.wireId),
-      );
-    }
-    case "empty": {
-      return selected(state, selectInstances([]));
-    }
-    default: {
-      return assertNever(hit);
-    }
-  }
-};
-
-/**
- * A tap on a pin arms it or completes a wire. With a pin armed, a tap on empty canvas cancels;
- * on a chip or a wire it cancels and then acts as a tap.
- */
-const onTap = (
-  state: InteractionState,
-  gesture: Of<"tap">,
-  context: InteractionContext,
-): Interpreted => {
-  const hit = hitAt(state, context, gesture.point);
-  if (hit.type === "pin") {
-    return onPinTap(state, hit, context);
-  }
-  if (state.armed === undefined) {
-    return plainTap(state, gesture, hit);
-  }
-  const cancelled = disarmed(withoutOverlays(state));
-  if (hit.type === "empty") {
-    return cancelled;
-  }
-  const tapped = plainTap(cancelled.state, gesture, hit);
-  return { ...tapped, effects: [...cancelled.effects, ...tapped.effects] };
 };
 
 /** A mouse over a pin shows its card; leaving closes it, unless it was pinned open. */
@@ -125,29 +71,30 @@ const onLongPress = (
     });
   }
   if (hit.type === "wire") {
-    return selected(state, selectWire(hit.wireId));
+    return openWireMenu(state, hit.wireId, gesture.point);
   }
+  // Long-press on empty canvas arms the lasso; the canvas menu is a right-click or `Enter`.
   return done({ ...withoutOverlays(state), lassoArmed: state.tool === "select" });
 };
 
-const withMenu = (result: Interpreted, menu: Menu): Interpreted => ({
-  ...result,
-  state: { ...result.state, menu },
-});
-
+/** A right-click: the chip menu on a chip or pin, the wire menu on a wire, else the canvas menu. */
 const onContextMenu = (
   state: InteractionState,
   gesture: Of<"contextMenu">,
   context: InteractionContext,
 ): Interpreted => {
-  const instanceId = chipOf(hitAt(state, context, gesture.point));
-  return instanceId === undefined
-    ? done(withoutOverlays(state))
-    : withMenu(selected(state, selectInstances([instanceId]), instanceId), {
-        kind: "chip",
-        instanceId,
-        screen: gesture.point,
-      });
+  const hit = hitAt(state, context, gesture.point);
+  const instanceId = chipOf(hit);
+  if (instanceId !== undefined) {
+    return withMenu(selected(state, selectInstances([instanceId]), instanceId), {
+      kind: "chip",
+      instanceId,
+      screen: gesture.point,
+    });
+  }
+  return hit.type === "wire"
+    ? openWireMenu(state, hit.wireId, gesture.point)
+    : openCanvasMenu(state, gesture.point);
 };
 
 const onPinch = (state: InteractionState, gesture: Of<"pinch">): Interpreted => ({

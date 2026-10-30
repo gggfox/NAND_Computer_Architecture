@@ -1,14 +1,7 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { describe, expect, it } from "vitest";
 
-import {
-  dispatched,
-  EMPTY,
-  NAND_A,
-  NAND_OUT,
-  PIN_A_OUT,
-  wiring,
-} from "./interaction-wiring.fixtures";
+import { dispatched, NAND_A, NAND_OUT, PIN_A_OUT, wiring } from "./interaction-wiring.fixtures";
 import { command, gesture, gestures, tap, WIRE_ID } from "./interaction.fixtures";
 
 describe("wiring keys", () => {
@@ -70,17 +63,5 @@ describe("drags without their armed pin", () => {
     } as const;
     const released = gesture(drawing, context, { type: "dragEnd", point: NAND_A });
     expect(dispatched(released.effects)).toEqual([]);
-  });
-
-  it("a segment drag (bend mode, Task 7) moves and ends without an edit", () => {
-    const { context, state, circuit } = wiring();
-    const wireId = circuit.wires[0]!.id;
-    const bending = { ...state, drag: { kind: "segment", wireId, index: 1, offset: 0 } } as const;
-    const result = gestures(bending, context, [
-      { type: "dragMove", point: EMPTY },
-      { type: "dragEnd", point: EMPTY },
-    ]);
-    expect(result.state.drag).toBeUndefined();
-    expect(result.effects).toEqual([]);
   });
 });

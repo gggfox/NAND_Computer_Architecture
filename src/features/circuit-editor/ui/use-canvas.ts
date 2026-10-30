@@ -127,6 +127,18 @@ const attachInput = (
   };
 };
 
+/** The canvas command for a key; `Enter` reads whether a pin is armed. */
+const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) =>
+  commandForKey(
+    {
+      key: event.key,
+      shift: event.shiftKey,
+      ctrlOrMeta: event.ctrlKey || event.metaKey,
+      alt: event.altKey,
+    },
+    { armed: session.interaction.store.getState().armed !== undefined },
+  );
+
 /**
  * The host's keyboard map. Only keys aimed at the host itself drive it: the overlays render inside
  * the host, and their keystrokes must stay theirs. Space is tracked here, because the host, not
@@ -143,12 +155,7 @@ const useKeyMap = (session: EditorSession, spaceRef: RefObject<boolean>) => {
       event.preventDefault();
       return;
     }
-    const command = commandForKey({
-      key: event.key,
-      shift: event.shiftKey,
-      ctrlOrMeta: event.ctrlKey || event.metaKey,
-      alt: event.altKey,
-    });
+    const command = commandFor(session, event);
     if (command !== undefined) {
       event.preventDefault();
       session.interaction.store.getState().send({ type: "command", command });

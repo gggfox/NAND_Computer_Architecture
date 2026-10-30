@@ -13,6 +13,8 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
+import { withoutBends } from "./interaction-bends";
+import { MENU_COMMANDS, openMenuByKey } from "./interaction-menus";
 import { cancelWiring, WIRING_COMMANDS } from "./interaction-wiring";
 import {
   addInstances,
@@ -91,8 +93,8 @@ const selectAll = (state: InteractionState, context: InteractionContext): Interp
 };
 
 /**
- * Escape closes the topmost thing: the bit picker, then an armed pin, then an overlay, then an
- * armed lasso, then the selection.
+ * Escape closes the topmost thing: the bit picker, then an armed pin, then an overlay, then bend
+ * mode, then an armed lasso, then the selection.
  */
 const escape = (state: InteractionState): Interpreted => {
   const wiring = cancelWiring(state);
@@ -101,6 +103,9 @@ const escape = (state: InteractionState): Interpreted => {
   }
   if (state.menu !== undefined || state.card !== undefined) {
     return done(withoutOverlays(state));
+  }
+  if (state.bends !== undefined) {
+    return done(withoutBends(state));
   }
   if (state.lassoArmed) {
     return done({ ...state, lassoArmed: false });
@@ -176,7 +181,11 @@ const target = (state: InteractionState): InstanceId | undefined => {
   return more.length === 0 ? only : undefined;
 };
 
+/** The chip menu for a chip selection; with no chip selected, the wire or canvas menu. */
 const openMenu = (state: InteractionState, context: InteractionContext): Interpreted => {
+  if (state.selection.instances.size === 0) {
+    return openMenuByKey(state, context);
+  }
   const instanceId = target(state);
   const rect = instanceId === undefined ? undefined : rectOfChip(context, instanceId);
   if (instanceId === undefined || rect === undefined) {
@@ -263,6 +272,7 @@ const HANDLERS: Handlers = {
     return done(rest);
   },
   ...WIRING_COMMANDS,
+  ...MENU_COMMANDS,
 };
 
 const run = <Type extends InteractionCommand["type"]>(

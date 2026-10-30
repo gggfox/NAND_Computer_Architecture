@@ -48,11 +48,12 @@ const pickThere = (pick: BitPick | undefined, present: Present): boolean =>
   present.instances.has(pick.armed.instanceId) &&
   present.instances.has(pick.target.instanceId);
 
-/** A wire being drawn from a chip that is gone ends with it. */
+/** A wire being drawn from a chip that is gone ends with it, as does a gone wire's bend drag. */
 const dragAfter = (state: InteractionState, present: Present): Partial<InteractionState> => {
   const { drag } = state;
   return drag === undefined ||
-    (drag.kind === "wire" && !present.instances.has(drag.from.instanceId))
+    (drag.kind === "wire" && !present.instances.has(drag.from.instanceId)) ||
+    (drag.kind === "segment" && !present.wires.has(drag.wireId))
     ? {}
     : { drag };
 };
