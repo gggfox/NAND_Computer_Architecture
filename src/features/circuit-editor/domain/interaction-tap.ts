@@ -63,5 +63,9 @@ export const onTap = (
   context: InteractionContext,
 ): Interpreted => {
   const left = tappedInBends(state, gesture.point, context);
-  return left === undefined ? done(state) : tapAt(left, gesture, context);
+  if (left === undefined) {
+    return done(state);
+  }
+  const tapped = tapAt(left.state, gesture, context);
+  return { ...tapped, effects: [...left.effects, ...tapped.effects] };
 };

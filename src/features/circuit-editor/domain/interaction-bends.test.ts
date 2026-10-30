@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import type { Point } from "~/features/projects";
 
+import { moveSegment } from "./bend-geometry";
 import { interact } from "./interact";
 import type { InteractionState } from "./interaction";
-import { moveSegment } from "./interaction-bends";
 import { dispatched } from "./interaction-wiring.fixtures";
 import { NONE, command, drag, gesture, gestures, screen, setup, tap } from "./interaction.fixtures";
 
@@ -18,13 +18,15 @@ const orthogonal = (points: readonly Point[]): boolean =>
     return next === undefined || next.x === point.x || next.y === point.y;
   });
 
+const BENDS_DONE = { type: "announce", announcement: { type: "bends", active: false } };
+
 /** The first demo wire runs (40,20) → (100,20) → (100,60) → (160,60): its handle is at (100,40). */
 const HANDLE = screen(100, 40);
 
 const bending = (tool: "select" | "pan" = "select") => {
   const base = setup(tool);
   const wireId = base.circuit.wires[0]!.id;
-  const state: InteractionState = { ...base.state, bends: wireId };
+  const state: InteractionState = { ...base.state, bends: { wireId, segment: 1 } };
   return { ...base, state, wireId };
 };
 
@@ -47,6 +49,19 @@ describe("moveSegment", () => {
     expect(moveSegment(route, 1, -100)).toEqual([p(20, 0), p(20, 100)]);
     const backwards = [p(200, 0), p(180, 0), p(180, 100), p(0, 100)];
     expect(moveSegment(backwards, 1, 100)).toEqual([p(180, 0), p(180, 100)]);
+  });
+});
+
+describe("moveSegment and the stubs", () => {
+  it("moveSegment never folds a stub back through its pin", () => {
+    // From a right-side pin at (0,0): moving segment 2 up to y = 0 would leave the pin going -x.
+    const folding = [p(0, 0), p(20, 0), p(20, 40), p(-60, 40), p(-60, 100), p(-40, 100)];
+    expect(moveSegment(folding, 2, -40)).toEqual(folding.slice(1, -1));
+    // The same route drawn the other way: now it is the last stub that would fold.
+    const back = folding.toReversed();
+    expect(moveSegment(back, 2, -40)).toEqual(back.slice(1, -1));
+    // A move that keeps both stubs is still allowed.
+    expect(moveSegment(folding, 2, 20)).toEqual([p(20, 0), p(20, 60), p(-60, 60), p(-60, 100)]);
   });
 
   it("moveSegment stops at the last stub's end too", () => {
@@ -92,7 +107,7 @@ describe("bend mode drags", () => {
       },
     ]);
     expect(released.state.drag).toBeUndefined();
-    expect(released.state.bends).toBe(wireId);
+    expect(released.state.bends).toEqual({ wireId, segment: 1 });
   });
 
   it("works in the Pan tool too, and a drag that snaps back edits nothing", () => {
@@ -163,13 +178,13 @@ describe("bend mode drags that edit nothing", () => {
 
 describe("leaving bend mode", () => {
   it("a tap on a handle stays; a tap elsewhere leaves and acts as a tap", () => {
-    const { context, state, wireId, nand } = bending();
+    const { context, state, nand } = bending();
     const kept = gesture(state, context, tap(HANDLE));
     expect(kept.state).toBe(state);
     const left = gesture(state, context, tap(screen(220, 80)));
     expect(left.state.bends).toBeUndefined();
     expect([...left.state.selection.instances]).toEqual([nand.id]);
-    expect(wireId).toBeDefined();
+    expect(left.effects[0]).toEqual(BENDS_DONE);
   });
 
   it("Escape closes a menu first, then leaves bend mode", () => {
@@ -180,6 +195,6 @@ describe("leaving bend mode", () => {
     expect(closed.bends).toBe(state.bends);
     const left = command(closed, context, { type: "escape" });
     expect(left.state.bends).toBeUndefined();
-    expect(left.effects).toEqual([]);
+    expect(left.effects).toEqual([BENDS_DONE]);
   });
 });

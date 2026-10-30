@@ -71,6 +71,12 @@ export interface BitPick {
   readonly screen: Point;
 }
 
+/** Bend mode on `wireId`; `segment` is the interior segment index arrows move (and Task 8 marks). */
+export interface Bends {
+  readonly wireId: WireId;
+  readonly segment: number;
+}
+
 /** A context menu: a chip's, a wire's or the canvas's. */
 export type Menu =
   | { readonly kind: "chip"; readonly instanceId: InstanceId; readonly screen: Point }
@@ -93,8 +99,8 @@ export interface InteractionState {
   /** A pin is armed: the next tap on a legal pin, or a drag's release over one, wires it. */
   readonly armed?: Armed;
   readonly bitPick?: BitPick;
-  /** The wire in bend mode. */
-  readonly bends?: WireId;
+  /** Bend mode: the wire whose segments move, and the interior segment the keys move. */
+  readonly bends?: Bends;
   /** The colour new wires get; missing means the default. */
   readonly wireColor?: WireColor;
   /** The keyboard help dialog is open. */
@@ -162,7 +168,9 @@ export type Announcement =
   | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "wired" }
-  | { readonly type: "disarmed" };
+  | { readonly type: "disarmed" }
+  /** Bend mode began (`active`) or ended. */
+  | { readonly type: "bends"; readonly active: boolean };
 
 export type Effect =
   | { readonly type: "dispatch"; readonly action: EditorAction }

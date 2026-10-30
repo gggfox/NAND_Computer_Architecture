@@ -36,7 +36,7 @@ describe("afterHistory", () => {
     const missing = after({
       armed: { end: { instanceId: gone, pin: 0 }, legal: new Set() },
       bitPick: pickOf({ instanceId: gone, pin: 0 }, { instanceId: nand.id, pin: 0 }),
-      bends: goneWire,
+      bends: { wireId: goneWire, segment: 1 },
       menu: { kind: "wire", wireId: goneWire, screen: AT },
     });
     expect(missing).toEqual(state);
@@ -52,14 +52,14 @@ describe("afterHistory", () => {
     const kept = after({
       armed: { end: { instanceId: pieceA.id, pin: 0 }, color: "teal", legal: new Set(["stale"]) },
       bitPick: pickOf({ instanceId: pieceA.id, pin: 0 }, { instanceId: nand.id, pin: 0 }),
-      bends: wire.id,
+      bends: { wireId: wire.id, segment: 1 },
       menu: { kind: "wire", wireId: wire.id, screen: AT },
     });
     expect(kept.armed?.color).toBe("teal");
     // Recomputed: every input of the demo is driven, so nothing is legal from A.
     expect(kept.armed?.legal).toEqual(new Set());
     expect(kept.bitPick).toBeDefined();
-    expect(kept.bends).toBe(wire.id);
+    expect(kept.bends).toEqual({ wireId: wire.id, segment: 1 });
     expect(kept.menu).toEqual({ kind: "wire", wireId: wire.id, screen: AT });
   });
 

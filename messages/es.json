@@ -94,6 +94,8 @@
   "canvas_armed": "{pin} de {chip} listo para cablear",
   "canvas_wired": "Cable añadido",
   "canvas_disarmed": "Cableado cancelado",
+  "canvas_bends": "Moviendo curvas. ] y [ eligen un tramo, las flechas lo mueven, Escape termina.",
+  "canvas_bends_done": "Curvas listas",
   "tool_switch_label": "Arrastrar en el lienzo vacío",
   "tool_pan": "Desplazar",
   "tool_select": "Seleccionar",

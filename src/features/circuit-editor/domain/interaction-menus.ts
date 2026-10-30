@@ -12,6 +12,7 @@ import type {
   Interpreted,
   Menu,
 } from "./interaction";
+import { enterBends } from "./interaction-bends";
 import { arm } from "./interaction-wiring";
 import { selectWire } from "./selection";
 
@@ -119,11 +120,9 @@ const branch = (state: InteractionState, wireId: WireId, context: InteractionCon
 };
 
 const editBends = (state: InteractionState, wireId: WireId, context: InteractionContext) =>
-  done(
-    wireIn(context, wireId) === undefined
-      ? withoutOverlays(state)
-      : { ...withoutOverlays(state), bends: wireId },
-  );
+  wireIn(context, wireId) === undefined
+    ? done(withoutOverlays(state))
+    : enterBends(state, wireId, context);
 
 type Of<Type extends InteractionCommand["type"]> = Extract<InteractionCommand, { type: Type }>;
 

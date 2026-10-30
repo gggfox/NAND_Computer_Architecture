@@ -1,8 +1,9 @@
 import { assertNever } from "~/shared/assert-never";
 import type { InstanceId, WireId } from "~/shared/ids";
 
+import { bendHandles } from "./bend-geometry";
 import type { Scene } from "./geometry";
-import type { Armed, BitPick, InteractionState, Menu } from "./interaction";
+import type { Armed, Bends, BitPick, InteractionState, Menu } from "./interaction";
 import { prune } from "./selection";
 import { legalTargets } from "./wiring-targets";
 
@@ -48,6 +49,17 @@ const pickThere = (pick: BitPick | undefined, present: Present): boolean =>
   present.instances.has(pick.armed.instanceId) &&
   present.instances.has(pick.target.instanceId);
 
+/** Bend mode outlives an edit while its wire does; a focused segment that is gone goes to the first. */
+const bendsAfter = (bends: Bends | undefined, scene: Scene, present: Present) => {
+  if (bends === undefined || !present.wires.has(bends.wireId)) {
+    return {};
+  }
+  const handles = bendHandles(scene, bends.wireId);
+  const [first] = handles;
+  const kept = first === undefined || handles.some((handle) => handle.index === bends.segment);
+  return { bends: kept ? bends : { ...bends, segment: first.index } };
+};
+
 /** A wire being drawn from a chip that is gone ends with it, as does a gone wire's bend drag. */
 const dragAfter = (state: InteractionState, present: Present): Partial<InteractionState> => {
   const { drag } = state;
@@ -64,7 +76,7 @@ const wiringAfter = (state: InteractionState, scene: Scene, present: Present) =>
   return {
     ...rearmed(armed, scene),
     ...(pickThere(bitPick, present) ? { bitPick } : {}),
-    ...(bends !== undefined && present.wires.has(bends) ? { bends } : {}),
+    ...bendsAfter(bends, scene, present),
   };
 };
 

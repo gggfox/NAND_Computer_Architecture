@@ -13,7 +13,7 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
-import { withoutBends } from "./interaction-bends";
+import { bendKey } from "./interaction-bend-keys";
 import { MENU_COMMANDS, openMenuByKey } from "./interaction-menus";
 import { cancelWiring, WIRING_COMMANDS } from "./interaction-wiring";
 import {
@@ -93,8 +93,8 @@ const selectAll = (state: InteractionState, context: InteractionContext): Interp
 };
 
 /**
- * Escape closes the topmost thing: the bit picker, then an armed pin, then an overlay, then bend
- * mode, then an armed lasso, then the selection.
+ * Escape closes the topmost thing: the bit picker, then an armed pin, then an overlay, then (in
+ * `bendKey`) bend mode, then an armed lasso, then the selection.
  */
 const escape = (state: InteractionState): Interpreted => {
   const wiring = cancelWiring(state);
@@ -103,9 +103,6 @@ const escape = (state: InteractionState): Interpreted => {
   }
   if (state.menu !== undefined || state.card !== undefined) {
     return done(withoutOverlays(state));
-  }
-  if (state.bends !== undefined) {
-    return done(withoutBends(state));
   }
   if (state.lassoArmed) {
     return done({ ...state, lassoArmed: false });
@@ -281,9 +278,9 @@ const run = <Type extends InteractionCommand["type"]>(
   context: InteractionContext,
 ): Interpreted => HANDLERS[command.type](state, command, context);
 
-/** A keyboard or toolbar command on the canvas. */
+/** A keyboard or toolbar command on the canvas; bend mode takes some keys first. */
 export const onCommand = (
   state: InteractionState,
   command: InteractionCommand,
   context: InteractionContext,
-): Interpreted => run(state, command, context);
+): Interpreted => bendKey(state, command, context) ?? run(state, command, context);

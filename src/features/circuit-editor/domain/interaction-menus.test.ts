@@ -189,7 +189,10 @@ describe("re-route, branch and bend commands", () => {
       type: "editBends",
       wireId: wireIds[0]!,
     });
-    expect(result.state.bends).toBe(wireIds[0]);
+    expect(result.state.bends).toEqual({ wireId: wireIds[0], segment: 1 });
+    expect(result.effects).toEqual([
+      { type: "announce", announcement: { type: "bends", active: true } },
+    ]);
     expect(result.state.menu).toBeUndefined();
   });
 });

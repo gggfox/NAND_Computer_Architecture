@@ -68,14 +68,19 @@ const armedText = (
     : m.canvas_armed({ pin: info.name, chip: chipLabel(scene, announcement.instanceId) });
 };
 
-type WiringAnnouncement = Extract<Announcement, { type: "armed" | "wired" | "disarmed" }>;
+type WiringAnnouncement = Extract<Announcement, { type: "armed" | "wired" | "disarmed" | "bends" }>;
+
+const WIRING_TYPES: ReadonlySet<Announcement["type"]> = new Set([
+  "armed",
+  "wired",
+  "disarmed",
+  "bends",
+]);
 
 const isWiring = (announcement: Announcement): announcement is WiringAnnouncement =>
-  announcement.type === "armed" ||
-  announcement.type === "wired" ||
-  announcement.type === "disarmed";
+  WIRING_TYPES.has(announcement.type);
 
-/** The wiring announcements: a pin armed, a wire added, wiring cancelled. */
+/** The wiring announcements: a pin armed, a wire added, wiring cancelled, bend mode on or off. */
 const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnouncement): string => {
   switch (announcement.type) {
     case "armed": {
@@ -86,6 +91,9 @@ const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnoun
     }
     case "disarmed": {
       return m.canvas_disarmed();
+    }
+    case "bends": {
+      return announcement.active ? m.canvas_bends() : m.canvas_bends_done();
     }
     default: {
       return assertNever(announcement);
