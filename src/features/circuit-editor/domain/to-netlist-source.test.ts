@@ -130,6 +130,37 @@ describe("toNetlistSource buses", () => {
   });
 });
 
+const BITS = [0, 1, 2, 3] as const;
+const nibbleNames = (prefix: string): readonly string[] =>
+  BITS.map((bit) => `${prefix}${String(bit)}`);
+const IN_ORDER = { inputCount: NIBBLE, nands: [], outputs: BITS.map((bit) => input(bit)) };
+
+describe("toNetlistSource SPLIT and MERGE bit order", () => {
+  it("SPLIT output k carries bus bit k - 1", () => {
+    const pins = io([["D", NIBBLE]], nibbleNames("Y"));
+    const split = piece({ type: "split", width: NIBBLE });
+    const outs = BITS.map((bit) => {
+      const target = end(pins.piece(`Y${String(bit)}`));
+      return wire(end(split, bit + 1), target);
+    });
+    const wires = [wire(end(pins.piece("D")), end(split, 0), NIBBLE), ...outs];
+    const { project, host } = single({ pins, parts: [split], wires });
+    expect(sourceOf(project, host.id)).toEqual(IN_ORDER);
+  });
+
+  it("MERGE input n becomes bus bit n", () => {
+    const pins = io(nibbleNames("A"), [["Q", NIBBLE]]);
+    const merge = piece({ type: "merge", width: NIBBLE });
+    const ins = BITS.map((bit) => {
+      const from = end(pins.piece(`A${String(bit)}`));
+      return wire(from, end(merge, bit));
+    });
+    const wires = [...ins, wire(end(merge, NIBBLE), end(pins.piece("Q")), NIBBLE)];
+    const { project, host } = single({ pins, parts: [merge], wires });
+    expect(sourceOf(project, host.id)).toEqual(IN_ORDER);
+  });
+});
+
 describe("toNetlistSource bit taps", () => {
   it("bit taps pick one bit", () => {
     const pins = io([["D", NIBBLE]], ["Y"]);
