@@ -28,6 +28,13 @@ export {
   type MigrationChain,
 } from "./domain/migrations";
 export { isHexColor } from "./domain/model";
+export { endpointInfo, type EndpointInfo, type PinRole } from "./domain/pins";
+export {
+  checkConnection,
+  findInvalidWire,
+  type Connection,
+  type ConnectionError,
+} from "./domain/wiring";
 export type {
   BitWidth,
   BusWidth,
