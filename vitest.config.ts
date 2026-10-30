@@ -7,6 +7,9 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     coverage: {
       provider: "v8",
+      // The JSON reports feed the PR coverage comment in CI; reportOnFailure keeps them when a threshold fails.
+      reporter: ["text", "json-summary", "json"],
+      reportOnFailure: true,
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "**/*.test.ts",
