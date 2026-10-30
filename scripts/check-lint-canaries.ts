@@ -2,6 +2,8 @@
  * Proves each lint enforcement still fires. Every canary under tooling/lint-canaries starts with
  * `// expect: <rule-id>` (must be reported with that rule) or `// expect-not: <rule-id>`
  * (an allowed pattern that must NOT be reported with that rule, e.g. shared/ui -> shared).
+ * Every other source file there must be listed in SUPPORT_FILES, so a canary that loses its header
+ * fails the check instead of silently dropping out of it.
  */
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
@@ -24,22 +26,79 @@ const CANARY_DIR = path.join(ROOT, "tooling", "lint-canaries");
 const OXLINT = path.join(ROOT, "node_modules", ".bin", "oxlint");
 const STYLELINT = path.join(ROOT, "node_modules", ".bin", "stylelint");
 const EXPECT_HEADER = /^(?:\/\/|\/\*) (?<mode>expect|expect-not): (?<rule>\S+)/u;
-const SOURCE_FILE = /\.(?:tsx?|css)$/u;
+const SOURCE_FILE = /\.(?:[cm]?[jt]sx?|css)$/u;
+// Imported by canaries but not canaries themselves (paths relative to tooling/lint-canaries, `/`-separated).
+const SUPPORT_FILES: ReadonlySet<string> = new Set([
+  "src/features/b/domain/x.ts",
+  "src/features/b/index.ts",
+  "src/i18n/messages.ts",
+  "src/shared/ui/button.ts",
+  "src/shared/util.ts",
+]);
 const DIAGNOSTIC_CODE = /^(?<plugin>[\w-]+)\((?<rule>[\w-]+)\)$/u;
 // Plugins whose rules are referenced without a prefix in `// expect:` headers.
 const UNPREFIXED_PLUGINS = new Set(["eslint", "local"]);
 
-function findCanaries(): readonly Canary[] {
+interface ScannedFile {
+  readonly relative: string;
+  readonly canary: Canary | undefined;
+}
+
+interface CanaryScan {
+  readonly canaries: readonly Canary[];
+  readonly problems: readonly string[];
+}
+
+// Source files under tooling/lint-canaries, relative and `/`-separated.
+function listSourceFiles(): readonly string[] {
   return readdirSync(CANARY_DIR, { recursive: true, encoding: "utf-8" })
+    .map((relative) => relative.replaceAll("\\", "/"))
     .filter((relative) => SOURCE_FILE.test(relative))
-    .toSorted()
-    .flatMap((relative) => {
-      const file = path.join(CANARY_DIR, relative);
-      const firstLine = readFileSync(file, "utf-8").split("\n", 1)[0] ?? "";
-      const groups = EXPECT_HEADER.exec(firstLine)?.groups;
-      const rule = groups?.["rule"];
-      return rule === undefined ? [] : [{ file, mustReport: groups?.["mode"] === "expect", rule }];
-    });
+    .toSorted();
+}
+
+function readCanary(relative: string): Canary | undefined {
+  const file = path.join(CANARY_DIR, relative);
+  const firstLine = readFileSync(file, "utf-8").split("\n", 1)[0] ?? "";
+  const groups = EXPECT_HEADER.exec(firstLine)?.groups;
+  const rule = groups?.["rule"];
+  return rule === undefined ? undefined : { file, mustReport: groups?.["mode"] === "expect", rule };
+}
+
+// A file is a canary (has a header) or a listed support file (has none); returns what is wrong otherwise.
+function classificationProblem(relative: string, canary: Canary | undefined): string | undefined {
+  const isSupport = SUPPORT_FILES.has(relative);
+  if (canary !== undefined && isSupport) {
+    return `${relative} is listed in SUPPORT_FILES but has an expect header`;
+  }
+  if (canary === undefined && !isSupport) {
+    return `${relative} has no \`// expect:\` / \`// expect-not:\` header`;
+  }
+  return undefined;
+}
+
+// Every source file must be a canary or a listed support file, and every listed support file must exist.
+function findCanaries(): CanaryScan {
+  const relatives = listSourceFiles();
+  const scanned = relatives.map((relative): ScannedFile => ({
+    relative,
+    canary: readCanary(relative),
+  }));
+  const missingSupport = [...SUPPORT_FILES]
+    .filter((support) => !relatives.includes(support))
+    .map((support) => `SUPPORT_FILES lists ${support}, which does not exist`);
+  return {
+    canaries: scanned.flatMap(({ relative, canary }) =>
+      canary === undefined || SUPPORT_FILES.has(relative) ? [] : [canary],
+    ),
+    problems: [
+      ...scanned.flatMap(({ relative, canary }) => {
+        const problem = classificationProblem(relative, canary);
+        return problem === undefined ? [] : [problem];
+      }),
+      ...missingSupport,
+    ],
+  };
 }
 
 // Oxlint reports codes as `plugin(rule)`; turn them into config-style ids (`plugin/rule`).
@@ -141,7 +200,22 @@ function checkCanary({ file, rule, mustReport }: Canary): boolean {
   return passed;
 }
 
+function printProblems(problems: readonly string[]): void {
+  if (problems.length === 0) {
+    return;
+  }
+  console.error(
+    `\n${problems.length} file(s) under tooling/lint-canaries are neither canary nor support file:`,
+  );
+  for (const problem of problems) {
+    console.error(`  ${problem}`);
+  }
+}
+
 function printFailures(failed: readonly Canary[]): void {
+  if (failed.length === 0) {
+    return;
+  }
   console.error(`\n${failed.length} canary file(s) did not lint as expected:`);
   for (const { file, rule, mustReport } of failed) {
     const why = mustReport ? "should be reported with" : "must not be reported with";
@@ -150,12 +224,13 @@ function printFailures(failed: readonly Canary[]): void {
 }
 
 function main(): void {
-  const canaries = findCanaries();
+  const { canaries, problems } = findCanaries();
   const failed = canaries.filter((canary) => !checkCanary(canary));
   if (canaries.length === 0) {
     console.error("No canaries found under tooling/lint-canaries.");
     process.exitCode = 1;
-  } else if (failed.length > 0) {
+  } else if (problems.length > 0 || failed.length > 0) {
+    printProblems(problems);
     printFailures(failed);
     process.exitCode = 1;
   } else {

@@ -1,7 +1,11 @@
-// Local oxlint JS plugin: bans `throw` in domain code (ADR 28, 36).
-// - src/features/simulation/** (except adapters/) and src/features/*/domain/**: no throw at all.
+// Local oxlint JS rule: bans `throw` in domain code (ADR 28, 36).
+// - src/features/simulation/** (except src/features/simulation/adapters/**) and src/features/*/domain/**: no throw at all.
 // - convex/**: only `throw new ConvexError(...)`.
 // - src/shared/assert-never.ts is exempt (the single sanctioned throw).
+// Paths are matched from the repo root (tooling/lint-canaries/ mirrors it), so a directory named
+// `adapters` or `convex` elsewhere in a path can neither exempt a file nor pull it in.
+
+import { projectPath } from "./project-path.js";
 
 /**
  * @typedef {Readonly<{ type: string, name?: string }>} Callee
@@ -15,11 +19,11 @@
  * }>} RuleContext
  */
 
-const SIMULATION = /\/features\/simulation\//u;
-const ADAPTERS = /\/adapters\//u;
-const FEATURE_DOMAIN = /\/features\/[^/]+\/domain\//u;
-const CONVEX = /\/convex\//u;
-const EXEMPT_SUFFIX = "/src/shared/assert-never.ts";
+const SIMULATION = "src/features/simulation/";
+const SIMULATION_ADAPTERS = "src/features/simulation/adapters/";
+const FEATURE_DOMAIN = /^src\/features\/[^/]+\/domain\//u;
+const CONVEX = "convex/";
+const EXEMPT = "src/shared/assert-never.ts";
 
 /**
  * @param {ThrowArgument | null} argument
@@ -48,13 +52,14 @@ const rule = {
    * @returns {Readonly<{ ThrowStatement?: (node: ThrowNode) => void }>}
    */
   create(context) {
-    const filename = (context.physicalFilename ?? context.filename).replaceAll("\\", "/");
-    if (filename.endsWith(EXEMPT_SUFFIX)) {
+    const file = projectPath(context.physicalFilename ?? context.filename);
+    if (file === EXEMPT) {
       return {};
     }
     const isDomain =
-      (SIMULATION.test(filename) && !ADAPTERS.test(filename)) || FEATURE_DOMAIN.test(filename);
-    const isConvex = CONVEX.test(filename);
+      (file.startsWith(SIMULATION) && !file.startsWith(SIMULATION_ADAPTERS)) ||
+      FEATURE_DOMAIN.test(file);
+    const isConvex = file.startsWith(CONVEX);
     if (!isDomain && !isConvex) {
       return {};
     }
@@ -70,9 +75,4 @@ const rule = {
   },
 };
 
-const plugin = {
-  meta: { name: "local" },
-  rules: { "no-throw-in-domain": rule },
-};
-
-export default plugin;
+export default rule;
