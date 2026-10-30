@@ -184,14 +184,6 @@ describe("connectSimulation clock", () => {
     ]);
   });
 
-  it("stores the clamped speed", () => {
-    const { clock, simulation } = setup();
-    clock.setSpeed(5000);
-    expect(simulation.getState().stepsPerSecond).toBe(1000);
-    clock.setSpeed(0);
-    expect(simulation.getState().stepsPerSecond).toBe(0.5);
-  });
-
   it("starts paused at the default speed", () => {
     const { simulation } = setup();
     expect(simulation.getState()).toMatchObject({ clock: 0, running: false, stepsPerSecond: 4 });
@@ -204,6 +196,31 @@ describe("connectSimulation clock", () => {
     editor.getState().dispatch(placeNand(editor));
     editor.getState().undo();
     expect(sent.map((msg) => msg.type)).not.toContain("pause");
+  });
+});
+
+describe("connectSimulation speed", () => {
+  it("stores the clamped speed", () => {
+    const { clock, simulation } = setup();
+    clock.setSpeed(5000);
+    expect(simulation.getState().stepsPerSecond).toBe(1000);
+    clock.setSpeed(0);
+    expect(simulation.getState().stepsPerSecond).toBe(0.5);
+  });
+
+  it("a non-finite speed keeps the current speed", () => {
+    const { clock, simulation, sent } = setup();
+    clock.setSpeed(8);
+    sent.length = 0;
+    for (const speed of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      clock.setSpeed(speed);
+      expect(simulation.getState().stepsPerSecond).toBe(8);
+    }
+    expect(sent).toEqual([
+      { type: "setSpeed", stepsPerSecond: 8 },
+      { type: "setSpeed", stepsPerSecond: 8 },
+      { type: "setSpeed", stepsPerSecond: 8 },
+    ]);
   });
 });
 

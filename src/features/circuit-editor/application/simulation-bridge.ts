@@ -31,7 +31,10 @@ export interface ClockControls {
   readonly play: () => void;
   readonly pause: () => void;
   readonly step: () => void;
-  /** Clamped to the engine's speed range; the clamped value is stored in `stepsPerSecond`. */
+  /**
+   * Clamped to the engine's speed range; the clamped value is stored in `stepsPerSecond`.
+   * A non-finite value keeps the current speed.
+   */
   readonly setSpeed: (stepsPerSecond: number) => void;
 }
 
@@ -54,8 +57,11 @@ export const createSimulationStore = (): SimulationStore =>
     error: NO_ERROR,
   }));
 
-const clampSpeed = (stepsPerSecond: number): number =>
-  Math.min(MAX_STEPS_PER_SECOND, Math.max(MIN_STEPS_PER_SECOND, stepsPerSecond));
+/** Clamps to the engine's range; a non-finite request (NaN, ±Infinity) keeps `current`. */
+const clampSpeed = (stepsPerSecond: number, current: number): number =>
+  Number.isFinite(stepsPerSecond)
+    ? Math.min(MAX_STEPS_PER_SECOND, Math.max(MIN_STEPS_PER_SECOND, stepsPerSecond))
+    : current;
 
 const createClockControls = (simulation: SimulationStore, client: EngineClient): ClockControls => ({
   play: () => {
@@ -68,7 +74,7 @@ const createClockControls = (simulation: SimulationStore, client: EngineClient):
     client.send({ type: "step" });
   },
   setSpeed: (stepsPerSecond) => {
-    const clamped = clampSpeed(stepsPerSecond);
+    const clamped = clampSpeed(stepsPerSecond, simulation.getState().stepsPerSecond);
     client.send({ type: "setSpeed", stepsPerSecond: clamped });
     simulation.setState({ stepsPerSecond: clamped });
   },
