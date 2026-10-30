@@ -97,6 +97,15 @@ interface EngineLink {
   readonly onEvent: (event: EngineEvent) => void;
 }
 
+/** `current` when `next` holds the same values, so output subscribers skip a re-render. */
+const sameOrNew = (
+  current: ReadonlyMap<PinId, number>,
+  next: ReadonlyMap<PinId, number>,
+): ReadonlyMap<PinId, number> =>
+  current.size === next.size && [...next].every(([pinId, value]) => current.get(pinId) === value)
+    ? current
+    : next;
+
 /** Remembers what the engine runs, so reloading an identical netlist is skipped. */
 const createLoadedNetlist = () => {
   // Empty means unknown: no JSON key is empty, so the next netlist always differs.
@@ -177,7 +186,10 @@ const createEngineLink = (simulation: SimulationStore, client: EngineClient): En
         fail(event.error);
       } else if (!invalid) {
         const { clock, running } = event;
-        const outputs = unpackOutputs(layout, event.outputs);
+        const outputs = sameOrNew(
+          simulation.getState().outputs,
+          unpackOutputs(layout, event.outputs),
+        );
         simulation.setState({ outputs, clock, running, error: NO_ERROR });
       }
     },

@@ -72,6 +72,16 @@ describe("connectSimulation inputs and outputs", () => {
     ]);
   });
 
+  it("keeps the outputs Map while the values are equal", () => {
+    const { simulation, reply } = setup();
+    reply({ type: "state", tick: 1, stable: true, outputs: [1], clock: 0, running: true });
+    const first = simulation.getState().outputs;
+    reply({ type: "state", tick: 2, stable: true, outputs: [1], clock: 1, running: true });
+    expect(simulation.getState().outputs).toBe(first);
+    reply({ type: "state", tick: 3, stable: true, outputs: [0], clock: 0, running: true });
+    expect(simulation.getState().outputs).not.toBe(first);
+  });
+
   it("unpacks outputs per pin and mirrors the clock", () => {
     const { editor, simulation, reply } = setup();
     const { pinOut } = pinsOf(editor);
