@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MAX_STEPS_PER_SECOND, MIN_STEPS_PER_SECOND } from "./clock";
 import type { CompileError, NetlistSource } from "./netlist";
 
 /** Generous upper bounds so a hostile message cannot allocate unbounded typed arrays. */
@@ -33,6 +34,15 @@ export const ToEngineSchema = z.discriminatedUnion("type", [
     .readonly(),
   z.object({ type: z.literal("setInput"), index: IndexSchema, value: BitSchema }).readonly(),
   z.object({ type: z.literal("settle"), maxTicks: MaxTicksSchema }).readonly(),
+  z.object({ type: z.literal("play") }).readonly(),
+  z.object({ type: z.literal("pause") }).readonly(),
+  z.object({ type: z.literal("step") }).readonly(),
+  z
+    .object({
+      type: z.literal("setSpeed"),
+      stepsPerSecond: z.number().min(MIN_STEPS_PER_SECOND).max(MAX_STEPS_PER_SECOND),
+    })
+    .readonly(),
 ]);
 export type ToEngine = z.infer<typeof ToEngineSchema>;
 
@@ -52,6 +62,8 @@ export const FromEngineSchema = z.discriminatedUnion("type", [
       tick: IndexSchema,
       stable: z.boolean(),
       outputs: z.array(BitSchema).readonly(),
+      clock: BitSchema,
+      running: z.boolean(),
     })
     .readonly(),
   z.object({ type: z.literal("error"), error: EngineErrorSchema }).readonly(),

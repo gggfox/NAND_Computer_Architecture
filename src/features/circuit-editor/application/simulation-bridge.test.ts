@@ -71,7 +71,7 @@ describe("connectSimulation", () => {
     sent.length = 0;
     editor.getState().setInput(1, 1);
     expect(sent).toEqual([{ type: "setInput", index: 1, value: 1 }]);
-    reply({ type: "state", tick: 3, stable: true, outputs: [1] });
+    reply({ type: "state", tick: 3, stable: true, outputs: [1], clock: 0, running: false });
     expect(simulation.getState()).toMatchObject({ outputs: [1] });
     expect(simulation.getState().error).toBeNull();
   });
@@ -81,7 +81,7 @@ describe("connectSimulation", () => {
     editor.getState().dispatch(placeNand(editor));
     expect(simulation.getState().error?.type).toBe("UnconnectedPin");
     sent.length = 0;
-    reply({ type: "state", tick: 1, stable: true, outputs: [0] });
+    reply({ type: "state", tick: 1, stable: true, outputs: [0], clock: 0, running: false });
     editor.getState().setInput(0, 1);
     expect(simulation.getState()).toMatchObject({ outputs: [] });
     expect(sent).toEqual([]);
@@ -93,7 +93,7 @@ describe("connectSimulation", () => {
     sent.length = 0;
     editor.getState().undo();
     expect(sent[0]?.type).toBe("load");
-    reply({ type: "state", tick: 2, stable: true, outputs: [1] });
+    reply({ type: "state", tick: 2, stable: true, outputs: [1], clock: 0, running: false });
     expect(simulation.getState()).toMatchObject({ outputs: [1] });
     expect(simulation.getState().error).toBeNull();
   });

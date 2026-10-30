@@ -6,6 +6,11 @@ export {
   type WorkerFailure,
 } from "./adapters/engine-client";
 export {
+  DEFAULT_STEPS_PER_SECOND,
+  MAX_STEPS_PER_SECOND,
+  MIN_STEPS_PER_SECOND,
+} from "./domain/clock";
+export {
   createEngine,
   RACE_HOLD_PROBABILITY,
   type Engine,

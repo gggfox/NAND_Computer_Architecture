@@ -153,20 +153,46 @@ describe("SR latch released from S̄ = R̄ = 0", () => {
     const { result } = releaseLatch(1, { raceHoldProbability: 0 });
     expect(result).toEqual({ stable: false, ticks: 500 });
   });
+});
 
+// The clock signal sits right after the inputs: `[inputs..., clock, nands...]`.
+const clockNot = (inputCount: number): Engine =>
+  createEngine(
+    compile({
+      inputCount,
+      nands: [{ a: { kind: "clock" }, b: { kind: "clock" } }],
+      outputs: [{ kind: "nand", index: 0 }],
+    }),
+    1,
+    { raceHoldProbability: 0 },
+  );
+
+describe("clock signal", () => {
   test("the clock starts low and setClock drives it", () => {
-    const engine = createEngine(
-      compile({
-        inputCount: 0,
-        nands: [{ a: { kind: "clock" }, b: { kind: "clock" } }],
-        outputs: [{ kind: "nand", index: 0 }],
-      }),
-      1,
-      { raceHoldProbability: 0 },
-    );
+    const engine = clockNot(0);
     engine.runUntilStable(10);
     expect(engine.readOutput(0)).toBe(1);
     engine.setClock(1);
+    engine.runUntilStable(10);
+    expect(engine.readOutput(0)).toBe(0);
+  });
+
+  test("with inputs present, setClock drives the clock and not an input", () => {
+    const engine = clockNot(2);
+    engine.setInput(0, 1);
+    engine.setInput(1, 1);
+    engine.runUntilStable(10);
+    expect(engine.readOutput(0)).toBe(1);
+    engine.setClock(1);
+    engine.runUntilStable(10);
+    expect(engine.readOutput(0)).toBe(0);
+  });
+
+  test("tick never writes the clock, so a high clock stays high", () => {
+    const engine = clockNot(1);
+    engine.setClock(1);
+    engine.tick();
+    engine.tick();
     engine.runUntilStable(10);
     expect(engine.readOutput(0)).toBe(0);
   });
