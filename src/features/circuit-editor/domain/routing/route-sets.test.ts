@@ -1,10 +1,21 @@
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { assert, describe, expect, it } from "vitest";
 
 import type { Wire } from "~/features/projects";
 import { newInstanceId } from "~/shared/ids";
 
 import { blockedWires, rerouted, routeWire, signalOf, unroutedWires } from "./route";
-import { link, NAND_A, NAND_OUT, nandAt, polylineOf, sceneOf } from "./routing.fixtures";
+import {
+  expectSpaced,
+  link,
+  NAND_A,
+  NAND_B,
+  NAND_OUT,
+  nandAt,
+  polylineOf,
+  sceneOf,
+  withCircuit,
+} from "./routing.fixtures";
 
 const only = (wires: readonly Wire[], index: number): Wire => {
   const found = wires[index];
@@ -49,6 +60,31 @@ describe("routeWire results", () => {
     const wire = link([source, NAND_OUT], [nandAt(400, 0), NAND_A]);
     const dangling = { ...wire, to: { instanceId: newInstanceId(), pin: NAND_A } };
     expect(routeWire(sceneOf([source], [dangling]), dangling, []).ok).toBe(false);
+  });
+});
+
+/** A chip with a wire out and a wire in, both routed, then moved past its sink: both routes are stale. */
+const movedChip = () => {
+  const [chip, sink, source] = [nandAt(200, 0), nandAt(520, 120), nandAt(-120, 160)];
+  const out = link([chip, NAND_OUT], [sink, NAND_A]);
+  const into = link([source, NAND_OUT], [chip, NAND_B]);
+  const before = sceneOf([chip, sink, source], [out, into]);
+  const routed = withCircuit(before, rerouted(before, new Set([out.id, into.id])));
+  const moved = { ...chip, position: { x: 720, y: 40 } };
+  const after = withCircuit(routed, { ...routed.circuit, instances: [moved, sink, source] });
+  return { after, out, into };
+};
+
+describe("rerouted batches", () => {
+  it("routes each batch wire around untouched and already re-routed wires, not stale ones", () => {
+    const { after, out, into } = movedChip();
+    const circuit = rerouted(after, new Set([out.id, into.id]));
+    const [first, second] = [only(circuit.wires, 0), only(circuit.wires, 1)];
+    // The first ignores the second's stale route; the second routes around the first's new one.
+    expect(routeWire(after, first, [])).toEqual({ ok: true, value: first.waypoints });
+    expect(routeWire(after, second, [first])).toEqual({ ok: true, value: second.waypoints });
+    const final = withCircuit(after, circuit);
+    expectSpaced(polylineOf(final, out.id), polylineOf(final, into.id));
   });
 });
 

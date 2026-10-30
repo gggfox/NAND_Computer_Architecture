@@ -140,7 +140,11 @@ const markRoute = (lattice: Lattice, route: CellRoute) => {
   });
 };
 
-/** The wire's own anchors and stub edges are its alone: no chip, no other signal. Both are in the window. */
+/**
+ * A wire's own anchor, stub edge and stub's outer cell are its alone: wires of other signals that
+ * leave or enter the same pin (another colour, another bit) share them unavoidably. The anchor is
+ * also cleared of its chip. Both cells are in the window.
+ */
 const clearStub = (lattice: Lattice, stub: Stub) => {
   const { anchor, heading } = stub;
   const node = nodeAt(lattice, anchor);
@@ -151,6 +155,8 @@ const clearStub = (lattice: Lattice, stub: Stub) => {
   lattice.blocked[node] = 0;
   lattice.nodes[node] = FREE;
   lattice.stops[node] = 0;
+  lattice.nodes[outer] = FREE;
+  lattice.stops[outer] = 0;
   // Pins sit on a chip's left or right side, so a stub is always horizontal.
   lattice.across[Math.min(node, outer)] = FREE;
 };

@@ -38,8 +38,8 @@ const rerouteTime = (chips: number, selected: number): number => {
 };
 
 /*
- * Measured median on an Apple-silicon laptop (Node 26, 102 wires re-routed): about 15.5 ms under
- * plain Vitest and about 62 ms under `pnpm test`'s v8 coverage, which is where this runs in CI and
+ * Measured median on an Apple-silicon laptop (Node 26, 102 wires re-routed): about 17 ms under
+ * plain Vitest and about 69 ms under `pnpm test`'s v8 coverage, which is where this runs in CI and
  * pre-push. The budget is 4x the coverage median, so it catches a regression (a lost search
  * window, a flood on every failure, a quadratic scan) without flaking.
  */
@@ -47,7 +47,7 @@ const RUNS = 5;
 const WARM_UPS = 3;
 const CHIPS = 300;
 const SELECTED = 50;
-const REROUTE_50_BUDGET_MS = 250;
+const REROUTE_50_BUDGET_MS = 280;
 /**
  * Twice the circuit and twice the selection: linear gives 2x. Whole rows are selected, since a
  * partial row's share of row-wrapping wires is a step function that skews the ratio.

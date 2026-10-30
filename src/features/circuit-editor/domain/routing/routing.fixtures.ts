@@ -1,4 +1,6 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+import { expect } from "vitest";
+
 import { EMPTY_CIRCUIT, newChip, piece, projectWith, wire } from "~/features/projects";
 import type { ChipInstance, Circuit, PinKey, Point, Wire } from "~/features/projects";
 
@@ -7,7 +9,7 @@ import { layoutIn, wireRoute } from "../geometry";
 import type { Scene } from "../geometry";
 
 export const NAND_A = 0;
-const NAND_B = 1;
+export const NAND_B = 1;
 export const NAND_OUT = 2;
 
 export const nandAt = (x: number, y: number): ChipInstance => piece({ type: "nand" }, { x, y });
@@ -81,6 +83,28 @@ export const rolesOf = (polyline: readonly Point[]): ReadonlyMap<string, Role> =
     roles.set(key(node), before.x === after.x ? "straight-y" : across);
   });
   return roles;
+};
+
+/**
+ * Different signals: no shared lattice edge, and shared nodes are right-angle crossings. Nodes in
+ * `exempt` (and edges between them) may be shared, such as a stub both wires leave a pin by.
+ */
+export const expectSpaced = (
+  first: readonly Point[],
+  second: readonly Point[],
+  exempt: readonly Point[] = [],
+) => {
+  const skip = new Set(exempt.map((point) => key(point)));
+  const edges = edgesOf(second);
+  const ownEdge = (edge: string) => edge.split("|").every((end) => skip.has(end));
+  expect([...edgesOf(first)].filter((edge) => edges.has(edge) && !ownEdge(edge))).toEqual([]);
+  const roles = rolesOf(second);
+  for (const [node, role] of rolesOf(first)) {
+    const other = roles.get(node);
+    if (other !== undefined && !skip.has(node)) {
+      expect(role === "stop" || other === "stop" || role === other).toBe(false);
+    }
+  }
 };
 
 /** Whether the polyline (less a one-cell stub at each end) enters any chip rect grown by a cell. */

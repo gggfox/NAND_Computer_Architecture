@@ -194,16 +194,18 @@ export const routeWire = (
   );
 
 /**
- * Routes `wireIds` one by one (circuit order), each around every other wire's current route;
- * NoRoute keeps waypoints []. Sets manualWaypoints false. Other wires are untouched.
+ * Routes `wireIds` one by one (circuit order), each around the wires outside the batch and the
+ * batch wires already re-routed; batch wires still waiting are not obstacles, since their stored
+ * routes are stale. NoRoute keeps waypoints []. Sets manualWaypoints false. Other wires are
+ * untouched.
  */
 export const rerouted = (scene: Scene, wireIds: ReadonlySet<WireId>): Circuit => {
-  const context = contextOf(scene, scene.circuit.wires);
+  const untouched = scene.circuit.wires.filter((wire) => !wireIds.has(wire.id));
+  const context = contextOf(scene, untouched);
   const wires = scene.circuit.wires.map((wire) => {
     if (!wireIds.has(wire.id)) {
       return wire;
     }
-    context.routes.delete(wire.id);
     const result = routeIn(context, wire);
     const next: Wire = {
       ...wire,

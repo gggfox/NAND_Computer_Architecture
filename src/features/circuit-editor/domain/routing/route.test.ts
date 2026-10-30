@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { assert, describe, expect, it } from "vitest";
 
 import type { Point } from "~/features/projects";
@@ -8,6 +9,7 @@ import type { Scene } from "../geometry";
 import { rerouted, routeWire } from "./route";
 import {
   edgesOf,
+  expectSpaced,
   entersChips,
   link,
   NAND_A,
@@ -45,17 +47,38 @@ const heading = (from: Point | undefined, to: Point | undefined): string => {
   return from.x === to.x && to.y > from.y ? "+y" : "-y";
 };
 
-/** Different signals: no shared lattice edge; shared nodes are right-angle crossings. */
-const expectSpaced = (first: readonly Point[], second: readonly Point[]) => {
-  const edges = edgesOf(second);
-  expect([...edgesOf(first)].filter((edge) => edges.has(edge))).toEqual([]);
-  const roles = rolesOf(second);
-  for (const [node, role] of rolesOf(first)) {
-    const other = roles.get(node);
-    if (other !== undefined) {
-      expect(role === "stop" || other === "stop" || role === other).toBe(false);
-    }
-  }
+/**
+ * A free route from a NAND to one below-right of it turns at (380, 40). Another signal comes down
+ * to that corner and turns there toward a third chip, so the route must turn elsewhere.
+ */
+const turnScene = () => {
+  const [source, sink, above, beside] = [
+    nandAt(0, 0),
+    nandAt(400, 200),
+    nandAt(0, -160),
+    nandAt(440, 20),
+  ];
+  const corner = { x: 380, y: 40 };
+  const other = {
+    ...link([above, NAND_OUT], [beside, NAND_A]),
+    waypoints: [{ x: 380, y: -120 }, corner],
+    manualWaypoints: true,
+  };
+  const wire = link([source, NAND_OUT], [sink, NAND_A]);
+  return { scene: sceneOf([source, sink, above, beside], [wire, other]), wire, other, corner };
+};
+
+/**
+ * The sink's pin is reached only along a one-cell corridor between two chips, and another signal
+ * (a second driver of the same bus pin) already runs the corridor's length.
+ */
+const corridorScene = () => {
+  const [sink, wallAbove, wallBelow] = [nandAt(400, 0), nandAt(260, -80), nandAt(260, 40)];
+  const [sourceA, sourceB] = [nandAt(0, -20), nandAt(0, 160)];
+  const other = link([sourceA, NAND_OUT], [sink, NAND_A]);
+  const wire = link([sourceB, NAND_OUT], [sink, NAND_A]);
+  const scene = sceneOf([sink, wallAbove, wallBelow, sourceA, sourceB], [other, wire]);
+  return { scene, wire, other };
 };
 
 const expectOnLattice = (polyline: readonly Point[]) => {
@@ -149,14 +172,14 @@ describe("routeWire spacing", () => {
   });
 
   it("does not turn on another signal's node", () => {
-    const [sourceA, sourceB] = [nandAt(0, 0), nandAt(0, 120)];
-    const [sinkA, sinkB] = [nandAt(400, 240), nandAt(400, 120)];
-    const wires = [
-      link([sourceA, NAND_OUT], [sinkA, NAND_A]),
-      link([sourceB, NAND_OUT], [sinkB, NAND_A]),
-    ];
-    const [first, second] = both(polylinesAfter(sceneOf([sourceA, sourceB, sinkA, sinkB], wires)));
-    expectSpaced(first, second);
+    const { scene, wire, other, corner } = turnScene();
+    const free = routeWire(scene, wire, []);
+    expect(free).toEqual({ ok: true, value: [corner, { x: 380, y: 220 }] });
+    const result = routeWire(scene, wire, [other]);
+    assert(result.ok);
+    const mine = wireRoute(scene, { ...wire, waypoints: result.value });
+    expect(mine).not.toContainEqual(corner);
+    expectSpaced(mine, polylineOf(scene, other.id));
   });
 });
 
@@ -187,18 +210,27 @@ describe("routeWire signals", () => {
       expectSpaced(mine, polylineOf(scene, other.id));
     }
   });
+});
 
+describe("routeWire fallbacks", () => {
   it("falls back to sharing an edge when no clean route exists", () => {
-    const [sourceA, sourceB, sink] = [nandAt(0, -120), nandAt(0, 120), nandAt(400, 20)];
-    const wires = [
-      link([sourceA, NAND_OUT], [sink, NAND_A]),
-      {
-        ...link([sourceB, NAND_OUT], [sink, NAND_A]),
-        to: { instanceId: sink.id, pin: NAND_A, bit: 0 },
-      },
-    ];
-    const [first, second] = both(polylinesAfter(sceneOf([sourceA, sourceB, sink], wires)));
-    expect(heading(first.at(-2), first.at(-1))).toBe("+x");
-    expect(heading(second.at(-2), second.at(-1))).toBe("+x");
+    const { scene, wire, other } = corridorScene();
+    const result = routeWire(scene, wire, [other]);
+    assert(result.ok);
+    expect(result.value.length).toBeGreaterThan(0);
+    const mine = wireRoute(scene, { ...wire, waypoints: result.value });
+    const theirs = edgesOf(polylineOf(scene, other.id));
+    expect([...edgesOf(mine)].filter((edge) => theirs.has(edge)).length).toBeGreaterThan(1);
+    expect(heading(mine.at(-2), mine.at(-1))).toBe("+x");
+  });
+
+  it("gives wires of different colours from one pin their own paths past the shared stub", () => {
+    const [source, upper, lower] = [nandAt(0, 0), nandAt(400, -120), nandAt(400, 120)];
+    const red = { ...link([source, NAND_OUT], [upper, NAND_A]), color: "red" };
+    const blue = { ...link([source, NAND_OUT], [lower, NAND_A]), color: "blue" };
+    const [first, second] = both(polylinesAfter(sceneOf([source, upper, lower], [red, blue])));
+    const [anchor] = first;
+    assert(anchor !== undefined);
+    expectSpaced(first, second, [anchor, { ...anchor, x: anchor.x + PIN_CELL }]);
   });
 });
