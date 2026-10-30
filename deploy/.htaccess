@@ -1,0 +1,10 @@
+# Hostinger / Apache. Place in the web root next to the contents of dist/client.
+# Unknown paths get the shell with status 200. Existing files (sw.js, manifest.webmanifest,
+# assets) are served as-is because FallbackResource only applies to missing files.
+FallbackResource /_shell.html
+
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache"
+  </IfModule>
+</Files>

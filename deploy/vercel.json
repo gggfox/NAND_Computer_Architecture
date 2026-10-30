@@ -1,0 +1,12 @@
+{
+  "outputDirectory": "dist/client",
+  "rewrites": [
+    { "source": "/((?!sw\\.js|manifest\\.webmanifest|assets/).*)", "destination": "/_shell.html" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
+}
