@@ -61,10 +61,14 @@ describe("pairwise legibility", () => {
   });
 
   test.each(themeIds)(
-    "%s: chip labels on signal-high (chip-text) and signal-low (chip-text-low) bodies >= 4.5",
+    "%s: chip labels on signal-high and unknown (chip-text) and signal-low (chip-text-low) bodies >= 4.5",
     (id) => {
       const tokens = themes[id];
       expect(contrastRatio(tokens.colorChipText, tokens.colorSignalHigh)).toBeGreaterThanOrEqual(
+        MIN_TEXT,
+      );
+      // An unknown level fills the body with the wire colour and labels it in chip-text.
+      expect(contrastRatio(tokens.colorChipText, tokens.colorWire)).toBeGreaterThanOrEqual(
         MIN_TEXT,
       );
       expect(contrastRatio(tokens.colorChipTextLow, tokens.colorSignalLow)).toBeGreaterThanOrEqual(
