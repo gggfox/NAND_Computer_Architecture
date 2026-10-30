@@ -102,6 +102,7 @@ const walkOf = (project: Project): Walk => ({
   nands: [],
   nandIndex: new Map(),
   frames: new Map(),
+  checked: new Map(),
 });
 
 const outputFrom = (source: ChipInstance) => {

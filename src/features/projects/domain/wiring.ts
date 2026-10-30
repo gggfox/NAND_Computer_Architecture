@@ -1,9 +1,10 @@
 /* oxlint-disable typescript/prefer-readonly-parameter-types -- projects, circuits and pin refs carry branded ids (mutable object types); none is mutated */
+import { groupBy } from "~/shared/group-by";
 import type { InstanceId, WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
-import type { BitWidth, Circuit, PinKey, PinRef, Project, Wire } from "./model";
+import type { BitWidth, ChipInstance, Circuit, PinKey, PinRef, Project, Wire } from "./model";
 import { endpointInfo } from "./pins";
 import type { EndpointInfo } from "./pins";
 
@@ -26,12 +27,25 @@ interface Resolved {
   readonly info: EndpointInfo;
 }
 
+/** Finds a placed instance by id; `findInvalidWire` passes an indexed one. */
+type Lookup = (instanceId: InstanceId) => ChipInstance | undefined;
+
+interface Scope {
+  readonly project: Project;
+  readonly circuit: Circuit;
+  readonly lookup: Lookup;
+}
+
+const scanLookup =
+  (circuit: Circuit): Lookup =>
+  (instanceId) =>
+    circuit.instances.find((item) => item.id === instanceId);
+
 const resolve = (
-  project: Project,
-  circuit: Circuit,
+  { project, circuit, lookup }: Scope,
   ref: PinRef,
 ): Result<Resolved, ConnectionError> => {
-  const instance = circuit.instances.find((item) => item.id === ref.instanceId);
+  const instance = lookup(ref.instanceId);
   const info = instance && endpointInfo(project, circuit, instance, ref.pin);
   return info === undefined
     ? err({ type: "InvalidEndpoint", instanceId: ref.instanceId, pin: ref.pin })
@@ -64,12 +78,11 @@ const drivenAlready = (circuit: Circuit, sink: PinRef, ignoreWireId: WireId | un
   );
 
 const resolveBoth = (
-  project: Project,
-  circuit: Circuit,
+  scope: Scope,
   [first, second]: readonly [PinRef, PinRef],
 ): Result<readonly [Resolved, Resolved], ConnectionError> => {
-  const left = resolve(project, circuit, first);
-  const right = resolve(project, circuit, second);
+  const left = resolve(scope, first);
+  const right = resolve(scope, second);
   if (!left.ok) {
     return left;
   }
@@ -97,6 +110,21 @@ const checkEnds = (source: Resolved, sink: Resolved): Result<BitWidth, Connectio
   return from === to ? ok(from) : err({ type: "WidthMismatch", from, to });
 };
 
+/** Every check but "is the sink already driven". */
+const connectionOf = (
+  scope: Scope,
+  ends: readonly [PinRef, PinRef],
+): Result<Connection, ConnectionError> => {
+  const resolved = resolveBoth(scope, ends);
+  const oriented = resolved.ok ? orient(...resolved.value) : resolved;
+  if (!oriented.ok) {
+    return oriented;
+  }
+  const [source, sink] = oriented.value;
+  const width = checkEnds(source, sink);
+  return width.ok ? ok({ from: source.ref, to: sink.ref, bitWidth: width.value }) : width;
+};
+
 /** Validates joining two pins; the result's `from` is always the source end. */
 // oxlint-disable-next-line eslint/max-params -- project, circuit, both ends and the ignored wire are the specified interface
 export const checkConnection = (
@@ -106,19 +134,17 @@ export const checkConnection = (
   second: PinRef,
   ignoreWireId?: WireId,
 ): Result<Connection, ConnectionError> => {
-  const ends = resolveBoth(project, circuit, [first, second]);
-  const oriented = ends.ok ? orient(...ends.value) : ends;
-  if (!oriented.ok) {
-    return oriented;
+  const connection = connectionOf({ project, circuit, lookup: scanLookup(circuit) }, [
+    first,
+    second,
+  ]);
+  if (!connection.ok) {
+    return connection;
   }
-  const [source, sink] = oriented.value;
-  const width = checkEnds(source, sink);
-  if (!width.ok) {
-    return width;
-  }
-  return drivenAlready(circuit, sink.ref, ignoreWireId)
-    ? err({ type: "InputAlreadyDriven", instanceId: sink.ref.instanceId })
-    : ok({ from: source.ref, to: sink.ref, bitWidth: width.value });
+  const sink = connection.value.to;
+  return drivenAlready(circuit, sink, ignoreWireId)
+    ? err({ type: "InputAlreadyDriven", instanceId: sink.instanceId })
+    : connection;
 };
 
 const refsEqual = (first: PinRef, second: PinRef): boolean =>
@@ -129,9 +155,22 @@ const matches = (stored: Wire, connection: Connection): boolean =>
   refsEqual(connection.to, stored.to) &&
   connection.bitWidth === stored.bitWidth;
 
-/** The first stored wire that no longer passes `checkConnection` as stored. */
-export const findInvalidWire = (project: Project, circuit: Circuit): Wire | undefined =>
-  circuit.wires.find((item) => {
-    const result = checkConnection(project, circuit, item.from, item.to, item.id);
-    return !result.ok || !matches(item, result.value);
+const sinkKey = (ref: PinRef): string => `${ref.instanceId}:${String(ref.pin)}`;
+
+/**
+ * The first stored wire that no longer passes `checkConnection` as stored. Linear in the circuit:
+ * instances are looked up by id and the single-driver check only compares wires into the same pin.
+ */
+export const findInvalidWire = (project: Project, circuit: Circuit): Wire | undefined => {
+  const instances = new Map(circuit.instances.map((item) => [item.id, item]));
+  const scope: Scope = { project, circuit, lookup: (instanceId) => instances.get(instanceId) };
+  const sinks = groupBy(circuit.wires, (item) => sinkKey(item.to));
+  return circuit.wires.find((item) => {
+    const result = connectionOf(scope, [item.from, item.to]);
+    if (!result.ok || !matches(item, result.value)) {
+      return true;
+    }
+    const rivals = sinks.get(sinkKey(item.to)) ?? [];
+    return rivals.some((other) => other.id !== item.id && overlaps(other.to, item.to));
   });
+};
