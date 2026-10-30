@@ -1,18 +1,27 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance, Circuit, Point, Project } from "~/features/projects";
-import type { PinId } from "~/shared/ids";
+import type { Circuit, Point, Project } from "~/features/projects";
+import type { InstanceId } from "~/shared/ids";
 
-import { GRID, partOf, rectOf, wireRoute } from "../domain/geometry";
-import type { Rect, Size } from "../domain/geometry";
-import { partName } from "../domain/messages";
-import { instanceLevel, wireDash, wireLevel } from "../domain/signals";
-import type { KnownLevels, Level } from "../domain/signals";
-import type { EditorSearch } from "../domain/view-search";
+import { SCREEN_PAD, visibleRect } from "../domain/camera";
+import type { Camera } from "../domain/camera";
+import { createLayoutCache, GRID } from "../domain/chip-layout";
+import type { LayoutCache, Size } from "../domain/chip-layout";
+import type { KnownLevels } from "../domain/signals";
+import { drawOverlays, drawWireHalos } from "./draw-overlays";
+import type { OverlayView } from "./draw-overlays";
+import { drawChips, drawWires } from "./draw-parts";
+import { fitBackingStore, readPalette } from "./frame";
+import type { Frame, Palette, Viewport } from "./frame";
+import { createStaticLayer } from "./static-layer";
+import type { StaticLayer } from "./static-layer";
+import { watchEnvironment } from "./watch-environment";
 
 export interface RenderState extends KnownLevels {
+  /** The interaction layer: selection, hover, marquee, and the drag preview's positions. */
+  readonly overlay?: OverlayView & { readonly positions?: ReadonlyMap<InstanceId, Point> };
   readonly project: Project;
   readonly circuit: Circuit;
-  readonly view: EditorSearch;
+  readonly view: Camera;
 }
 
 export interface CanvasRenderer {
@@ -22,62 +31,17 @@ export interface CanvasRenderer {
   readonly invalidate: () => void;
 }
 
-const TOKENS = [
-  "background",
-  "surface",
-  "text",
-  "grid",
-  "wire",
-  "signal-high",
-  "signal-low",
-  "chip-nand",
-  "chip-text",
-  "chip-text-low",
-] as const;
-type Token = (typeof TOKENS)[number];
-type Palette = Readonly<Record<Token, string>>;
-
-/** Theme tokens are CSS custom properties on <html> (ADR 10); the canvas reads the same values. */
-const readPalette = (): Palette => {
-  const style = getComputedStyle(document.documentElement);
-  const entries = TOKENS.map((token) => [token, style.getPropertyValue(`--color-${token}`).trim()]);
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- built from the exhaustive TOKENS list above
-  return Object.fromEntries(entries) as Palette;
-};
-
-/** Screen padding (CSS px) so chips at world (0, 0) are not glued to the canvas edge. */
-const PAD = 48;
-const WIRE_WIDTH = 3;
-const CHIP_RADIUS = 6;
-const LABEL_GAP = 8;
-const HALF = 0.5;
-const FONT = "600 14px system-ui, sans-serif";
-const CORNER = 4;
-/** Shown on an input or output body before the engine has reported a level. */
-const UNKNOWN_LEVEL = "?";
-
-interface Frame {
-  readonly ctx: CanvasRenderingContext2D;
-  readonly palette: Palette;
-  readonly known: KnownLevels;
-  readonly project: Project;
-  readonly circuit: Circuit;
-}
-
-const levelColor = (palette: Palette, level: Level | undefined): string => {
-  if (level === undefined) {
-    return palette.wire;
-  }
-  return level === 1 ? palette["signal-high"] : palette["signal-low"];
-};
-
 const GRID_DOT = 2;
+/** Below this many screen pixels between dots, only every fourth grid line gets dots. */
+const MIN_DOT_SPACING = 8;
+const SPARSE_GRID = 4;
 
-const drawGrid = (frame: Frame, viewport: Size, view: EditorSearch): void => {
+const drawGrid = (frame: Frame, viewport: Size, view: Camera): void => {
   const { ctx, palette } = frame;
-  const step = GRID * view.zoom;
-  const offsetX = (PAD - view.x * view.zoom) % step;
-  const offsetY = (PAD - view.y * view.zoom) % step;
+  const dense = GRID * view.zoom;
+  const step = dense < MIN_DOT_SPACING ? dense * SPARSE_GRID : dense;
+  const offsetX = (SCREEN_PAD - view.x * view.zoom) % step;
+  const offsetY = (SCREEN_PAD - view.y * view.zoom) % step;
   ctx.fillStyle = palette.grid;
   for (let x = offsetX; x < viewport.width; x += step) {
     for (let y = offsetY; y < viewport.height; y += step) {
@@ -86,165 +50,111 @@ const drawGrid = (frame: Frame, viewport: Size, view: EditorSearch): void => {
   }
 };
 
-const drawPolyline = (ctx: CanvasRenderingContext2D, points: readonly Point[]): void => {
-  ctx.beginPath();
-  for (const [index, point] of points.entries()) {
-    if (index === 0) {
-      ctx.moveTo(point.x, point.y);
-    } else {
-      ctx.lineTo(point.x, point.y);
-    }
-  }
-  ctx.stroke();
-};
-
-const drawWires = (frame: Frame): void => {
-  const { ctx, circuit } = frame;
-  ctx.lineWidth = WIRE_WIDTH;
-  ctx.lineJoin = "round";
-  for (const wire of circuit.wires) {
-    const level = wireLevel(circuit, frame.known, wire);
-    ctx.strokeStyle = levelColor(frame.palette, level);
-    ctx.setLineDash(wireDash(level));
-    drawPolyline(ctx, wireRoute(circuit, wire));
-  }
-  ctx.setLineDash(wireDash());
-};
-
-const centerText = (ctx: CanvasRenderingContext2D, text: string, rect: Rect): void => {
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, rect.x + rect.width * HALF, rect.y + rect.height * HALF);
-};
-
-interface BodyStyle {
-  readonly fill: string;
-  readonly radius: number;
+interface Layers {
+  readonly view: Camera;
+  readonly overlay: OverlayView;
 }
 
-const drawBody = (frame: Frame, rect: Rect, style: BodyStyle): void => {
-  const { ctx } = frame;
-  ctx.fillStyle = style.fill;
-  ctx.strokeStyle = frame.palette.text;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(rect.x, rect.y, rect.width, rect.height, style.radius);
-  ctx.fill();
-  ctx.stroke();
-};
-
-/** An input is named A, B, ... by its position among the input pins in Pins-panel order. */
-const drawInputName = (frame: Frame, rect: Rect, pinId: PinId): void => {
-  const { ctx, circuit } = frame;
-  const index = circuit.pins
-    .filter((pin) => pin.direction === "input")
-    .findIndex((pin) => pin.id === pinId);
-  ctx.fillStyle = frame.palette.text;
-  ctx.textAlign = "right";
-  const letter = String.fromCodePoint("A".codePointAt(0)! + index);
-  ctx.fillText(letter, rect.x - LABEL_GAP, rect.y + rect.height * HALF);
-};
-
-const bodyStyle = (palette: Palette, isPart: boolean, level: Level | undefined): BodyStyle =>
-  isPart
-    ? { fill: palette["chip-nand"], radius: CORNER }
-    : { fill: levelColor(palette, level), radius: CHIP_RADIUS };
-
-const chipText = (frame: Frame, instance: ChipInstance, level: Level | undefined): string => {
-  if (instance.kind.type !== "pin") {
-    return partName(frame.project, frame.circuit, instance.kind);
-  }
-  return level === undefined ? UNKNOWN_LEVEL : String(level);
-};
-
-const drawChip = (frame: Frame, instance: ChipInstance): void => {
-  const { ctx, palette } = frame;
-  const rect = rectOf(instance);
-  const { kind } = instance;
-  const level = instanceLevel(frame.circuit, frame.known, instance);
-  drawBody(frame, rect, bodyStyle(palette, kind.type !== "pin", level));
-  ctx.font = FONT;
-  ctx.fillStyle = palette[kind.type === "pin" && level === 0 ? "chip-text-low" : "chip-text"];
-  centerText(ctx, chipText(frame, instance, level), rect);
-  if (kind.type === "pin" && partOf(frame.circuit, instance) === "input") {
-    drawInputName(frame, rect, kind.pinId);
-  }
-};
-
-const drawChips = (frame: Frame): void => {
-  for (const instance of frame.circuit.instances) {
-    drawChip(frame, instance);
-  }
-};
-
-interface Viewport extends Size {
-  readonly dpr: number;
-}
-
-/** Matches the backing store to the element's CSS size times the device pixel ratio. */
-const fitBackingStore = (canvas: HTMLCanvasElement): Viewport => {
-  const dpr = globalThis.devicePixelRatio || 1;
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const backingWidth = Math.round(width * dpr);
-  const backingHeight = Math.round(height * dpr);
-  if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
-    canvas.width = backingWidth;
-    canvas.height = backingHeight;
-  }
-  return { width, height, dpr };
-};
-
-const drawScene = (frame: Frame, viewport: Viewport, view: EditorSearch): void => {
+/** Clears to the background and draws the grid, in screen space. */
+const drawBackdrop = (frame: Frame, viewport: Viewport, view: Camera): void => {
   const { ctx, palette } = frame;
   const { dpr } = viewport;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = palette.background;
   ctx.fillRect(0, 0, viewport.width, viewport.height);
   drawGrid(frame, viewport, view);
+};
+
+/** Switches to world coordinates for the camera. */
+const toWorld = (ctx: CanvasRenderingContext2D, viewport: Viewport, view: Camera): void => {
+  const { dpr } = viewport;
   const scale = dpr * view.zoom;
   ctx.setTransform(
     scale,
     0,
     0,
     scale,
-    (PAD - view.x * view.zoom) * dpr,
-    (PAD - view.y * view.zoom) * dpr,
+    (SCREEN_PAD - view.x * view.zoom) * dpr,
+    (SCREEN_PAD - view.y * view.zoom) * dpr,
   );
+};
+
+const drawScene = (frame: Frame, viewport: Viewport, { view, overlay }: Layers): void => {
+  drawBackdrop(frame, viewport, view);
+  toWorld(frame.ctx, viewport, view);
+  drawWireHalos(frame, overlay);
   drawWires(frame);
   drawChips(frame);
+  drawOverlays(frame, overlay, view.zoom);
+};
+
+interface DragLayers extends Layers {
+  readonly cached: StaticLayer;
+}
+
+/** The cached layer of what stays put, painted when its key changed. */
+const stillLayer = (
+  frame: Frame,
+  viewport: Viewport,
+  { view, cached, moved }: DragLayers & { readonly moved: ReadonlySet<InstanceId> },
+): HTMLCanvasElement | undefined => {
+  const { ctx, palette, known, project, circuit } = frame;
+  const key = { ...known, project, circuit, view, viewport, palette, moved };
+  return cached.get(key, ctx.canvas, (layerCtx) => {
+    const still = { ...frame, ctx: layerCtx, part: { moved, drawMoved: false } };
+    drawScene(still, viewport, { view, overlay: {} });
+  });
+};
+
+/** The moved chips, the wires touching them and the overlays, over the still layer. */
+const drawMoving = (moving: Frame, viewport: Viewport, { view, overlay }: Layers): void => {
+  toWorld(moving.ctx, viewport, view);
+  drawWireHalos(moving, overlay);
+  drawWires(moving);
+  drawChips(moving);
+  drawOverlays(moving, overlay, view.zoom);
 };
 
 /**
- * Calls `onChange` on element resize and device-pixel-ratio change, and `onTheme` when <html>'s
- * `data-theme` changes. Returns the function that stops watching.
+ * A drag frame: the parts that stay put come from the cached layer (painted once per drag, or
+ * when the camera, levels, theme or size change); only the moved chips, the wires touching them
+ * and the overlays are drawn again.
  */
-const watchEnvironment = (
-  canvas: HTMLCanvasElement,
-  onChange: () => void,
-  onTheme: () => void,
-): (() => void) => {
-  const themeObserver = new MutationObserver(onTheme);
-  themeObserver.observe(document.documentElement, { attributeFilter: ["data-theme"] });
-  const resizeObserver = new ResizeObserver(onChange);
-  resizeObserver.observe(canvas);
-  // A query for the current ratio fires once when the ratio changes (browser zoom, another screen).
-  let ratioQuery: MediaQueryList | undefined = undefined;
-  const watchRatio = (): void => {
-    ratioQuery?.removeEventListener("change", onRatio);
-    ratioQuery = matchMedia(`(resolution: ${String(globalThis.devicePixelRatio || 1)}dppx)`);
-    ratioQuery.addEventListener("change", onRatio);
-  };
-  function onRatio(): void {
-    watchRatio();
-    onChange();
+const drawDragScene = (frame: Frame, viewport: Viewport, layers: DragLayers): void => {
+  const moved = new Set(frame.positions?.keys());
+  const layer = stillLayer(frame, viewport, { ...layers, moved });
+  if (layer === undefined) {
+    drawScene(frame, viewport, layers);
+    return;
   }
-  watchRatio();
-  return () => {
-    themeObserver.disconnect();
-    resizeObserver.disconnect();
-    ratioQuery?.removeEventListener("change", onRatio);
-  };
+  frame.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  frame.ctx.drawImage(layer, 0, 0);
+  drawMoving({ ...frame, part: { moved, drawMoved: true } }, viewport, layers);
+};
+
+interface Painter {
+  readonly canvas: HTMLCanvasElement;
+  readonly ctx: CanvasRenderingContext2D;
+  readonly palette: Palette;
+  readonly layout: LayoutCache;
+  readonly cached: StaticLayer;
+}
+
+/** One frame of `state`: the whole scene, or a drag frame over the cached still layer. */
+const paint = (painter: Painter, state: RenderState): void => {
+  const { canvas, ctx, palette, layout, cached } = painter;
+  const viewport = fitBackingStore(canvas);
+  const { project, circuit, view, overlay = {} } = state;
+  const { positions = new Map<InstanceId, Point>() } = overlay;
+  // The world rect on screen, so off-screen chips and wires are skipped.
+  const visible = visibleRect(view, viewport);
+  const frame = { ctx, palette, known: state, project, circuit, layout, positions, visible };
+  if (positions.size === 0) {
+    cached.clear();
+    drawScene(frame, viewport, { view, overlay });
+  } else {
+    drawDragScene(frame, viewport, { view, overlay, cached });
+  }
 };
 
 /**
@@ -255,21 +165,18 @@ const watchEnvironment = (
 export const createCanvasRenderer = (
   canvas: HTMLCanvasElement,
   read: () => RenderState,
+  layout: LayoutCache = createLayoutCache(),
 ): CanvasRenderer => {
   const ctx = canvas.getContext("2d");
   let palette = readPalette();
   let frameId: number | undefined = undefined;
   let unwatch: (() => void) | undefined = undefined;
+  const cached = createStaticLayer();
 
   const draw = (): void => {
     frameId = undefined;
-    const state = read();
     if (ctx !== null) {
-      drawScene(
-        { ctx, palette, known: state, project: state.project, circuit: state.circuit },
-        fitBackingStore(canvas),
-        state.view,
-      );
+      paint({ canvas, ctx, palette, layout, cached }, read());
     }
   };
   const invalidate = (): void => {

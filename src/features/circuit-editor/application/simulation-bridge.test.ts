@@ -3,6 +3,8 @@ import { assert, describe, expect, it } from "vitest";
 import { createDemoProject, piece, wire } from "~/features/projects";
 import type { Project } from "~/features/projects";
 
+import { pinLevelKey } from "../domain/signals";
+import { openCircuit } from "./editor-store";
 import { pinsOf, placeNand, setup } from "./simulation-bridge.fixtures";
 
 /** The demo with its NAND's `b` input fed by a clock instead of input B. */
@@ -89,6 +91,49 @@ describe("connectSimulation inputs and outputs", () => {
     expect(simulation.getState().outputs.get(pinOut.id)).toBe(1);
     expect(simulation.getState()).toMatchObject({ clock: 1, running: true });
     expect(simulation.getState().error).toBeNull();
+  });
+});
+
+/** A demo reply: NAND output low, inputs A and B high. */
+const probedState = (tick: number) =>
+  ({ type: "state", tick, stable: true, outputs: [0, 1, 1], clock: 0, running: false }) as const;
+
+const nandOf = (editor: ReturnType<typeof setup>["editor"]) => {
+  const nand = openCircuit(editor.getState()).instances.find((item) => item.kind.type === "nand");
+  assert(nand !== undefined);
+  return nand;
+};
+
+describe("connectSimulation probes", () => {
+  it("loads every probed signal once, after the open chip's outputs", () => {
+    const [load] = setup().sent;
+    assert(load?.type === "load");
+    expect(load.source.outputs).toEqual([
+      { kind: "nand", index: 0 },
+      { kind: "input", index: 0 },
+      { kind: "input", index: 1 },
+    ]);
+  });
+
+  it("reports pin levels and keeps their Map while the values are equal", () => {
+    const { editor, simulation, reply } = setup();
+    const nand = nandOf(editor);
+    reply(probedState(1));
+    const { levels } = simulation.getState();
+    expect(levels.get(pinLevelKey(nand.id, 0))).toBe(1);
+    expect(levels.get(pinLevelKey(nand.id, 2))).toBe(0);
+    reply(probedState(2));
+    expect(simulation.getState().levels).toBe(levels);
+  });
+
+  it("forgets pin levels while the circuit cannot be compiled", () => {
+    const { editor, simulation, reply } = setup();
+    reply(probedState(1));
+    expect(simulation.getState().levels.size).toBeGreaterThan(0);
+    const wireId = openCircuit(editor.getState()).wires[0]?.id;
+    assert(wireId !== undefined);
+    editor.getState().dispatch({ type: "removeWire", chipId: editor.getState().chipId, wireId });
+    expect(simulation.getState().levels.size).toBe(0);
   });
 });
 

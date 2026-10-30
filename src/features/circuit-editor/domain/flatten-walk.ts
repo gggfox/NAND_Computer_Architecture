@@ -1,8 +1,10 @@
 import { findChip, findInvalidWire } from "~/features/projects";
-import type { ChipInstance, Circuit, PinKey, Project } from "~/features/projects";
+import type { ChipInstance, Circuit, PinKey, Project, Wire } from "~/features/projects";
 import type { ChipId, InstanceId, WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
+
+import { indexOf } from "./flatten-index";
 
 /** `path` lists the custom-instance ids from the open chip down to the failing circuit. */
 export type NetlistSourceError =
@@ -47,15 +49,43 @@ export interface PinBit {
 export interface Walk {
   readonly project: Project;
   readonly nands: { readonly frame: Frame; readonly instanceId: InstanceId }[];
-  readonly nandIndex: Map<string, number>;
-  readonly frames: Map<string, Frame>;
+  readonly nandIndex: PerFrame<InstanceId, number>;
+  /** The frame each custom instance expands to. */
+  readonly frames: PerFrame<InstanceId, Frame>;
+  /** `findInvalidWire` per circuit: a saved version is checked once, however often it is placed. */
+  readonly checked: Map<Circuit, Wire | undefined>;
 }
 
-export const keyOf = (path: readonly InstanceId[], instanceId: InstanceId): string =>
-  [...path, instanceId].join("/");
+/**
+ * Values per frame, then per key. Keying by the frame object, not its path, keeps every key short
+ * however deep the frame is: path-joined keys made deep hierarchies spend most of their time
+ * building and hashing strings.
+ */
+export type PerFrame<Key, Value> = Map<Frame, Map<Key, Value>>;
+
+export const getIn = <Key, Value>(
+  map: PerFrame<Key, Value>,
+  frame: Frame,
+  key: Key,
+): Value | undefined => map.get(frame)?.get(key);
+
+// oxlint-disable-next-line eslint/max-params -- the map, both keys and the value
+export const setIn = <Key, Value>(
+  map: PerFrame<Key, Value>,
+  frame: Frame,
+  key: Key,
+  value: Value,
+): void => {
+  const inner = map.get(frame);
+  if (inner === undefined) {
+    map.set(frame, new Map([[key, value]]));
+  } else {
+    inner.set(key, value);
+  }
+};
 
 export const pieceOf = (circuit: Circuit, pin: PinKey): InstanceId | undefined =>
-  circuit.instances.find((item) => item.kind.type === "pin" && item.kind.pinId === pin)?.id;
+  indexOf(circuit).pieces.get(pin);
 
 export const unconnected = (frame: Frame, at: PinBit): NetlistSourceError => ({
   type: "UnconnectedPin",
@@ -69,13 +99,22 @@ interface Visit {
   readonly stack: readonly ChipId[];
 }
 
+const invalidWire = (walk: Walk, circuit: Circuit): Wire | undefined => {
+  if (walk.checked.has(circuit)) {
+    return walk.checked.get(circuit);
+  }
+  const invalid = findInvalidWire(walk.project, circuit);
+  walk.checked.set(circuit, invalid);
+  return invalid;
+};
+
 /** Checks the frame's wires, then lists its NANDs and nested frames, pre-order in instance order. */
 export const enumerate = (
   walk: Walk,
   frame: Frame,
   stack: readonly ChipId[],
 ): NetlistSourceError | undefined => {
-  const invalid = findInvalidWire(walk.project, frame.circuit);
+  const invalid = invalidWire(walk, frame.circuit);
   if (invalid !== undefined) {
     return { type: "InvalidWire", path: frame.path, wireId: invalid.id };
   }
@@ -115,7 +154,7 @@ const expandCustom = (
   }
   const path = [...frame.path, instance.id];
   const child: Frame = { path, circuit: circuit.value, host: { frame, instanceId: instance.id } };
-  walk.frames.set(path.join("/"), child);
+  setIn(walk.frames, frame, instance.id, child);
   return enumerate(walk, child, [...stack, chipId]);
 };
 
@@ -125,7 +164,7 @@ const expand = (walk: Walk, visit: Visit): NetlistSourceError | undefined => {
     return expandCustom(walk, visit, instance.kind.chipId);
   }
   if (instance.kind.type === "nand") {
-    walk.nandIndex.set(keyOf(frame.path, instance.id), walk.nands.length);
+    setIn(walk.nandIndex, frame, instance.id, walk.nands.length);
     walk.nands.push({ frame, instanceId: instance.id });
   }
   return undefined;

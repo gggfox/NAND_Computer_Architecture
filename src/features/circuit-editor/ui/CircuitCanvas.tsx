@@ -1,68 +1,62 @@
-import { useEffect, useRef } from "react";
+import { useId } from "react";
 import type { ReactNode } from "react";
+import { useStore } from "zustand";
 
-import { createCanvasRenderer } from "../adapters/canvas-renderer";
-import type { CanvasRenderer } from "../adapters/canvas-renderer";
-import { openCircuit } from "../application/editor-store";
-import type { EditorStore } from "../application/editor-store";
-import type { SimulationStore } from "../application/simulation-bridge";
+import { findChip } from "~/features/projects";
+import { m } from "~/i18n/paraglide/messages";
+
+import type { EditorSession } from "../application/editor-session";
 import type { EditorSearch } from "../domain/view-search";
+import { CanvasOverlays } from "./CanvasOverlays";
+import { useCanvas, useSpoken, useUrlCamera } from "./use-canvas";
 
 import styles from "./CircuitCanvas.module.css";
 
-/** The canvas ref is always set after mount; this only satisfies the effect's return type. */
-const noCleanup = (): void => {
-  // Nothing was started.
-};
-
 interface CircuitCanvasProps {
-  readonly editor: EditorStore;
-  readonly simulation: SimulationStore;
+  readonly session: EditorSession;
+  /** The URL's camera: followed when it changes from outside (back/forward, a pasted link). */
   readonly view: EditorSearch;
 }
 
 /**
- * Hosts the canvas renderer. It never re-renders on store changes: the renderer reads the stores
- * with `getState()` and redraws when their `subscribe` callbacks fire. Only a view (URL) change
- * re-renders this component, which just forwards the new view and asks for one redraw.
- * The canvas is hidden from assistive technology: the circuit summary is its accessible twin.
+ * The editing surface (ADR 3, 20, 21). The `<canvas>` is drawn outside React and hidden from
+ * assistive technology; the focusable host around it takes the keyboard map, describes it, and
+ * speaks each selection, move, delete and pin through a polite live region. Tab always leaves.
+ * The minimap in the corner is a pointer shortcut only, so it is hidden from assistive technology.
  */
-export function CircuitCanvas({ editor, simulation, view }: CircuitCanvasProps): ReactNode {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const viewRef = useRef(view);
-  const rendererRef = useRef<CanvasRenderer | undefined>(undefined);
+export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode {
+  const { canvasRef, minimapRef, onKeyDown, onKeyUp, onBlur } = useCanvas(session);
+  useUrlCamera(session, view);
+  const spoken = useSpoken(session);
+  const hintId = useId();
+  const chipName = useStore(
+    session.editor,
+    (state) => findChip(state.history.present, state.chipId)?.name ?? "",
+  );
 
-  useEffect(() => {
-    viewRef.current = view;
-    rendererRef.current?.invalidate();
-  }, [view]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas === null) {
-      return noCleanup;
-    }
-    const renderer = createCanvasRenderer(canvas, () => {
-      const state = editor.getState();
-      return {
-        project: state.history.present,
-        circuit: openCircuit(state),
-        inputs: state.inputs,
-        outputs: simulation.getState().outputs,
-        view: viewRef.current,
-      };
-    });
-    rendererRef.current = renderer;
-    renderer.start();
-    const unsubscribeEditor = editor.subscribe(renderer.invalidate);
-    const unsubscribeSimulation = simulation.subscribe(renderer.invalidate);
-    return () => {
-      unsubscribeEditor();
-      unsubscribeSimulation();
-      renderer.stop();
-      rendererRef.current = undefined;
-    };
-  }, [editor, simulation]);
-
-  return <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />;
+  return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- `application` is an interactive role: the host takes the canvas's keyboard map
+    <div
+      className={styles.host}
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the application region is the canvas's one focus stop
+      tabIndex={0}
+      role="application"
+      aria-roledescription={m.canvas_roledescription()}
+      aria-label={chipName}
+      aria-describedby={hintId}
+      onKeyDown={onKeyDown}
+      onKeyUp={onKeyUp}
+      onBlur={onBlur}
+    >
+      <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+      <canvas ref={minimapRef} className={styles.minimap} aria-hidden="true" />
+      <p id={hintId} className="visually-hidden">
+        {m.canvas_hint()}
+      </p>
+      <p className="visually-hidden" aria-live="polite">
+        {spoken}
+      </p>
+      <CanvasOverlays session={session} />
+    </div>
+  );
 }

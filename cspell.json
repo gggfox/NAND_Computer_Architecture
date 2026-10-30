@@ -17,6 +17,7 @@
     "Convex",
     "cspell",
     "Dokploy",
+    "Excalidraw",
     "Garzafox",
     "Hostinger",
     "IDBP",
@@ -50,6 +51,12 @@
     "rrggbb",
     "netlist",
     "nands",
-    "dppx"
+    "dppx",
+    "keymap",
+    "noninteractive",
+    "roledescription",
+    "Supr",
+    "Mayús",
+    "Dismissable"
   ]
 }

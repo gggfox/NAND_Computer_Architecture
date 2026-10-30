@@ -1,25 +1,12 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import type { ChipInstance, Circuit, PinKey, Point, Wire } from "~/features/projects";
+import type { InstanceId } from "~/shared/ids";
 
-/** World units are CSS pixels at zoom 1. Chips snap to this grid. */
-export const GRID = 40;
+import { GRID, layoutOf, layoutOfKind } from "./chip-layout";
+import type { ChipLayout, LayoutCache, LayoutSource, Rect } from "./chip-layout";
 
-export interface Size {
-  readonly width: number;
-  readonly height: number;
-}
-
-export interface Rect extends Point, Size {}
-
-const PIN_SIZE: Size = { width: GRID, height: GRID };
-const NAND_WIDTH = 80;
-const NAND_HEIGHT = 60;
-const NAND_SIZE: Size = { width: NAND_WIDTH, height: NAND_HEIGHT };
-const NAND_PIN_A_FRACTION = 0.25;
-const NAND_PIN_B_FRACTION = 0.75;
-const HALF = 0.5;
-const NAND_PIN_B = 1;
-const NAND_PIN_OUT = 2;
+export { GRID } from "./chip-layout";
+export type { Rect } from "./chip-layout";
 
 export type Part = "nand" | "clock" | "split" | "merge" | "custom" | "input" | "output";
 
@@ -33,45 +20,68 @@ export const partOf = (circuit: Circuit, instance: ChipInstance): Part => {
   return circuit.pins.find((pin) => pin.id === kind.pinId)?.direction ?? "input";
 };
 
-const sizeOf = (instance: ChipInstance): Size =>
-  instance.kind.type === "nand" ? NAND_SIZE : PIN_SIZE;
+/** Everything geometry reads: the open chip, an optional layout cache, and a drag preview. */
+export interface Scene extends LayoutSource {
+  /** Defaults to an uncached `layoutOf`. */
+  readonly layout?: LayoutCache;
+  /** Where dragged instances are drawn instead of their stored positions. */
+  readonly positions?: ReadonlyMap<InstanceId, Point>;
+}
 
-export const rectOf = (instance: ChipInstance): Rect => ({
-  ...instance.position,
-  ...sizeOf(instance),
-});
-
-const nandPin = (rect: Rect, pin: PinKey): Point => {
-  if (pin === NAND_PIN_OUT) {
-    return { x: rect.x + rect.width, y: rect.y + rect.height * HALF };
-  }
-  const fraction = pin === NAND_PIN_B ? NAND_PIN_B_FRACTION : NAND_PIN_A_FRACTION;
-  return { x: rect.x, y: rect.y + rect.height * fraction };
+const shifted = (layout: ChipLayout, dx: number, dy: number): ChipLayout => {
+  const move = <T extends Point>(item: T): T => ({ ...item, x: item.x + dx, y: item.y + dy });
+  return {
+    ...layout,
+    rect: move(layout.rect),
+    pins: layout.pins.map((pin) => ({ ...pin, anchor: move(pin.anchor), tab: move(pin.tab) })),
+  };
 };
 
-/**
- * Where a pin sits in world space. NAND: 0 = a and 1 = b on the left, 2 = out on the right.
- * An `input` drives from its right edge; every other part is entered from its left edge.
- */
-export const pinPosition = (circuit: Circuit, instance: ChipInstance, pin: PinKey): Point => {
-  const rect = rectOf(instance);
-  const part = partOf(circuit, instance);
-  if (part === "nand") {
-    return nandPin(rect, pin);
+/** An instance's layout in the scene; a dragged instance's cached layout is moved, not rebuilt. */
+export const layoutIn = (scene: Scene, instance: ChipInstance): ChipLayout => {
+  const layout = (scene.layout ?? layoutOf)(scene, instance);
+  const moved = scene.positions?.get(instance.id);
+  return moved === undefined
+    ? layout
+    : shifted(layout, moved.x - instance.position.x, moved.y - instance.position.y);
+};
+
+export const rectOf = (scene: Scene, instance: ChipInstance): Rect =>
+  layoutIn(scene, instance).rect;
+
+/** Where a pin's wires attach in world space; `undefined` when the instance has no such pin. */
+export const pinPosition = (scene: Scene, instance: ChipInstance, pin: PinKey): Point | undefined =>
+  layoutIn(scene, instance).pins.find((item) => item.key === pin)?.anchor;
+
+const HALF = 0.5;
+
+type InstanceIndex = ReadonlyMap<InstanceId, ChipInstance>;
+
+/** Instances by id, built once per instances array (edits replace it), so wire ends are O(1). */
+const instanceIndexes = new WeakMap<readonly ChipInstance[], InstanceIndex>();
+
+const instanceById = (circuit: Circuit, instanceId: InstanceId): ChipInstance | undefined => {
+  const known = instanceIndexes.get(circuit.instances);
+  if (known !== undefined) {
+    return known.get(instanceId);
   }
-  const x = part === "input" ? rect.x + rect.width : rect.x;
-  return { x, y: rect.y + rect.height * HALF };
+  const index: InstanceIndex = new Map(circuit.instances.map((item) => [item.id, item]));
+  instanceIndexes.set(circuit.instances, index);
+  return index.get(instanceId);
+};
+
+const endOf = (scene: Scene, end: Wire["from"]): Point | undefined => {
+  const instance = instanceById(scene.circuit, end.instanceId);
+  return instance && pinPosition(scene, instance, end.pin);
 };
 
 /** The polyline a wire is drawn along: stored waypoints, or an orthogonal elbow between its pins. */
-export const wireRoute = (circuit: Circuit, wire: Wire): readonly Point[] => {
-  const from = circuit.instances.find((item) => item.id === wire.from.instanceId);
-  const to = circuit.instances.find((item) => item.id === wire.to.instanceId);
-  if (from === undefined || to === undefined) {
+export const wireRoute = (scene: Scene, wire: Wire): readonly Point[] => {
+  const start = endOf(scene, wire.from);
+  const end = endOf(scene, wire.to);
+  if (start === undefined || end === undefined) {
     return [];
   }
-  const start = pinPosition(circuit, from, wire.from.pin);
-  const end = pinPosition(circuit, to, wire.to.pin);
   if (wire.waypoints.length > 0) {
     return [start, ...wire.waypoints, end];
   }
@@ -95,10 +105,10 @@ const padded = (rect: Rect): Rect => ({
 
 const SEARCH_COLUMNS = 8;
 const SEARCH_ROWS = 64;
-/** Leave the first columns to the inputs; step two NANDs wide and one-and-a-third NAND tall. */
+/** Leave the first columns to the inputs; step four grid cells across and three down. */
 const FIRST_COLUMN = 160;
 const COLUMN_STEP = 160;
-const ROW_STEP = 80;
+const ROW_STEP = 120;
 
 function* candidates(): Generator<Point> {
   for (let row = 0; row < SEARCH_ROWS; row += 1) {
@@ -109,10 +119,10 @@ function* candidates(): Generator<Point> {
 }
 
 /** The first grid cell (row by row, left to right) where a new NAND touches no existing chip. */
-export const freeNandPosition = (circuit: Circuit): Point => {
-  const taken = circuit.instances.map((item) => padded(rectOf(item)));
+export const freeNandPosition = (scene: Scene): Point => {
+  const taken = scene.circuit.instances.map((item) => padded(rectOf(scene, item)));
   for (const point of candidates()) {
-    const rect = { ...point, ...NAND_SIZE };
+    const { rect } = layoutOfKind(scene, { type: "nand" }, point);
     if (!taken.some((other) => overlaps(rect, other))) {
       return point;
     }

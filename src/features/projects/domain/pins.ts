@@ -100,3 +100,37 @@ export const endpointInfo = (
   instance.kind.type === "custom"
     ? customInfo(project, instance.kind.chipId, pin)
     : builtinInfo(circuit, instance.kind, pin);
+
+const range = (count: number): readonly number[] =>
+  Array.from({ length: count }, (_unused, index) => index);
+
+const NAND_PINS: readonly PinKey[] = [0, 1, NAND_OUT];
+const SINGLE_PIN: readonly PinKey[] = [0];
+
+/**
+ * Every pin of a placed instance, in drawing order: built-ins by number, a custom chip by the
+ * saved version's Pins-panel order (no pins while it is unsaved or missing).
+ */
+export const pinKeys = (project: Project, instance: ChipInstance): readonly PinKey[] => {
+  const { kind } = instance;
+  switch (kind.type) {
+    case "nand": {
+      return NAND_PINS;
+    }
+    case "clock":
+    case "pin": {
+      return SINGLE_PIN;
+    }
+    case "split":
+    case "merge": {
+      return range(kind.width + 1);
+    }
+    case "custom": {
+      const saved = project.chips.find((chip) => chip.id === kind.chipId)?.saved;
+      return saved?.pins.map((pin) => pin.id) ?? [];
+    }
+    default: {
+      return assertNever(kind);
+    }
+  }
+};

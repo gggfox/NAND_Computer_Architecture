@@ -6,7 +6,7 @@ import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 
-type Edit<Type extends EditorAction["type"]> = (
+export type Edit<Type extends EditorAction["type"]> = (
   project: Project,
   action: Extract<EditorAction, { type: Type }>,
 ) => Result<Project, EditorError>;

@@ -7,3 +7,8 @@ export { StatusMessages } from "./StatusMessages";
 export { Switch } from "./Switch";
 export { Toolbar } from "./Toolbar";
 export { UpdateBanner } from "./UpdateBanner";
+export { ModalDialog } from "./ModalDialog";
+export { PointMenu, type MenuEntry } from "./PointMenu";
+export { SegmentedControl, type SegmentOption } from "./SegmentedControl";
+export { SwatchPicker, type Swatch } from "./SwatchPicker";
+export { TextInput } from "./TextInput";

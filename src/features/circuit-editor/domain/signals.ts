@@ -1,13 +1,28 @@
-import type { ChipInstance, Circuit, PinDef, PinRef, Wire } from "~/features/projects";
+import type { ChipInstance, Circuit, PinDef, PinKey, PinRef, Wire } from "~/features/projects";
 import type { InstanceId, PinId } from "~/shared/ids";
 
 export type Level = 0 | 1;
 
-/** What the main thread knows: the input values it set and the output values the engine reported. */
+/**
+ * What the main thread knows: the input values it set, the output values the engine reported and,
+ * once the engine reports probes, the value on each pin of the open chip's parts (`pinLevelKey`).
+ */
 export interface KnownLevels {
   readonly inputs: ReadonlyMap<PinId, number>;
   readonly outputs: ReadonlyMap<PinId, number>;
+  readonly levels?: ReadonlyMap<string, number>;
 }
+
+/** The key of one instance pin in `KnownLevels.levels`. */
+export const pinLevelKey = (instanceId: InstanceId, pin: PinKey): string =>
+  `${instanceId}:${String(pin)}`;
+
+/** A pin's probed value, bits packed bit 0 first; `undefined` until the engine reports it. */
+export const pinValue = (
+  known: KnownLevels,
+  instanceId: InstanceId,
+  pin: PinKey,
+): number | undefined => known.levels?.get(pinLevelKey(instanceId, pin));
 
 const pinDefAt = (circuit: Circuit, instanceId: InstanceId): PinDef | undefined => {
   const instance = circuit.instances.find((item) => item.id === instanceId);
@@ -69,8 +84,17 @@ const LOW_DASH: readonly number[] = [DASH_ON_PX, DASH_OFF_PX];
 /** Low wires are dashed, so wire state is never shown by colour alone (WCAG 1.4.1). */
 export const wireDash = (level?: Level): readonly number[] => (level === 0 ? LOW_DASH : SOLID);
 
+/** The probed level of a 1-bit wire end: a tap reads its bit; a whole bus has no single level. */
+const probedLevel = (known: KnownLevels, wire: Wire): Level | undefined => {
+  const value = pinValue(known, wire.from.instanceId, wire.from.pin);
+  if (value === undefined || (wire.from.bit === undefined && wire.bitWidth !== 1)) {
+    return undefined;
+  }
+  return asLevel((value >> (wire.from.bit ?? 0)) & 1);
+};
+
 export const wireLevel = (circuit: Circuit, known: KnownLevels, wire: Wire): Level | undefined =>
-  sourceLevel(circuit, known, wire.from);
+  probedLevel(known, wire) ?? sourceLevel(circuit, known, wire.from);
 
 /** The level shown on a chip body: 1-bit inputs and outputs have one; other parts have none. */
 export const instanceLevel = (

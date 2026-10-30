@@ -57,6 +57,8 @@ describe("editorErrorMessage", () => {
       { type: "DuplicateChip", chipId },
       { type: "EmptyName" },
       { type: "InvalidColor", color: "red" },
+      { type: "NothingToMove" },
+      { type: "NothingToRemove" },
     ];
     const messages = errors.map((error) => editorErrorMessage(error));
     expect(new Set(messages).size).toBe(errors.length);

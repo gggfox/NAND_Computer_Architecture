@@ -6,20 +6,23 @@ import {
   MAX_STEPS_PER_SECOND,
   MIN_STEPS_PER_SECOND,
 } from "~/features/simulation";
-import type { EngineClient, EngineEvent } from "~/features/simulation";
+import type { EngineClient, EngineEvent, NetlistSource } from "~/features/simulation";
 import type { PinId } from "~/shared/ids";
 
 import { packInputs, unpackOutputs } from "../domain/io-layout";
 import type { IoLayout } from "../domain/io-layout";
 import type { SimulationError } from "../domain/messages";
+import { probeLevels, withProbes } from "../domain/probes";
+import type { ProbeSlot } from "../domain/probes";
 import type { Level } from "../domain/signals";
 import { toNetlistSource } from "../domain/to-netlist-source";
-import type { Flattened } from "../domain/to-netlist-source";
 import type { EditorState, EditorStore } from "./editor-store";
 
 export interface SimulationState {
   /** The engine's last reported value per output pin; empty until it answers or while invalid. */
   readonly outputs: ReadonlyMap<PinId, number>;
+  /** The engine's last reported value per pin of the open chip's parts (`pinLevelKey`). */
+  readonly levels: ReadonlyMap<string, number>;
   readonly clock: Level;
   readonly running: boolean;
   readonly stepsPerSecond: number;
@@ -47,11 +50,13 @@ export interface SimulationConnection {
 // oxlint-disable-next-line unicorn/no-null -- `null` is the documented "no error" value of the store state
 const NO_ERROR: SimulationError | null = null;
 const NO_OUTPUTS: ReadonlyMap<PinId, number> = new Map();
+const NO_LEVELS: ReadonlyMap<string, number> = new Map();
 const EMPTY_LAYOUT: IoLayout = { inputs: [], outputs: [] };
 
 export const createSimulationStore = (): SimulationStore =>
   createStore<SimulationState>(() => ({
     outputs: NO_OUTPUTS,
+    levels: NO_LEVELS,
     clock: 0,
     running: false,
     stepsPerSecond: DEFAULT_STEPS_PER_SECOND,
@@ -97,12 +102,12 @@ interface EngineLink {
   readonly onEvent: (event: EngineEvent) => void;
 }
 
-/** `current` when `next` holds the same values, so output subscribers skip a re-render. */
-const sameOrNew = (
-  current: ReadonlyMap<PinId, number>,
-  next: ReadonlyMap<PinId, number>,
-): ReadonlyMap<PinId, number> =>
-  current.size === next.size && [...next].every(([pinId, value]) => current.get(pinId) === value)
+/** `current` when `next` holds the same values, so subscribers skip a re-render or redraw. */
+const sameOrNew = <Key>(
+  current: ReadonlyMap<Key, number>,
+  next: ReadonlyMap<Key, number>,
+): ReadonlyMap<Key, number> =>
+  current.size === next.size && [...next].every(([key, value]) => current.get(key) === value)
     ? current
     : next;
 
@@ -111,9 +116,9 @@ const createLoadedNetlist = () => {
   // Empty means unknown: no JSON key is empty, so the next netlist always differs.
   let loadedKey = "";
   return {
-    /** Whether this netlist, layout and seed differ from the last loaded; remembers them. */
-    replace: (flattened: Flattened, seed: number): boolean => {
-      const key = JSON.stringify({ source: flattened.source, layout: flattened.layout, seed });
+    /** Whether this netlist (probes included), layout and seed differ from the last loaded. */
+    replace: (source: NetlistSource, layout: IoLayout, seed: number): boolean => {
+      const key = JSON.stringify({ source, layout, seed });
       const changed = key !== loadedKey;
       loadedKey = key;
       return changed;
@@ -144,28 +149,46 @@ const createInputSender = (client: EngineClient) => {
   };
 };
 
-/** The bridge's state: the open chip's I/O layout, the bits sent, and whether it compiled. */
+/** How to read an engine reply: the open chip's outputs, then the probed pins. */
+interface Readout {
+  readonly layout: IoLayout;
+  readonly slots: readonly ProbeSlot[];
+}
+
+const EMPTY_READOUT: Readout = { layout: EMPTY_LAYOUT, slots: [] };
+
+type StateEvent = Extract<EngineEvent, { type: "state" }>;
+
+/** Lands one state reply, keeping each Map whose values are unchanged. */
+const applyState = (simulation: SimulationStore, readout: Readout, event: StateEvent): void => {
+  const { clock, running } = event;
+  const current = simulation.getState();
+  const outputs = sameOrNew(current.outputs, unpackOutputs(readout.layout, event.outputs));
+  const levels = sameOrNew(current.levels, probeLevels(readout.slots, event.outputs));
+  simulation.setState({ outputs, levels, clock, running, error: NO_ERROR });
+};
+
+/** The bridge's state: how to read replies, the bits sent, and whether the circuit compiled. */
 const createEngineLink = (simulation: SimulationStore, client: EngineClient): EngineLink => {
   // While the circuit cannot be compiled, replies to earlier requests are stale and ignored.
   let invalid = false;
-  let layout = EMPTY_LAYOUT;
+  let readout = EMPTY_READOUT;
   const loaded = createLoadedNetlist();
   const inputs = createInputSender(client);
 
   const sendInputs = (state: EditorState): void => {
     if (!invalid) {
-      inputs.send(layout, state.inputs);
+      inputs.send(readout.layout, state.inputs);
     }
   };
 
   const fail = (error: SimulationError): void => {
     loaded.forget();
-    simulation.setState({ outputs: NO_OUTPUTS, error });
+    simulation.setState({ outputs: NO_OUTPUTS, levels: NO_LEVELS, error });
   };
 
-  const reload = (state: EditorState, flattened: Flattened): void => {
-    ({ layout } = flattened);
-    client.send({ type: "load", source: flattened.source, seed: state.history.present.seed });
+  const reload = (state: EditorState, source: NetlistSource): void => {
+    client.send({ type: "load", source, seed: state.history.present.seed });
     inputs.reset();
     sendInputs(state);
   };
@@ -176,8 +199,12 @@ const createEngineLink = (simulation: SimulationStore, client: EngineClient): En
       invalid = !flattened.ok;
       if (!flattened.ok) {
         fail(flattened.error);
-      } else if (loaded.replace(flattened.value, state.history.present.seed)) {
-        reload(state, flattened.value);
+        return;
+      }
+      const probed = withProbes(flattened.value);
+      if (loaded.replace(probed.source, flattened.value.layout, state.history.present.seed)) {
+        readout = { layout: flattened.value.layout, slots: probed.slots };
+        reload(state, probed.source);
       }
     },
     sendInputs,
@@ -185,12 +212,7 @@ const createEngineLink = (simulation: SimulationStore, client: EngineClient): En
       if (event.type === "error") {
         fail(event.error);
       } else if (!invalid) {
-        const { clock, running } = event;
-        const outputs = sameOrNew(
-          simulation.getState().outputs,
-          unpackOutputs(layout, event.outputs),
-        );
-        simulation.setState({ outputs, clock, running, error: NO_ERROR });
+        applyState(simulation, readout, event);
       }
     },
   };

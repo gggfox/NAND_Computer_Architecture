@@ -26,3 +26,11 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Step (clock)**: one toggle of the clock followed by a settle.
 - **Split** / **Merge**: built-in parts converting between one n-bit pin and n 1-bit pins.
 - **Library**: the browsable sheet/panel of chips (search, starred, folders, tags). **Quick-add menu**: the long-press/right-click menu that places a chip at the press point.
+- **Tool**: what a one-finger drag on empty canvas does: Pan or Select. A session preference, not an edit. A drag on a chip always moves it.
+- **Selection**: the chips (and the wires between them) the user has picked on the canvas. Not an edit, so undo skips it.
+- **Marquee**: the box or lasso being drawn to select chips. A chip is picked when its centre is inside.
+- **Pin card**: the small card showing a pin's name, width and live value.
+- **Chip menu**: the menu of actions on a chip (Delete; for custom chips Rename chip, Recolour chip, Look inside).
+- **Camera**: the canvas's zoom and offset. Kept in the URL when at rest.
+- **Minimap**: the small overview in the canvas corner; a tap or drag centres the camera.
+- **Probe**: a signal whose level the engine reports to the main thread so pins and wires show live levels.

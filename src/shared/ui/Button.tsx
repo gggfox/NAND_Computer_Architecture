@@ -9,6 +9,8 @@ interface ButtonProps {
   readonly isDisabled?: boolean | undefined;
   readonly variant?: "primary" | "quiet" | undefined;
   readonly "aria-label"?: string | undefined;
+  /** `submit` submits the enclosing form (Enter in a field does too). */
+  readonly type?: "button" | "submit" | undefined;
 }
 
 export function Button({
@@ -17,6 +19,7 @@ export function Button({
   isDisabled = false,
   variant = "primary",
   "aria-label": ariaLabel,
+  type = "button",
 }: Readonly<ButtonProps>): ReactNode {
   // With exactOptionalPropertyTypes, React Aria props reject explicit `undefined`, so spread only what is set.
   const optional = {
@@ -27,6 +30,7 @@ export function Button({
     <AriaButton
       className={`${styles.button} ${variant === "primary" ? styles.primary : styles.quiet}`}
       isDisabled={isDisabled}
+      type={type}
       {...optional}
     >
       {children}
