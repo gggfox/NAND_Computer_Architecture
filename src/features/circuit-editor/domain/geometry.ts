@@ -55,8 +55,23 @@ export const pinPosition = (scene: Scene, instance: ChipInstance, pin: PinKey): 
 
 const HALF = 0.5;
 
+type InstanceIndex = ReadonlyMap<InstanceId, ChipInstance>;
+
+/** Instances by id, built once per instances array (edits replace it), so wire ends are O(1). */
+const instanceIndexes = new WeakMap<readonly ChipInstance[], InstanceIndex>();
+
+const instanceById = (circuit: Circuit, instanceId: InstanceId): ChipInstance | undefined => {
+  const known = instanceIndexes.get(circuit.instances);
+  if (known !== undefined) {
+    return known.get(instanceId);
+  }
+  const index: InstanceIndex = new Map(circuit.instances.map((item) => [item.id, item]));
+  instanceIndexes.set(circuit.instances, index);
+  return index.get(instanceId);
+};
+
 const endOf = (scene: Scene, end: Wire["from"]): Point | undefined => {
-  const instance = scene.circuit.instances.find((item) => item.id === end.instanceId);
+  const instance = instanceById(scene.circuit, end.instanceId);
   return instance && pinPosition(scene, instance, end.pin);
 };
 
