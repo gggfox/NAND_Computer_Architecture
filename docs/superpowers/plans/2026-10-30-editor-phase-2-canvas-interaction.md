@@ -63,14 +63,9 @@ A drag never dispatches per frame. The renderer draws a *preview* offset, and on
 
 ## Status (handoff)
 
-**Done:** Tasks 0–11.
+**Done:** Tasks 0–14.
 
-Visual baselines match the current layout (regenerated after Task 11's taller toolbar). On the last full run, `pnpm check` and all 126 functional E2E tests passed across the six Playwright projects.
-
-**Not started:**
-- Task 12 (minimap);
-- Task 13 (canvas E2E for touch, mouse and keyboard; axe with overlays open; the `@perf` drag budget);
-- Task 14 (ADRs 0042/0043, glossary entries, roadmap update).
+Visual baselines match the current layout. On the last full run, `pnpm check` and the functional E2E tests passed across the six Playwright projects.
 
 **Known follow-up:** chips can be dropped overlapping each other.
 
