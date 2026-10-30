@@ -80,3 +80,14 @@ test("without IndexedDB the app works in memory and says so", async ({ page }) =
   await expect(page.getByText(STORAGE_NOTICE)).toBeVisible();
   await addNand(page);
 });
+
+test("switching language right after an edit keeps the edit", async ({ page }) => {
+  await createProject(page);
+  await addNand(page);
+
+  // No wait for the autosave: the switch reloads the page and must write the edit first.
+  await page.getByRole("button", { name: /Language$/u }).click();
+  await page.getByRole("option", { name: "Español" }).click();
+  await expect(page.getByRole("button", { name: "Deshacer" })).toBeVisible();
+  await expect(page.getByText("Puerta NAND 2")).toBeVisible();
+});
