@@ -18,6 +18,11 @@ const rows = (): readonly (readonly [string, string])[] => [
   [m.help_keys_tools(), m.help_tools()],
   [m.help_keys_space(), m.help_space()],
   [m.help_keys_escape(), m.help_escape()],
+  [m.help_keys_arm(), m.help_arm()],
+  [m.help_keys_connect(), m.help_connect()],
+  [m.help_keys_cancel_wiring(), m.help_cancel_wiring()],
+  [m.help_keys_bend_step(), m.help_bend_step()],
+  [m.help_keys_bend_move(), m.help_bend_move()],
 ];
 
 function Row({ keys, action }: { readonly keys: string; readonly action: string }): ReactNode {
@@ -34,7 +39,8 @@ export function KeyboardHelp({ onClose }: { readonly onClose: () => void }): Rea
     <ModalDialog title={m.keyboard_shortcuts()} onClose={onClose}>
       <dl className={styles.list}>
         {rows().map(([keys, action]) => (
-          <Row key={keys} keys={keys} action={action} />
+          // Keys repeat (Escape, Enter), so the action names the row.
+          <Row key={action} keys={keys} action={action} />
         ))}
       </dl>
       <Button onPress={onClose}>{m.dialog_close()}</Button>

@@ -7,6 +7,7 @@ import { Button, SegmentedControl } from "~/shared/ui";
 import type { EditorSession } from "../application/editor-session";
 import type { InteractionCommand } from "../domain/interaction";
 import { isEmpty } from "../domain/selection";
+import { WireColorButton } from "./WireDialogs";
 
 /** Pan or Select for a one-finger drag on empty canvas (spec §5.3). */
 export function ToolSwitch({ session }: { readonly session: EditorSession }): ReactNode {
@@ -29,7 +30,10 @@ export function ToolSwitch({ session }: { readonly session: EditorSession }): Re
   );
 }
 
-/** Delete, zoom, fit and the keyboard help: the toolbar twins of the canvas keys. */
+/**
+ * Delete, the next wire colour, Tidy wires, zoom, fit and the keyboard help: the toolbar twins of
+ * the canvas keys and menus.
+ */
 export function CanvasButtons({ session }: { readonly session: EditorSession }): ReactNode {
   const nothingSelected = useStore(session.interaction.store, (state) => isEmpty(state.selection));
   const run = (command: InteractionCommand) => (): void => {
@@ -43,6 +47,10 @@ export function CanvasButtons({ session }: { readonly session: EditorSession }):
         variant="quiet"
       >
         {m.delete_selection()}
+      </Button>
+      <WireColorButton session={session} />
+      <Button onPress={run({ type: "tidyWires" })} variant="quiet">
+        {m.tidy_wires()}
       </Button>
       <Button onPress={run({ type: "zoomOut" })} variant="quiet">
         {m.zoom_out()}

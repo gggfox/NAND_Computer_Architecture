@@ -2,120 +2,80 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
-import { findChip } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
-import { PointMenu } from "~/shared/ui";
-import type { MenuEntry } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
-import type { Menu } from "../domain/interaction";
+import { CanvasMenus } from "./CanvasMenus";
+import type { OverlayDialog } from "./CanvasMenus";
 import { RecolorChipDialog, RenameChipDialog } from "./ChipDialogs";
-import type { ChipDialog } from "./ChipDialogs";
 import { KeyboardHelp } from "./KeyboardHelp";
 import { PinCard } from "./PinCard";
+import { WireColorDialog } from "./WireDialogs";
 
-type ChipMenu = Extract<Menu, { kind: "chip" }>;
-
-/** Delete for every part; the chip-definition actions only for custom chips (spec §5.1). */
-const entriesFor = (custom: boolean): readonly MenuEntry[] => [
-  { id: "delete", label: m.chip_menu_delete() },
-  ...(custom
-    ? [
-        { id: "rename", label: m.chip_menu_rename() },
-        { id: "recolor", label: m.chip_menu_recolor() },
-        { id: "lookInside", label: m.chip_menu_look_inside() },
-      ]
-    : []),
-];
-
-/** The chip definition behind a menu's instance, when it is a custom chip. */
-const customChipOf = (session: EditorSession, menu: ChipMenu) => {
-  const editor = session.editor.getState();
-  const instance = session.interaction
-    .sceneOf(editor)
-    .circuit.instances.find((item) => item.id === menu.instanceId);
-  return instance?.kind.type === "custom"
-    ? findChip(editor.history.present, instance.kind.chipId)
-    : undefined;
-};
-
-function ChipMenuOverlay({
-  session,
-  menu,
-  onDialog,
-}: {
+interface DialogProps {
   readonly session: EditorSession;
-  readonly menu: ChipMenu;
-  readonly onDialog: (dialog: ChipDialog) => void;
-}): ReactNode {
-  const chip = customChipOf(session, menu);
-  const { send } = session.interaction.store.getState();
-  // The menu may already be closed by its action; escaping then would clear the selection.
-  const closeMenu = (): void => {
-    if (session.interaction.store.getState().menu !== undefined) {
-      send({ type: "command", command: { type: "escape" } });
-    }
-  };
-  const onAction = (id: string): void => {
-    // Close first: a dialog opened by the action does not make the popover report its own close.
-    closeMenu();
-    if (id === "delete") {
-      send({ type: "command", command: { type: "deleteSelection" } });
-    } else if (chip !== undefined && id === "rename") {
-      onDialog({ kind: "rename", chipId: chip.id, name: chip.name });
-    } else if (chip !== undefined && id === "recolor") {
-      onDialog({ kind: "recolor", chipId: chip.id, color: chip.color });
-    } else if (chip !== undefined) {
-      session.editor.getState().openChip(chip.id);
-    }
-  };
+  readonly dialog: OverlayDialog;
+  readonly onClose: () => void;
+}
+
+/** The open dialog; each saves as one edit (ADR 8) and closes. */
+function Dialog({ session, dialog, onClose }: DialogProps): ReactNode {
+  const { dispatch } = session.editor.getState();
+  if (dialog.kind === "rename") {
+    return (
+      <RenameChipDialog
+        dialog={dialog}
+        onClose={onClose}
+        onSave={(name) => {
+          dispatch({ type: "renameChip", chipId: dialog.chipId, name });
+          onClose();
+        }}
+      />
+    );
+  }
+  if (dialog.kind === "recolor") {
+    return (
+      <RecolorChipDialog
+        dialog={dialog}
+        onClose={onClose}
+        onSave={(color) => {
+          dispatch({ type: "recolorChip", chipId: dialog.chipId, color });
+          onClose();
+        }}
+      />
+    );
+  }
   return (
-    <PointMenu
-      label={m.chip_menu_label()}
-      point={menu.screen}
-      entries={entriesFor(chip !== undefined)}
-      onAction={onAction}
-      onClose={closeMenu}
+    <WireColorDialog
+      title={m.wire_color_title()}
+      color={dialog.color}
+      onClose={onClose}
+      onSave={(color) => {
+        session.interaction.store.getState().send({
+          type: "command",
+          command: { type: "recolorSelection", ...(color === undefined ? {} : { color }) },
+        });
+        onClose();
+      }}
     />
   );
 }
 
-/** The chip menu, pin card, chip dialogs and keyboard help, laid over the canvas. */
+/** The menus, bit picker, pin card, dialogs and keyboard help, laid over the canvas. */
 export function CanvasOverlays({ session }: { readonly session: EditorSession }): ReactNode {
-  const menu = useStore(session.interaction.store, (state) => state.menu);
   const card = useStore(session.interaction.store, (state) => state.card);
   const help = useStore(session.interaction.store, (state) => state.help);
-  const [dialog, setDialog] = useState<ChipDialog>();
+  const [dialog, setDialog] = useState<OverlayDialog>();
   const close = (): void => {
     setDialog(undefined);
   };
-  const { dispatch } = session.editor.getState();
   return (
     <>
-      {menu?.kind === "chip" ? (
-        <ChipMenuOverlay session={session} menu={menu} onDialog={setDialog} />
-      ) : undefined}
+      <CanvasMenus session={session} onDialog={setDialog} />
       {card === undefined ? undefined : <PinCard session={session} card={card} />}
-      {dialog?.kind === "rename" ? (
-        <RenameChipDialog
-          dialog={dialog}
-          onClose={close}
-          onSave={(name) => {
-            dispatch({ type: "renameChip", chipId: dialog.chipId, name });
-            close();
-          }}
-        />
-      ) : undefined}
-      {dialog?.kind === "recolor" ? (
-        <RecolorChipDialog
-          dialog={dialog}
-          onClose={close}
-          onSave={(color) => {
-            dispatch({ type: "recolorChip", chipId: dialog.chipId, color });
-            close();
-          }}
-        />
-      ) : undefined}
+      {dialog === undefined ? undefined : (
+        <Dialog session={session} dialog={dialog} onClose={close} />
+      )}
       {help === true ? (
         <KeyboardHelp
           onClose={() => {

@@ -1,0 +1,12 @@
+.label {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dot {
+  inline-size: 1rem;
+  block-size: 1rem;
+  border: 1px solid var(--color-text);
+  border-radius: 50%;
+}
