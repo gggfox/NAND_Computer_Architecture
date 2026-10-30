@@ -259,7 +259,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 3: Chip anatomy layout (domain)
+### Task 3: Chip anatomy layout (domain) ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/domain/chip-layout.ts`, `chip-layout.test.ts`
@@ -281,7 +281,16 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 - `createLayoutCache(): (source, instance) => ChipLayout`. This is memoised by `instance` identity plus the custom chip's `saved` identity, so the renderer and hit-test share it.
 - `geometry.ts`: `rectOf(source, instance)`, `pinPosition(source, instance, pin)` (the anchor) and `wireRoute(source, wire, positions?: ReadonlyMap<InstanceId, Point>)`. The optional `positions` override feeds the drag preview. `freeNandPosition` uses `layoutOf`.
 
-- [ ] **Step 1: Failing tests:**
+**As built (differences from the above):**
+- The NAND is **120 × 80**, not 80 × 80. Its pin labels (`a`, `b`, `out`) sit inside the body beside the title, and the grid rule rounds the width up. Relative to its position, its anchors are `a` (0, 20), `b` (0, 60) and `out` (120, 40).
+- `GRID`, `Rect`, `Size` and `PIN_CELL` now live in `chip-layout.ts`; `geometry.ts` re-exports `GRID`, `Rect` and `Size`.
+- `layoutOfKind(source, kind, position)` lays out a part that is not placed yet. `freeNandPosition` uses it.
+- Every geometry function takes a `Scene` (`LayoutSource` plus an optional `layout` cache and an optional drag-preview `positions` map). A dragged chip's cached layout is shifted, not rebuilt.
+- `pinPosition` returns `undefined` for a pin the instance does not have, and `wireRoute` then routes nothing.
+- `readableTextOn`/moving `contrast.ts` is deferred to Task 5, where the renderer first needs it.
+- `adapters/watch-environment.ts` was split out of `canvas-renderer.ts` (file-length limit).
+
+- [x] **Step 1: Failing tests:**
   - NAND: rect 80×80 with anchors `a` (0,20), `b` (0,60) and `out` (80,40), relative to the position;
   - a custom chip with inputs `a,b,c` (1 bit) and an output `sum` (4 bit): the left side has 3 slots of 2 cells = 120 tall; the right side's single pin is centred; height 120;
   - slack is spread evenly when one side is shorter (anchors at evenly spaced slot centres);
@@ -292,8 +301,8 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
   - an unsaved custom chip has no pins;
   - the cache returns the same object for the same instance and saved version, and a new one after the saved version changes;
   - `readableTextOn("#3b82f6")` picks the colour with contrast ≥ 4.5 where one exists, else the higher one.
-- [ ] **Step 2: Implement.** Update the callers mechanically: `canvas-renderer`, `freeNandPosition` and the geometry tests. `pnpm vitest run` stays green. The demo's positions are unchanged, because its NAND's anchors move only vertically within the body.
-- [ ] **Step 3: Commit** `feat(circuit-editor): chip anatomy layout from the pin grid rule`
+- [x] **Step 2: Implement.** Update the callers mechanically: `canvas-renderer`, `freeNandPosition` and the geometry tests. `pnpm vitest run` stays green. The demo's positions are unchanged, because its NAND's anchors move only vertically within the body.
+- [x] **Step 3: Commit** `feat(circuit-editor): chip anatomy layout from the pin grid rule`
 
 ---
 

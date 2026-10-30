@@ -2,12 +2,15 @@
 import type { ChipInstance, Circuit, Point, Project } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
 
+import { createLayoutCache } from "../domain/chip-layout";
+import type { LayoutCache } from "../domain/chip-layout";
 import { GRID, partOf, rectOf, wireRoute } from "../domain/geometry";
-import type { Rect, Size } from "../domain/geometry";
+import type { Rect, Scene, Size } from "../domain/geometry";
 import { partName } from "../domain/messages";
 import { instanceLevel, wireDash, wireLevel } from "../domain/signals";
 import type { KnownLevels, Level } from "../domain/signals";
 import type { EditorSearch } from "../domain/view-search";
+import { watchEnvironment } from "./watch-environment";
 
 export interface RenderState extends KnownLevels {
   readonly project: Project;
@@ -56,12 +59,12 @@ const CORNER = 4;
 /** Shown on an input or output body before the engine has reported a level. */
 const UNKNOWN_LEVEL = "?";
 
-interface Frame {
+/** One draw: the scene plus how to paint it. */
+interface Frame extends Scene {
   readonly ctx: CanvasRenderingContext2D;
   readonly palette: Palette;
   readonly known: KnownLevels;
-  readonly project: Project;
-  readonly circuit: Circuit;
+  readonly layout: LayoutCache;
 }
 
 const levelColor = (palette: Palette, level: Level | undefined): string => {
@@ -106,7 +109,7 @@ const drawWires = (frame: Frame): void => {
     const level = wireLevel(circuit, frame.known, wire);
     ctx.strokeStyle = levelColor(frame.palette, level);
     ctx.setLineDash(wireDash(level));
-    drawPolyline(ctx, wireRoute(circuit, wire));
+    drawPolyline(ctx, wireRoute(frame, wire));
   }
   ctx.setLineDash(wireDash());
 };
@@ -159,7 +162,7 @@ const chipText = (frame: Frame, instance: ChipInstance, level: Level | undefined
 
 const drawChip = (frame: Frame, instance: ChipInstance): void => {
   const { ctx, palette } = frame;
-  const rect = rectOf(instance);
+  const rect = rectOf(frame, instance);
   const { kind } = instance;
   const level = instanceLevel(frame.circuit, frame.known, instance);
   drawBody(frame, rect, bodyStyle(palette, kind.type !== "pin", level));
@@ -216,38 +219,6 @@ const drawScene = (frame: Frame, viewport: Viewport, view: EditorSearch): void =
 };
 
 /**
- * Calls `onChange` on element resize and device-pixel-ratio change, and `onTheme` when <html>'s
- * `data-theme` changes. Returns the function that stops watching.
- */
-const watchEnvironment = (
-  canvas: HTMLCanvasElement,
-  onChange: () => void,
-  onTheme: () => void,
-): (() => void) => {
-  const themeObserver = new MutationObserver(onTheme);
-  themeObserver.observe(document.documentElement, { attributeFilter: ["data-theme"] });
-  const resizeObserver = new ResizeObserver(onChange);
-  resizeObserver.observe(canvas);
-  // A query for the current ratio fires once when the ratio changes (browser zoom, another screen).
-  let ratioQuery: MediaQueryList | undefined = undefined;
-  const watchRatio = (): void => {
-    ratioQuery?.removeEventListener("change", onRatio);
-    ratioQuery = matchMedia(`(resolution: ${String(globalThis.devicePixelRatio || 1)}dppx)`);
-    ratioQuery.addEventListener("change", onRatio);
-  };
-  function onRatio(): void {
-    watchRatio();
-    onChange();
-  }
-  watchRatio();
-  return () => {
-    themeObserver.disconnect();
-    resizeObserver.disconnect();
-    ratioQuery?.removeEventListener("change", onRatio);
-  };
-};
-
-/**
  * Raw Canvas 2D renderer (ADR 20), outside React's render cycle. It draws on the next animation
  * frame only after `invalidate`, a resize, a device-pixel-ratio change or a theme change, and
  * re-reads the theme's `--color-*` tokens on every theme change.
@@ -258,6 +229,7 @@ export const createCanvasRenderer = (
 ): CanvasRenderer => {
   const ctx = canvas.getContext("2d");
   let palette = readPalette();
+  const layout = createLayoutCache();
   let frameId: number | undefined = undefined;
   let unwatch: (() => void) | undefined = undefined;
 
@@ -266,7 +238,7 @@ export const createCanvasRenderer = (
     const state = read();
     if (ctx !== null) {
       drawScene(
-        { ctx, palette, known: state, project: state.project, circuit: state.circuit },
+        { ctx, palette, known: state, project: state.project, circuit: state.circuit, layout },
         fitBackingStore(canvas),
         state.view,
       );

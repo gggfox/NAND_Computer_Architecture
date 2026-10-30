@@ -40,7 +40,10 @@ export function EditorToolbar({ editor, onImport }: EditorToolbarProps): ReactNo
   };
   const handleAddNand = (): void => {
     const state = editor.getState();
-    const position = freeNandPosition(openCircuit(state));
+    const position = freeNandPosition({
+      project: state.history.present,
+      circuit: openCircuit(state),
+    });
     state.dispatch({
       type: "placeChip",
       chipId: state.chipId,
