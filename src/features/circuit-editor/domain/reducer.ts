@@ -3,6 +3,7 @@ import { assertNever } from "~/shared/assert-never";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
+import { moveChips, removeItems } from "./batch-edits";
 import { createChip, discardDraft, recolorChip, renameChip, saveChip } from "./chip-edits";
 import {
   connectWire,
@@ -28,6 +29,8 @@ const HANDLERS: Handlers = {
   placeChip,
   moveChip,
   removeChip,
+  moveChips,
+  removeItems,
   connectWire,
   removeWire,
   moveWaypoint,

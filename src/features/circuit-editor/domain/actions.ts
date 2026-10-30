@@ -11,6 +11,8 @@ import type {
 } from "~/features/projects";
 import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
 
+import type { Move } from "./move";
+
 /** Anything but a chip's own pin piece; those come and go with the Pins panel. */
 export type PlaceableInstance = ChipInstance & {
   readonly kind: Exclude<InstanceKind, { readonly type: "pin" }>;
@@ -25,6 +27,15 @@ export type EditorAction =
       readonly position: Point;
     }
   | { readonly type: "removeChip"; readonly chipId: ChipId; readonly instanceId: InstanceId }
+  /** Moves several chips as one undo step; wires between two moved chips bring their bends along. */
+  | { readonly type: "moveChips"; readonly chipId: ChipId; readonly moves: readonly Move[] }
+  /** Deletes a selection as one undo step: the wires, then the chips (with their wires). */
+  | {
+      readonly type: "removeItems";
+      readonly chipId: ChipId;
+      readonly instanceIds: readonly InstanceId[];
+      readonly wireIds: readonly WireId[];
+    }
   | {
       readonly type: "connectWire";
       readonly chipId: ChipId;
@@ -87,6 +98,8 @@ export type EditorError =
   | { readonly type: "DuplicateChip"; readonly chipId: ChipId }
   | { readonly type: "EmptyName" }
   | { readonly type: "InvalidColor"; readonly color: string }
+  | { readonly type: "NothingToMove" }
+  | { readonly type: "NothingToRemove" }
   | PlaceError
   | SaveError
   | ConnectionError;

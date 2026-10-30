@@ -442,7 +442,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 8: Selection, moving and the batch actions (domain)
+### Task 8: Selection, moving and the batch actions (domain) ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/domain/selection.ts`, `move.ts` (+ tests)
@@ -477,7 +477,12 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
   - `removeItems` removes the chips, their wires and a pin piece's definition;
   - a reducer round-trip;
   - messages exist for every new error (the existing `messages.test.ts` enumerates them).
-- [ ] **Step 2: Implement. Step 3: Commit** `feat(circuit-editor): selection, snapped moves and batch move/remove actions`
+- [x] **Step 2: Implement. Step 3: Commit** `feat(circuit-editor): selection, snapped moves and batch move/remove actions`
+
+**As built:**
+- `moveChips` and `removeItems` live in `domain/batch-edits.ts`, so `circuit-edits.ts` stays small; its `Edit` type is exported for this.
+- The selection helpers are `selectInstances`, `selectWire`, `toggleInstance`, `toggleWire`, `addInstances`, `isEmpty`, `inBox` / `inLasso` (over `{ instanceId, rect }` from `chipsIn`), `withInnerWires` and `prune`. `prune` returns the same object when nothing is dropped, so store subscribers skip work.
+- `moveChips` carries a wire's bends only when both of its ends move by the *same* delta.
 
 ---
 

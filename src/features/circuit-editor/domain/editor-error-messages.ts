@@ -31,6 +31,8 @@ const MESSAGES: Messages = {
   ChipNotFound: (failure) => m.editor_error_chip_not_found({ chipId: failure.chipId }),
   ChipNotSaved: () => m.editor_error_chip_not_saved(),
   WouldContainItself: () => m.editor_error_would_contain_itself(),
+  NothingToMove: () => m.editor_error_nothing_to_move(),
+  NothingToRemove: () => m.editor_error_nothing_to_remove(),
 };
 
 // The false branch narrows to `never`, so an unknown error at runtime reaches `assertNever`.
