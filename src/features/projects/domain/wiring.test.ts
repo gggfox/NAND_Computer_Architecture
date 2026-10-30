@@ -115,12 +115,24 @@ describe("checkConnection bit taps", () => {
     });
   });
 
+  test("a negative or fractional tap is BitOutOfRange", () => {
+    const { project, circuit, ids } = scenario();
+    for (const bit of [-1, 1.5]) {
+      expect(checkConnection(project, circuit, at(ids.inD, 0, bit), at(ids.nand, 0))).toEqual({
+        ok: false,
+        error: { type: "BitOutOfRange", bit, width: 4 },
+      });
+    }
+  });
+
   test("a tap on the second end is checked too", () => {
     const { project, circuit, ids } = scenario();
     const result = checkConnection(project, circuit, at(ids.inA, 0), at(ids.outQ, 0, 4));
     expect(result).toEqual({ ok: false, error: { type: "BitOutOfRange", bit: 4, width: 4 } });
   });
+});
 
+describe("checkConnection tap widths", () => {
   test("a tap cannot meet a whole bus", () => {
     const { project, circuit, ids } = scenario();
     expect(checkConnection(project, circuit, at(ids.inD, 0, 1), at(ids.outQ, 0))).toEqual({
@@ -202,7 +214,10 @@ describe("single driver per input bit", () => {
       ok: false,
       error: { type: "InputAlreadyDriven", instanceId: ids.outQ },
     });
-    expect(checkConnection(project, circuit, at(ids.inB, 0), at(ids.outQ, 0, 1)).ok).toBe(false);
+    expect(checkConnection(project, circuit, at(ids.inB, 0), at(ids.outQ, 0, 1))).toEqual({
+      ok: false,
+      error: { type: "InputAlreadyDriven", instanceId: ids.outQ },
+    });
   });
 
   test("ignoreWireId skips the wire being re-checked", () => {
@@ -219,6 +234,14 @@ describe("findInvalidWire", () => {
     const project = createDemoProject("demo");
     const [chip] = project.chips;
     expect(chip && findInvalidWire(project, chip.draft)).toBeUndefined();
+  });
+
+  test("catches two stored wires driving the same sink bit", () => {
+    const { project, circuit } = scenario((own) => [
+      wire(at(own.inA, 0), at(own.nand, 0)),
+      wire(at(own.inB, 0), at(own.nand, 0)),
+    ]);
+    expect(findInvalidWire(project, circuit)).toBe(circuit.wires[0]);
   });
 
   test("catches backwards, wrong-width and dangling wires", () => {

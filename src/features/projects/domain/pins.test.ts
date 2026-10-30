@@ -86,6 +86,16 @@ describe("endpointInfo built-ins", () => {
   });
 });
 
+describe("endpointInfo pin numbers", () => {
+  test("negative and fractional pin numbers resolve to nothing", () => {
+    const { pieces, info } = scenario();
+    for (const part of [pieces.nand, pieces.split, pieces.merge, pieces.clock, pieces.inD]) {
+      expect(info(part, -1)).toBeUndefined();
+      expect(info(part, 0.5)).toBeUndefined();
+    }
+  });
+});
+
 describe("endpointInfo custom chips", () => {
   test("custom pins are PinIds of the saved version", () => {
     const { pieces, info, notIn, notOut } = scenario();

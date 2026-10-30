@@ -64,7 +64,7 @@ const builtinInfo = (
   kind: Exclude<InstanceKind, { type: "custom" }>,
   pin: PinKey,
 ): EndpointInfo | undefined => {
-  if (typeof pin !== "number") {
+  if (typeof pin !== "number" || !Number.isInteger(pin) || pin < 0) {
     return undefined;
   }
   switch (kind.type) {

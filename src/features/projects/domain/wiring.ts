@@ -42,7 +42,7 @@ const checkBit = ({ ref, info }: Resolved): ConnectionError | undefined => {
   if (ref.bit === undefined) {
     return undefined;
   }
-  return info.width > 1 && ref.bit < info.width
+  return info.width > 1 && Number.isInteger(ref.bit) && ref.bit >= 0 && ref.bit < info.width
     ? undefined
     : { type: "BitOutOfRange", bit: ref.bit, width: info.width };
 };
