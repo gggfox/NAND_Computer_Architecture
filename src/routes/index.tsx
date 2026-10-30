@@ -2,7 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-import { getAppProjectRepository, persistenceErrorMessage } from "~/features/persistence";
+import {
+  getAppProjectRepository,
+  persistenceErrorMessage,
+  useStorageDegraded,
+} from "~/features/persistence";
 import type { PersistenceError, ProjectSummary } from "~/features/persistence";
 import { createDemoProject } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
@@ -12,9 +16,8 @@ export const Route = createFileRoute("/")({
   // Data lives in this browser's IndexedDB, so the loader and component only ever run on the client.
   ssr: false,
   loader: async () => {
-    const repo = getAppProjectRepository();
-    const listed = await repo.list();
-    return { listed, degraded: repo.isDegraded() };
+    const listed = await getAppProjectRepository().list();
+    return { listed };
   },
   pendingComponent: Pending,
   component: Home,
@@ -46,7 +49,8 @@ function ProjectList({ projects }: { readonly projects: readonly ProjectSummary[
 }
 
 function Home(): ReactNode {
-  const { listed, degraded } = Route.useLoaderData();
+  const { listed } = Route.useLoaderData();
+  const degraded = useStorageDegraded();
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<PersistenceError>();
 

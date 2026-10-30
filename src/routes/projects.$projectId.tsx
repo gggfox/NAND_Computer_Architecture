@@ -14,7 +14,11 @@ import {
   useEditorSession,
 } from "~/features/circuit-editor";
 import type { EditorSession } from "~/features/circuit-editor";
-import { getAppProjectRepository, persistenceErrorMessage } from "~/features/persistence";
+import {
+  getAppProjectRepository,
+  persistenceErrorMessage,
+  useStorageDegraded,
+} from "~/features/persistence";
 import type { PersistenceError } from "~/features/persistence";
 import { importErrorMessage, readProjectFile } from "~/features/projects";
 import type { ImportError, Project } from "~/features/projects";
@@ -31,11 +35,10 @@ export const Route = createFileRoute("/projects/$projectId")({
     if (!parsed.success) {
       return { kind: "invalid-id" } as const;
     }
-    const repo = getAppProjectRepository();
-    const loaded = await repo.load(parsed.data);
+    const loaded = await getAppProjectRepository().load(parsed.data);
     // Editor key: changes only when the loader really runs (route entered or import invalidated).
     const token = crypto.randomUUID();
-    return { kind: "loaded", loaded, degraded: repo.isDegraded(), token } as const;
+    return { kind: "loaded", loaded, token } as const;
   },
   /*
    * The open project lives in the editor store, not in loader data. Reload only when the route is
@@ -60,10 +63,17 @@ function BackLink(): ReactNode {
   return <Link to="/">{m.back_to_projects()}</Link>;
 }
 
+/** Shown wherever work could be lost: the editor and the "not found" page of a memory-only session. */
+function useDegradedNotice(): readonly string[] {
+  return useStorageDegraded() ? [m.persistence_error_unavailable()] : [];
+}
+
 function NotFound(): ReactNode {
+  const notices = useDegradedNotice();
   return (
     <main className="page">
       <h1>{m.project_not_found_title()}</h1>
+      <StatusMessages messages={notices} />
       <p>{m.project_not_found_body()}</p>
       <BackLink />
     </main>
@@ -87,7 +97,7 @@ function ProjectRoute(): ReactNode {
   }
   const { loaded } = data;
   if (loaded.ok) {
-    return <Editor key={data.token} project={loaded.value} degraded={data.degraded} />;
+    return <Editor key={data.token} project={loaded.value} />;
   }
   return loaded.error.type === "NotFound" ? <NotFound /> : <Corrupt error={loaded.error} />;
 }
@@ -144,15 +154,12 @@ function useImport(
   };
 }
 
-function useNotices(
-  session: EditorSession,
-  degraded: boolean,
-  failure: ImportFailure | undefined,
-): readonly string[] {
+function useNotices(session: EditorSession, failure: ImportFailure | undefined): readonly string[] {
+  const degradedNotice = useDegradedNotice();
   const lastError = useStore(session.editor, (state) => state.lastError);
   const simulationError = useStore(session.simulation, (state) => state.error);
   return [
-    ...(degraded ? [m.persistence_error_unavailable()] : []),
+    ...degradedNotice,
     ...(lastError === null ? [] : [editorStoreErrorMessage(lastError)]),
     ...(simulationError === null ? [] : [simulationErrorMessage(simulationError)]),
     ...(failure === undefined ? [] : [importFailureMessage(failure)]),
@@ -161,14 +168,13 @@ function useNotices(
 
 interface EditorProps {
   readonly project: Project;
-  readonly degraded: boolean;
 }
 
-function Editor({ project, degraded }: EditorProps): ReactNode {
+function Editor({ project }: EditorProps): ReactNode {
   const view = Route.useSearch();
   const session = useEditorSession(project, getAppProjectRepository());
   const { failure, onImport } = useImport(project.id, session.editor);
-  const notices = useNotices(session, degraded, failure);
+  const notices = useNotices(session, failure);
   const { editor, simulation } = session;
 
   const toolbar = (
