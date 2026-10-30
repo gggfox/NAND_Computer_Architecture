@@ -65,22 +65,28 @@ const fillOf = (state: MinimapState, palette: Palette, instance: ChipInstance): 
   return custom?.color ?? palette["chip-nand"];
 };
 
-/** Chip rects in their colours (no labels), then the viewport outline in the selection colour. */
+/**
+ * Chip rects in their colours (no labels), then the viewport outline in the selection colour.
+ * During the minimap's own drag, `frozen` is the transform the pointer is mapped with, so what is
+ * drawn stays under the finger; otherwise the transform is fitted to the current scene.
+ */
 const paint = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, palette: Palette) => {
   const { width, height, dpr } = fitBackingStore(canvas);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = palette.surface;
   ctx.fillRect(0, 0, width, height);
-  return (state: MinimapState): void => {
+  return (state: MinimapState, frozen: MinimapTransform | undefined): void => {
     const chips = state.circuit.instances.map((instance) => ({
       rect: layoutIn(state, instance).rect,
       fill: fillOf(state, palette, instance),
     }));
-    const transform = transformOf(
-      state,
-      chips.map((chip) => chip.rect),
-      { width, height },
-    );
+    const transform =
+      frozen ??
+      transformOf(
+        state,
+        chips.map((chip) => chip.rect),
+        { width, height },
+      );
     for (const chip of chips) {
       const rect = mapped(transform, chip.rect);
       ctx.fillStyle = chip.fill;
@@ -128,6 +134,12 @@ const listen = (canvas: HTMLCanvasElement, listeners: Listeners): (() => void) =
   };
 };
 
+/** The transform frozen for the minimap's own drag; shared by its input and its painter. */
+interface FrozenTransform {
+  readonly get: () => MinimapTransform | undefined;
+  readonly set: (transform: MinimapTransform | undefined) => void;
+}
+
 /**
  * Tap or drag to centre the camera there, instantly (never animated). The transform is frozen
  * while the pointer is down, so the map does not slide under the finger as the outline moves.
@@ -135,10 +147,10 @@ const listen = (canvas: HTMLCanvasElement, listeners: Listeners): (() => void) =
 const attachInput = (
   canvas: HTMLCanvasElement,
   deps: MinimapDeps,
-  onDrag: (active: boolean) => void,
+  drag: FrozenTransform,
 ): (() => void) => {
-  let frozen: MinimapTransform | undefined = undefined;
   const jump = (event: PointerEvent, settle: boolean): void => {
+    const frozen = drag.get();
     if (frozen !== undefined) {
       const { view, viewport } = deps.read();
       deps.jump(minimapToCamera(frozen, localPoint(canvas, event), view, viewport), settle);
@@ -146,8 +158,7 @@ const attachInput = (
   };
   const end = (event: PointerEvent): void => {
     jump(event, true);
-    frozen = undefined;
-    onDrag(false);
+    drag.set(undefined);
   };
   const onDown = (event: PointerEvent): void => {
     if (event.button === 0) {
@@ -155,8 +166,7 @@ const attachInput = (
       canvas.setPointerCapture(event.pointerId);
       const state = deps.read();
       const size = { width: canvas.clientWidth, height: canvas.clientHeight };
-      frozen = transformOf(state, chipRects(state), size);
-      onDrag(true);
+      drag.set(transformOf(state, chipRects(state), size));
       jump(event, false);
     }
   };
@@ -213,15 +223,15 @@ const createScheduler = (draw: () => void, busy: () => boolean): Scheduler => {
 export const createMinimap = (canvas: HTMLCanvasElement, deps: MinimapDeps): Minimap => {
   const ctx = canvas.getContext("2d");
   let palette = readPalette();
-  let ownDrag = false;
+  let frozen: MinimapTransform | undefined = undefined;
   let detach: (() => void) | undefined = undefined;
   const scheduler = createScheduler(
     () => {
       if (ctx !== null && canvas.clientWidth > 0) {
-        paint(canvas, ctx, palette)(deps.read());
+        paint(canvas, ctx, palette)(deps.read(), frozen);
       }
     },
-    () => ownDrag || deps.read().dragging,
+    () => frozen !== undefined || deps.read().dragging,
   );
   const invalidate = (): void => {
     if (detach !== undefined) {
@@ -234,8 +244,13 @@ export const createMinimap = (canvas: HTMLCanvasElement, deps: MinimapDeps): Min
   };
   const attach = (): (() => void) => {
     const unwatch = watchEnvironment(canvas, invalidate, onTheme);
-    const detachInput = attachInput(canvas, deps, (active) => {
-      ownDrag = active;
+    const detachInput = attachInput(canvas, deps, {
+      get: () => frozen,
+      set: (transform) => {
+        frozen = transform;
+        // Back to a fitted transform once the drag settles or is cancelled.
+        invalidate();
+      },
     });
     return () => {
       unwatch();
