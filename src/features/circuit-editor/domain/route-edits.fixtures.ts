@@ -39,3 +39,27 @@ export const savingProject = () => {
   const project = replaceChip(projectWith("p", [child, parent, bystander]), grown);
   return { project, child, parent, bystander, wire, far };
 };
+
+/**
+ * A saved child placed on a wire whose stored (automatic, non-empty) route already runs through
+ * it; the child's draft grows, but the wire was blocked before the save.
+ */
+export const alreadyBlockedSave = () => {
+  const child = newChip(
+    "child",
+    { pins: manyPins.slice(0, 1), instances: [], wires: [] },
+    { saved: true },
+  );
+  const instance = piece({ type: "custom", chipId: child.id }, { x: 200, y: 0 });
+  const wire = {
+    ...crossing(),
+    waypoints: [
+      { x: 300, y: 40 },
+      { x: 300, y: 20 },
+    ],
+  };
+  const parent = newChip("parent", { pins: [], instances: [from, to, instance], wires: [wire] });
+  const grown = { ...child, draft: { ...child.draft, pins: manyPins } };
+  const project = replaceChip(projectWith("p", [parent, child]), grown);
+  return { project, child, parent, wire };
+};

@@ -90,12 +90,21 @@ describe("saveChip routing", () => {
     const { project, child, parent, bystander, wire, far } = savingProject();
     expect(blocked(project, parent.id, wire.id)).toBe(false);
     const saved = createRerouteAfterSave(child.id)(
+      project,
       applied(project, { type: "saveChip", chipId: child.id }),
     );
     expect(blocked(saved, parent.id, wire.id)).toBe(false);
     expect(wireIn(saved, parent.id, wire.id)).not.toBe(wire);
     expect(wireIn(saved, parent.id, far.id)).toBe(far);
     expect(saved.chips.find((chip) => chip.id === bystander.id)).toBe(bystander);
+  });
+
+  it("treats a draft missing from the snapshot before the save as all new", () => {
+    const { project, child, parent, wire } = savingProject();
+    const after = applied(project, { type: "saveChip", chipId: child.id });
+    const before = { ...project, chips: project.chips.filter((chip) => chip.id !== parent.id) };
+    const saved = createRerouteAfterSave(child.id)(before, after);
+    expect(wireIn(saved, parent.id, wire.id)).not.toBe(wire);
   });
 });
 

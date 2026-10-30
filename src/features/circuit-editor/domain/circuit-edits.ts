@@ -40,8 +40,12 @@ export const placeChip: Edit<"placeChip"> = (project, action) => {
       ? err({ type: "DuplicateInstance", instanceId: instance.id })
       : ok(
           blockedRerouted(
-            project,
-            { after: { ...circuit, instances: [...circuit.instances, instance] } },
+            {
+              after: {
+                project,
+                circuit: { ...circuit, instances: [...circuit.instances, instance] },
+              },
+            },
             new Set([instance.id]),
           ),
         ),

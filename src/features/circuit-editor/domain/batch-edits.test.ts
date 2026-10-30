@@ -167,6 +167,37 @@ describe("moveChips with ends moving apart", () => {
   });
 });
 
+/** Two chips moved together: `first` leaves the wire as `second` lands on it. */
+const swapOnWire = () => {
+  const [left, right, first, second] = [
+    nandAt(0, 0),
+    nandAt(960, 0),
+    nandAt(240, 0),
+    nandAt(240, -200),
+  ];
+  return {
+    chips: [left, right, first, second],
+    first,
+    second,
+    wire: link([left, NAND_OUT], [right, NAND_A]),
+  };
+};
+
+describe("moveChips with several moved chips", () => {
+  it("re-routes a wire one moved chip leaves as another lands on it", () => {
+    const { chips, first, second, wire } = swapOnWire();
+    const { project, chipId } = projectOf(chips, [wire]);
+    const moves = [first, second].map((item) => ({
+      instanceId: item.id,
+      position: { x: item.position.x, y: item.position.y + 200 },
+    }));
+    const moved = apply(project, { type: "moveChips", chipId, moves });
+    const scene = { ...sceneOf([], []), circuit: draft(moved, chipId) };
+    expect(wireIn(moved, chipId, wire.id)).not.toBe(wire);
+    expect(entersChips(scene, polylineOf(scene, wire.id))).toBe(false);
+  });
+});
+
 describe("moveChips errors", () => {
   it("an unknown chip moves nothing; an empty move is NothingToMove", () => {
     const { project, host, pieceA } = twoChips();

@@ -127,7 +127,9 @@ const withInput = (state: EditorState, pinId: PinId, value: number): Partial<Edi
 const savedEverywhere = (history: History<Project>, chipId: ChipId): History<Project> => {
   const saved = draftOf(history.present, chipId);
   const reroute = createRerouteAfterSave(chipId);
-  return mapHistory(history, (snapshot) => reroute(applySavedVersion(snapshot, chipId, saved)));
+  return mapHistory(history, (snapshot) =>
+    reroute(snapshot, applySavedVersion(snapshot, chipId, saved)),
+  );
 };
 
 /**

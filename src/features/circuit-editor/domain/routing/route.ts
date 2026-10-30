@@ -215,30 +215,32 @@ export const rerouted = (scene: Scene, wireIds: ReadonlySet<WireId>): Circuit =>
   return { ...scene.circuit, wires };
 };
 
-const blockedAmong = (scene: Scene, instances: readonly ChipInstance[]): ReadonlySet<WireId> => {
-  const rects = instances.map((item) => layoutIn(scene, item).rect);
-  const blocked =
-    rects.length === 0
-      ? []
-      : scene.circuit.wires.filter(
-          (wire) => !wire.manualWaypoints && entersAny(withoutStubs(wireRoute(scene, wire)), rects),
-        );
-  return new Set(blocked.map((wire) => wire.id));
+/**
+ * For each automatic wire whose current route enters the inflated rect of one of `instanceIds`,
+ * which of them it enters. Each wire's route is drawn once.
+ */
+export const blockersOf = (
+  scene: Scene,
+  instanceIds: ReadonlySet<InstanceId>,
+): ReadonlyMap<WireId, ReadonlySet<InstanceId>> => {
+  const rects = scene.circuit.instances
+    .filter((item) => instanceIds.has(item.id))
+    .map((item) => ({ id: item.id, rect: layoutIn(scene, item).rect }));
+  const automatic = scene.circuit.wires.filter((wire) => !wire.manualWaypoints);
+  return new Map(
+    automatic.flatMap((wire) => {
+      const route = withoutStubs(wireRoute(scene, wire));
+      const by = rects.filter(({ rect }) => entersAny(route, [rect])).map(({ id }) => id);
+      return by.length === 0 ? [] : [[wire.id, new Set(by)] as const];
+    }),
+  );
 };
 
 /** Automatic wires whose current route enters an inflated chip rect (other than their own stubs). */
-export const blockedWires = (scene: Scene): ReadonlySet<WireId> =>
-  blockedAmong(scene, scene.circuit.instances);
-
-/** Automatic wires whose current route enters the inflated rect of one of `instanceIds`. */
-export const blockedBy = (
-  scene: Scene,
-  instanceIds: ReadonlySet<InstanceId>,
-): ReadonlySet<WireId> =>
-  blockedAmong(
-    scene,
-    scene.circuit.instances.filter((item) => instanceIds.has(item.id)),
-  );
+export const blockedWires = (scene: Scene): ReadonlySet<WireId> => {
+  const everyChip = new Set(scene.circuit.instances.map((item) => item.id));
+  return new Set(blockersOf(scene, everyChip).keys());
+};
 
 /** Automatic wires with no waypoints. */
 export const unroutedWires = (circuit: Circuit): ReadonlySet<WireId> =>

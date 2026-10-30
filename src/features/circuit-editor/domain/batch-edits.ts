@@ -82,7 +82,10 @@ const applyMoves = (
     return position === undefined ? item : { ...item, position };
   });
   const after = { ...circuit, instances, wires };
-  const blocked = newlyBlocked(project, { before: circuit, after }, new Set(deltas.keys()));
+  const blocked = newlyBlocked(
+    { before: { project, circuit }, after: { project, circuit: after } },
+    new Set(deltas.keys()),
+  );
   return settled({ project, circuit: after }, new Set([...stale, ...blocked]));
 };
 

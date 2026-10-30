@@ -6,8 +6,15 @@ import { newChipId, newInstanceId, newPinId, newWireId } from "~/shared/ids";
 import type { WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 
-import { savingProject } from "../domain/route-edits.fixtures";
-import { link, NAND_A, NAND_OUT, nandAt } from "../domain/routing/routing.fixtures";
+import { alreadyBlockedSave, savingProject } from "../domain/route-edits.fixtures";
+import {
+  entersChips,
+  link,
+  NAND_A,
+  NAND_OUT,
+  nandAt,
+  polylineOf,
+} from "../domain/routing/routing.fixtures";
 import { draftIn, projectOf, wireIn } from "../domain/wire-edits.fixtures";
 import { createEditorStore, openCircuit } from "./editor-store";
 import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
@@ -261,5 +268,14 @@ describe("createEditorStore saving", () => {
     assert(first !== undefined);
     expect(draftIn(first, parent.id)).toBe(draftIn(present, parent.id));
     expect(wireIn(present, parent.id, wire.id)).not.toBe(before);
+  });
+
+  it("saving does not rewire a host wire the old layout already blocked", () => {
+    const { project, child, parent, wire } = alreadyBlockedSave();
+    const store = createEditorStore(project, fakeRepo(SAVED).repo);
+    const scene = { project, circuit: draftIn(project, parent.id) };
+    expect(entersChips(scene, polylineOf(scene, wire.id))).toBe(true);
+    expect(store.getState().dispatch({ type: "saveChip", chipId: child.id }).ok).toBe(true);
+    expect(wireIn(store.getState().history.present, parent.id, wire.id)).toBe(wire);
   });
 });

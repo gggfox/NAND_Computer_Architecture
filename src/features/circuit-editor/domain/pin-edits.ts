@@ -56,7 +56,9 @@ export const addPin: Edit<"addPin"> = (project, action) =>
         },
       ],
     };
-    return ok(blockedRerouted(project, { after: added }, new Set([action.instanceId])));
+    return ok(
+      blockedRerouted({ after: { project, circuit: added } }, new Set([action.instanceId])),
+    );
   });
 
 export const removePin: Edit<"removePin"> = (project, action) =>
@@ -103,7 +105,10 @@ export const setPinWidth: Edit<"setPinWidth"> = (project, action) =>
     const wires = circuit.wires.filter((stored) => fits(stored));
     // Only the pin's own pieces change shape in this draft.
     return ok(
-      blockedRerouted(project, { before: circuit, after: { ...resized, wires } }, pieceIds),
+      blockedRerouted(
+        { before: { project, circuit }, after: { project, circuit: { ...resized, wires } } },
+        pieceIds,
+      ),
     );
   });
 
