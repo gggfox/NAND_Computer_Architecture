@@ -15,6 +15,7 @@ const MOUSE_SLOP = 4;
 const TOUCH_SLOP = 10;
 /** A press held this long within slop is a long-press (touch and pen). */
 export const LONG_PRESS_MS = 500;
+const PRIMARY_BUTTON = 0;
 const SECONDARY_BUTTON = 2;
 const HALF = 0.5;
 
@@ -80,8 +81,14 @@ const pinchOf = (fingers: readonly [Finger, Finger]): Pinch => {
   };
 };
 
-/** A first pointer: a secondary mouse button is an immediate context menu. */
+/**
+ * A first pointer: a secondary mouse button is an immediate context menu; any button other than
+ * the primary and secondary (middle, back, forward) starts nothing.
+ */
 const startPress = (input: PointerEventInput): Recognized => {
+  if (input.button !== PRIMARY_BUTTON && input.button !== SECONDARY_BUTTON) {
+    return result(IDLE);
+  }
   if (input.kind === "mouse" && input.button === SECONDARY_BUTTON) {
     return result(
       { phase: "secondary", id: input.id },
@@ -260,7 +267,8 @@ const onTimer = (state: GestureState, time: number): Recognized => {
  * - A mouse's secondary button: `contextMenu` at once, and nothing else from that press.
  * - A second finger: `pinchStart` (after `dragEnd` if a drag was running), then `pinch`, then
  *   `pinchEnd` when either finger lifts; leftover fingers are ignored until lifted. A third is ignored.
- * - A mouse moving with no button down: `hover`. Touch never hovers.
+ * - A mouse moving with no button down: `hover`; leaving the canvas then: `hoverEnd`. Touch never
+ *   hovers.
  */
 export const recognize = (state: GestureState, input: PointerInput): Recognized => {
   switch (input.type) {
@@ -276,6 +284,12 @@ export const recognize = (state: GestureState, input: PointerInput): Recognized 
     case "up":
     case "cancel": {
       return onUp(state, input);
+    }
+    case "leave": {
+      // Only a mouse hovers, and only while no button is down.
+      return state.phase === "idle" && input.kind === "mouse"
+        ? result(state, { type: "hoverEnd" })
+        : result(state);
     }
     default: {
       return assertNever(input);

@@ -136,6 +136,22 @@ describe("marquee options", () => {
   });
 });
 
+describe("an armed lasso", () => {
+  it("a fresh press after a long-press that lifted without dragging draws a box", () => {
+    const { context, state } = setup();
+    const armed = gesture(state, context, {
+      type: "longPress",
+      point: screen(600, 400),
+      kind: "touch",
+    }).state;
+    expect(armed.lassoArmed).toBe(true);
+    const [start] = drag(screen(600, 400), screen(650, 450));
+    const dragging = gesture(armed, context, start!).state;
+    expect(dragging.drag).toMatchObject({ kind: "marquee", shape: "box" });
+    expect(dragging.lassoArmed).toBe(false);
+  });
+});
+
 describe("drag events without a drag", () => {
   it("moves and ends without a drag do nothing", () => {
     const { context, state } = setup();

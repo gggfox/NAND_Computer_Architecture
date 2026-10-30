@@ -1,7 +1,13 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import type { Point } from "~/features/projects";
 
-import type { Gesture, Modifiers, PointerInput, PointerKind } from "../domain/gesture-types";
+import type {
+  Gesture,
+  Modifiers,
+  PointerEventInput,
+  PointerInput,
+  PointerKind,
+} from "../domain/gesture-types";
 import { INITIAL_GESTURES, recognize } from "../domain/gestures";
 import type { InteractionCommand } from "../domain/interaction";
 
@@ -113,7 +119,7 @@ const listenersFor = (
   feed: (input: PointerInput) => void,
 ): Listeners => {
   const pointer =
-    (type: "down" | "move" | "up" | "cancel") =>
+    (type: PointerEventInput["type"]) =>
     (event: Event): void => {
       if (!(event instanceof PointerEvent)) {
         return;
@@ -142,6 +148,8 @@ const listenersFor = (
     pointercancel: pointer("cancel"),
     // Fires after `pointerup` too; the recognizer ignores pointers it no longer tracks.
     lostpointercapture: pointer("cancel"),
+    // A mouse leaving clears its hover; the recognizer ignores it mid-press and for touch.
+    pointerleave: pointer("leave"),
     contextmenu: preventContextMenu,
     wheel: (event) => {
       if (event instanceof WheelEvent) {

@@ -142,6 +142,18 @@ describe("camera commands", () => {
     );
   });
 
+  it("wheel zoom and pan close a pinned card and the menu, which would point at the old spot", () => {
+    const { context, state, nand } = setup();
+    const card = { instanceId: nand.id, pin: 0, screen: screen(0, 20), pinned: true };
+    const open = { ...state, card, menu: { instanceId: nand.id, screen: screen(0, 0) } };
+    const zoomed = command(open, context, { type: "zoomBy", screen: screen(0, 0), factor: 2 });
+    expect(zoomed.state.card).toBeUndefined();
+    expect(zoomed.state.menu).toBeUndefined();
+    const panned = command(open, context, { type: "panBy", delta: { x: -10, y: 0 } });
+    expect(panned.state.card).toBeUndefined();
+    expect(panned.state.menu).toBeUndefined();
+  });
+
   it("jumps the camera, closing overlays, and settles only when asked", () => {
     const { context, state, nand } = setup();
     const open = { ...state, menu: { instanceId: nand.id, screen: screen(0, 0) } };

@@ -15,7 +15,10 @@ import { addInstances, inBox, inLasso, selectInstances, withInnerWires } from ".
 
 type Of<Type extends Gesture["type"]> = Extract<Gesture, { type: Type }>;
 
-/** A drag from a chip (or its pin) moves the selection; elsewhere it pans or draws a marquee. */
+/**
+ * A drag from a chip (or its pin) moves the selection; elsewhere it pans or draws a marquee. The
+ * lasso needs Alt, or a drag that continues the long-press that armed it: a fresh press draws a box.
+ */
 const dragFor = (state: InteractionState, gesture: Of<"dragStart">, hit: Hit): Drag => {
   const { space, alt, shift } = gesture.modifiers;
   if (chipOf(hit) !== undefined && !space) {
@@ -24,7 +27,7 @@ const dragFor = (state: InteractionState, gesture: Of<"dragStart">, hit: Hit): D
   if (state.tool === "pan" || space) {
     return { kind: "pan", last: gesture.origin };
   }
-  const shape = state.lassoArmed || alt ? "lasso" : "box";
+  const shape = (state.lassoArmed && gesture.afterLongPress) || alt ? "lasso" : "box";
   return { kind: "marquee", shape, points: [toWorld(state, gesture.origin)], additive: shift };
 };
 
@@ -42,7 +45,7 @@ export const onDragStart = (
     ? done(withoutOverlays(state))
     : selected(state, selectInstances([instanceId]), instanceId);
   return onDragMove(
-    { ...base.state, drag },
+    { ...base.state, drag, lassoArmed: false },
     { type: "dragMove", point: gesture.point },
     base.effects,
   );

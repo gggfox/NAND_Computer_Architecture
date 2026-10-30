@@ -236,8 +236,12 @@ const HANDLERS: Handlers = {
   zoomOut: (state, _command, context) => zoomed(state, 1 / ZOOM_STEP, context),
   fit: (state, _command, context) => fit(state, context),
   zoomBy: (state, command) =>
-    done({ ...state, camera: zoomAt(state.camera, command.screen, command.factor) }),
-  panBy: (state, command) => done({ ...state, camera: panBy(state.camera, command.delta) }),
+    done({
+      ...withoutOverlays(state),
+      camera: zoomAt(state.camera, command.screen, command.factor),
+    }),
+  panBy: (state, command) =>
+    done({ ...withoutOverlays(state), camera: panBy(state.camera, command.delta) }),
   jumpTo: (state, command) =>
     done(
       { ...withoutOverlays(state), camera: command.camera },

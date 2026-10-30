@@ -77,6 +77,19 @@ describe("hover", () => {
     const moved = gesture(pinned, context, { type: "hover", point: screen(160, 100) }).state;
     expect(moved.card).toMatchObject({ pin: 0, pinned: true });
   });
+
+  it("leaving the canvas ends the hover and its card, but keeps a pinned card", () => {
+    const { context, state } = setup();
+    const over = gesture(state, context, { type: "hover", point: screen(160, 100) }).state;
+    const left = gesture(over, context, { type: "hoverEnd" }).state;
+    expect(left.hover).toBeUndefined();
+    expect(left.card).toBeUndefined();
+    const pinned = gesture(state, context, tap(screen(160, 60), "touch")).state;
+    const hovered = gesture(pinned, context, { type: "hover", point: screen(160, 100) }).state;
+    const kept = gesture(hovered, context, { type: "hoverEnd" }).state;
+    expect(kept.hover).toBeUndefined();
+    expect(kept.card).toMatchObject({ pin: 0, pinned: true });
+  });
 });
 
 describe("long-press and context menu", () => {

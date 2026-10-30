@@ -18,7 +18,7 @@ interface At {
 }
 
 const pointer =
-  (type: "down" | "move" | "up" | "cancel") =>
+  (type: "down" | "move" | "up" | "cancel" | "leave") =>
   ({
     x = 0,
     y = 0,
@@ -41,6 +41,7 @@ const down = pointer("down");
 const move = pointer("move");
 const up = pointer("up");
 const cancel = pointer("cancel");
+const leave = pointer("leave");
 const timer = (time: number): PointerInput => ({ type: "timer", time });
 
 interface Run {
@@ -155,7 +156,7 @@ describe("long-press", () => {
   });
 });
 
-describe("secondary button", () => {
+describe("secondary and other buttons", () => {
   it("is an immediate context menu and nothing else from that press", () => {
     const right = { kind: "mouse", button: 2 } as const;
     expect(run([down({ ...right, x: 5 })]).gestures).toEqual([
@@ -171,6 +172,13 @@ describe("secondary button", () => {
         up({ kind: "mouse" }),
       ]),
     ).toEqual(["contextMenu", "tap"]);
+  });
+
+  it("a middle, back or forward press starts nothing", () => {
+    const middle = { kind: "mouse", button: 1 } as const;
+    expect(run([down(middle)])).toMatchObject({ state: INITIAL_GESTURES, timers: [] });
+    expect(types([down(middle), move({ ...middle, x: 50 }), up(middle)])).toEqual(["hover"]);
+    expect(types([down({ kind: "mouse", button: 3 }), up({ kind: "mouse" })])).toEqual([]);
   });
 });
 
@@ -263,6 +271,15 @@ describe("hover", () => {
       { type: "hover", point: { x: 3, y: 0 } },
     ]);
     expect(types([move()])).toEqual([]);
+  });
+
+  it("a hovering mouse leaving ends the hover; touch or a press leaving does nothing", () => {
+    expect(types([move({ kind: "mouse" }), leave({ kind: "mouse" })])).toEqual([
+      "hover",
+      "hoverEnd",
+    ]);
+    expect(types([leave()])).toEqual([]);
+    expect(types([down({ kind: "mouse" }), leave({ kind: "mouse" })])).toEqual([]);
   });
 
   it("nothing else happens in idle", () => {

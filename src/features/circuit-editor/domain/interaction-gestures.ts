@@ -82,6 +82,12 @@ const onHover = (
   });
 };
 
+/** The mouse left the canvas: its hover and an unpinned card go with it. */
+const onHoverEnd = (state: InteractionState): Interpreted => {
+  const { card, hover: _hover, ...rest } = state;
+  return done({ ...rest, ...(card?.pinned === true ? { card } : {}) });
+};
+
 const onLongPress = (
   state: InteractionState,
   gesture: Of<"longPress">,
@@ -143,6 +149,7 @@ type Handlers = {
 // Compiler-linked: adding a gesture without a handler here fails typecheck.
 const HANDLERS: Handlers = {
   hover: onHover,
+  hoverEnd: (state) => onHoverEnd(state),
   tap: onTap,
   longPress: onLongPress,
   contextMenu: onContextMenu,

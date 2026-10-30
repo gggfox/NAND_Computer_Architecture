@@ -11,7 +11,8 @@ export interface Modifiers {
 }
 
 export interface PointerEventInput {
-  readonly type: "down" | "move" | "up" | "cancel";
+  /** `leave`: the pointer left the canvas (a hovering mouse's hover ends). */
+  readonly type: "down" | "move" | "up" | "cancel" | "leave";
   readonly id: number;
   readonly kind: PointerKind;
   /** 0 primary, 2 secondary; only read on `down`. */
@@ -27,6 +28,8 @@ export type PointerInput = PointerEventInput | { readonly type: "timer"; readonl
 
 export type Gesture =
   | { readonly type: "hover"; readonly point: Point }
+  /** A hovering mouse left the canvas. */
+  | { readonly type: "hoverEnd" }
   | {
       readonly type: "tap";
       readonly point: Point;
