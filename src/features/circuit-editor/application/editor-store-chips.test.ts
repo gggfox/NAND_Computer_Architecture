@@ -1,6 +1,13 @@
 import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createDemoProject, newChip, pinDef, projectWith } from "~/features/projects";
+import {
+  createDemoProject,
+  findChip,
+  newChip,
+  piece,
+  pinDef,
+  projectWith,
+} from "~/features/projects";
 import type { Project } from "~/features/projects";
 import { newChipId, newInstanceId } from "~/shared/ids";
 
@@ -90,18 +97,6 @@ describe("createEditorStore open chip", () => {
     });
     expect(store.getState()).toBe(before);
   });
-
-  it("undoing createChip while it is open falls back to the first chip", () => {
-    const store = demoStore();
-    const first = store.getState().chipId;
-    const created = newChipId();
-    store.getState().dispatch({ type: "createChip", chipId: created, name: "New", color: COLOR });
-    store.getState().openChip(created);
-    store.getState().undo();
-    expect(store.getState().chipId).toBe(first);
-    store.getState().redo();
-    expect(store.getState().chipId).toBe(first);
-  });
 });
 
 /** Adds input C to the open demo chip and returns its id. */
@@ -137,5 +132,55 @@ describe("createEditorStore saveChip", () => {
     const missing = newChipId();
     expect(store.getState().dispatch({ type: "saveChip", chipId: missing }).ok).toBe(false);
     expect(store.getState().lastError).toEqual({ type: "ChipNotFound", chipId: missing });
+  });
+});
+
+/** Every chip a saved version places, across the whole history, that its own snapshot lacks. */
+const danglingSavedRefs = (store: EditorStore): readonly string[] => {
+  const { past, present, future } = store.getState().history;
+  return [...past, present, ...future].flatMap((snapshot) =>
+    snapshot.chips.flatMap((chip) =>
+      (chip.saved?.instances ?? []).flatMap((instance) =>
+        instance.kind.type === "custom" && findChip(snapshot, instance.kind.chipId) === undefined
+          ? [instance.kind.chipId]
+          : [],
+      ),
+    ),
+  );
+};
+
+/** Creates and saves chip Y, places it in the open chip and saves that; returns Y's id. */
+const placeSavedChip = (store: EditorStore) => {
+  const { chipId, dispatch } = store.getState();
+  const created = newChipId();
+  dispatch({ type: "createChip", chipId: created, name: "Y", color: COLOR });
+  dispatch({ type: "saveChip", chipId: created });
+  // oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names
+  const instance = piece({ type: "custom", chipId: created }, { x: 480, y: 0 });
+  dispatch({ type: "placeChip", chipId, instance });
+  expect(dispatch({ type: "saveChip", chipId }).ok).toBe(true);
+  return created;
+};
+
+describe("createEditorStore createChip", () => {
+  it("undo never removes a chip that a saved version places", () => {
+    const store = demoStore();
+    const created = placeSavedChip(store);
+    store.getState().undo();
+    store.getState().undo();
+    const { chipId, dispatch } = store.getState();
+    // oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names
+    dispatch({ type: "placeChip", chipId, instance: piece({ type: "nand" }, { x: 0, y: 0 }) });
+    expect(danglingSavedRefs(store)).toEqual([]);
+    expect(findChip(store.getState().history.present, created)).toBeDefined();
+  });
+
+  it("createChip is not an undo step", () => {
+    const store = demoStore();
+    const created = newChipId();
+    store.getState().dispatch({ type: "createChip", chipId: created, name: "New", color: COLOR });
+    expect(store.getState().history.past).toHaveLength(0);
+    store.getState().undo();
+    expect(findChip(store.getState().history.present, created)).toBeDefined();
   });
 });

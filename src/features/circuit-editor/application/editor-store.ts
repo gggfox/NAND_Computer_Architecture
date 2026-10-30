@@ -3,7 +3,7 @@ import type { StoreApi } from "zustand/vanilla";
 
 import type { PersistenceError, ProjectRepository } from "~/features/persistence";
 import { applySavedVersion, EMPTY_CIRCUIT, findChip } from "~/features/projects";
-import type { Circuit, Project } from "~/features/projects";
+import type { Chip, Circuit, Project } from "~/features/projects";
 import type { ChipId, PinId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
@@ -46,10 +46,6 @@ const draftOf = (project: Project, chipId: ChipId): Circuit =>
 /** The draft of the open chip, or an empty circuit when that chip is missing. */
 export const openCircuit = (state: EditorState): Circuit =>
   draftOf(state.history.present, state.chipId);
-
-/** The open chip, or the first chip when an undo or redo removed it. */
-const openableChip = (project: Project, chipId: ChipId): ChipId =>
-  findChip(project, chipId) === undefined ? (project.chips[0]?.id ?? chipId) : chipId;
 
 interface Debounce {
   readonly schedule: (run: () => Promise<void>) => void;
@@ -105,7 +101,7 @@ const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
   };
   return {
     commit: (next) => {
-      set((state) => ({ history: next, chipId: openableChip(next.present, state.chipId) }));
+      set({ history: next });
       schedule(persist);
     },
     touch: () => {
@@ -132,14 +128,31 @@ const savedEverywhere = (history: History<Project>, chipId: ChipId): History<Pro
   return mapHistory(history, (snapshot) => applySavedVersion(snapshot, chipId, saved));
 };
 
+/**
+ * Creating a chip adds it to every snapshot, so it is not an undo step either: chips never
+ * vanish through undo or redo, and a saved version placing the chip (a save rewrites every
+ * snapshot) always finds it.
+ */
+const createdEverywhere = (history: History<Project>, created: Chip): History<Project> =>
+  mapHistory(history, (snapshot) =>
+    findChip(snapshot, created.id) === undefined
+      ? { ...snapshot, chips: [...snapshot.chips, created] }
+      : snapshot,
+  );
+
 const nextHistory = (
   history: History<Project>,
   action: EditorAction,
   project: Project,
-): History<Project> =>
-  action.type === "saveChip"
-    ? savedEverywhere(history, action.chipId)
-    : pushHistory(history, project);
+): History<Project> => {
+  if (action.type === "saveChip") {
+    return savedEverywhere(history, action.chipId);
+  }
+  const created = action.type === "createChip" ? findChip(project, action.chipId) : undefined;
+  return created === undefined
+    ? pushHistory(history, project)
+    : createdEverywhere(history, created);
+};
 
 export const createEditorStore = (project: Project, repo: ProjectRepository): EditorStore =>
   createStore<EditorState>((set, get) => {
