@@ -12,7 +12,8 @@ export type NetlistSourceError =
   | {
       readonly type: "UnconnectedPin";
       readonly path: readonly InstanceId[];
-      readonly instanceId: InstanceId;
+      /** Absent when an output pin has no piece to name. */
+      readonly instanceId?: InstanceId;
       readonly pin: PinKey;
       readonly bit: number;
     }

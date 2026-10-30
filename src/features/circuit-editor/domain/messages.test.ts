@@ -115,4 +115,12 @@ describe("partName", () => {
     expect(partName(project, EMPTY_CIRCUIT, { type: "custom", chipId: newChipId() })).toBe("");
     expect(partName(project, EMPTY_CIRCUIT, { type: "pin", pinId: newPinId() })).toBe("");
   });
+
+  it("rejects an unknown built-in kind with assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => partName(createDemoProject("x"), EMPTY_CIRCUIT, unknown)).toThrow(
+      "Unexpected value",
+    );
+  });
 });

@@ -90,10 +90,8 @@ const sourceOfKind = (resolver: Resolver, { frame, kind, at }: SourcePin): Outco
   const { instanceId, bit } = at;
   switch (kind.type) {
     case "nand": {
-      return ok({
-        kind: "nand",
-        index: resolver.walk.nandIndex.get(keyOf(frame.path, instanceId)) ?? 0,
-      });
+      const index = resolver.walk.nandIndex.get(keyOf(frame.path, instanceId));
+      return index === undefined ? err(unconnected(frame, at)) : ok({ kind: "nand", index });
     }
     case "clock": {
       return ok(CLOCK);
@@ -169,33 +167,42 @@ const resolveNand = (
 };
 
 /** Every bit of every output pin's piece, in layout order. */
-const outputBits = (top: Frame, layout: IoLayout): readonly PinBit[] =>
-  layout.outputs.flatMap((slot) => {
-    // The schema gives every pin exactly one piece, so the lookup always finds it.
+const outputBits = (top: Frame, layout: IoLayout): Outcome<readonly PinBit[]> => {
+  const slots = mapAll(layout.outputs, (slot) => {
     const instanceId = pieceOf(top.circuit, slot.pinId);
     return instanceId === undefined
-      ? []
-      : Array.from({ length: slot.width }, (_unused, bit) => ({ instanceId, pin: 0, bit }));
+      ? err<NetlistSourceError>({ type: "UnconnectedPin", path: top.path, pin: slot.pinId, bit: 0 })
+      : ok(Array.from({ length: slot.width }, (_unused, bit) => ({ instanceId, pin: 0, bit })));
   });
+  return slots.ok ? ok(slots.value.flat()) : slots;
+};
 
 const inputCountOf = (layout: IoLayout): number => {
   const last = layout.inputs.at(-1);
   return last === undefined ? 0 : last.offset + last.width;
 };
 
-const build = (walk: Walk, top: Frame): Outcome<Flattened> => {
-  const layout = ioLayout(top.circuit);
-  const resolver: Resolver = { walk, layout, memo: new Map(), active: new Set() };
-  const nands = mapAll(walk.nands, (nand) => resolveNand(resolver, nand));
+/** Every NAND's inputs, then every output bit, resolved to the engine's netlist. */
+const resolveNetlist = (resolver: Resolver, top: Frame): Outcome<NetlistSource> => {
+  const nands = mapAll(resolver.walk.nands, (nand) => resolveNand(resolver, nand));
   if (!nands.ok) {
     return nands;
   }
-  const outputs = mapAll(outputBits(top, layout), (at) => sink(resolver, top, at));
-  if (!outputs.ok) {
-    return outputs;
+  const bits = outputBits(top, resolver.layout);
+  if (!bits.ok) {
+    return bits;
   }
-  const netlist = { inputCount: inputCountOf(layout), nands: nands.value, outputs: outputs.value };
-  return ok({ source: netlist, layout });
+  const outputs = mapAll(bits.value, (at) => sink(resolver, top, at));
+  return outputs.ok
+    ? ok({ inputCount: inputCountOf(resolver.layout), nands: nands.value, outputs: outputs.value })
+    : outputs;
+};
+
+/** Resolves an already-walked circuit; exported so tests can hand it walks `toNetlistSource` never builds. */
+export const build = (walk: Walk, top: Frame): Outcome<Flattened> => {
+  const layout = ioLayout(top.circuit);
+  const netlist = resolveNetlist({ walk, layout, memo: new Map(), active: new Set() }, top);
+  return netlist.ok ? ok({ source: netlist.value, layout }) : netlist;
 };
 
 /**

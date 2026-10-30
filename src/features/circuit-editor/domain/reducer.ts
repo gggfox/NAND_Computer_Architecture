@@ -14,139 +14,43 @@ import {
 } from "./circuit-edits";
 import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
 
-type InstanceAction = Extract<EditorAction, { type: "placeChip" | "moveChip" | "removeChip" }>;
-
 type Outcome = Result<Project, EditorError>;
 
-const applyInstanceAction = (project: Project, action: InstanceAction): Outcome => {
-  switch (action.type) {
-    case "placeChip": {
-      return placeChip(project, action);
-    }
-    case "moveChip": {
-      return moveChip(project, action);
-    }
-    case "removeChip": {
-      return removeChip(project, action);
-    }
-    default: {
-      return assertNever(action);
-    }
-  }
+type Handlers = {
+  readonly [Type in EditorAction["type"]]: (
+    project: Project,
+    action: Extract<EditorAction, { type: Type }>,
+  ) => Outcome;
 };
 
-type PinAction = Extract<
-  EditorAction,
-  { type: "addPin" | "removePin" | "renamePin" | "setPinWidth" | "reorderPin" }
->;
-
-const applyPinAction = (project: Project, action: PinAction): Outcome => {
-  switch (action.type) {
-    case "addPin": {
-      return addPin(project, action);
-    }
-    case "removePin": {
-      return removePin(project, action);
-    }
-    case "renamePin": {
-      return renamePin(project, action);
-    }
-    case "setPinWidth": {
-      return setPinWidth(project, action);
-    }
-    case "reorderPin": {
-      return reorderPin(project, action);
-    }
-    default: {
-      return assertNever(action);
-    }
-  }
+// Compiler-linked: adding an action without a handler here fails typecheck.
+const HANDLERS: Handlers = {
+  placeChip,
+  moveChip,
+  removeChip,
+  connectWire,
+  removeWire,
+  moveWaypoint,
+  addPin,
+  removePin,
+  renamePin,
+  setPinWidth,
+  reorderPin,
+  createChip,
+  renameChip,
+  recolorChip,
+  saveChip,
+  discardDraft,
 };
 
-type ChipAction = Extract<
-  EditorAction,
-  { type: "createChip" | "renameChip" | "recolorChip" | "saveChip" | "discardDraft" }
->;
+// The false branch narrows to `never`, so an unknown action at runtime reaches `assertNever`.
+const isKnownAction = (action: EditorAction): action is EditorAction =>
+  Object.hasOwn(HANDLERS, action.type);
 
-const applyChipAction = (project: Project, action: ChipAction): Outcome => {
-  switch (action.type) {
-    case "createChip": {
-      return createChip(project, action);
-    }
-    case "renameChip": {
-      return renameChip(project, action);
-    }
-    case "recolorChip": {
-      return recolorChip(project, action);
-    }
-    case "saveChip": {
-      return saveChip(project, action);
-    }
-    case "discardDraft": {
-      return discardDraft(project, action);
-    }
-    default: {
-      return assertNever(action);
-    }
-  }
-};
+const run = <Type extends EditorAction["type"]>(
+  project: Project,
+  action: Extract<EditorAction, { type: Type }>,
+): Outcome => HANDLERS[action.type](project, action);
 
-type WireAction = Extract<EditorAction, { type: "connectWire" | "removeWire" | "moveWaypoint" }>;
-
-const applyWireAction = (project: Project, action: WireAction): Outcome => {
-  switch (action.type) {
-    case "connectWire": {
-      return connectWire(project, action);
-    }
-    case "removeWire": {
-      return removeWire(project, action);
-    }
-    case "moveWaypoint": {
-      return moveWaypoint(project, action);
-    }
-    default: {
-      return assertNever(action);
-    }
-  }
-};
-
-// Compiler-linked: adding an action without sorting it into a group fails typecheck.
-const INSTANCE_ACTIONS = {
-  placeChip: true,
-  moveChip: true,
-  removeChip: true,
-} satisfies Record<InstanceAction["type"], true>;
-const PIN_ACTIONS = {
-  addPin: true,
-  removePin: true,
-  renamePin: true,
-  setPinWidth: true,
-  reorderPin: true,
-} satisfies Record<PinAction["type"], true>;
-const CHIP_ACTIONS = {
-  createChip: true,
-  renameChip: true,
-  recolorChip: true,
-  saveChip: true,
-  discardDraft: true,
-} satisfies Record<ChipAction["type"], true>;
-
-const isInstanceAction = (action: EditorAction): action is InstanceAction =>
-  Object.hasOwn(INSTANCE_ACTIONS, action.type);
-const isPinAction = (action: EditorAction): action is PinAction =>
-  Object.hasOwn(PIN_ACTIONS, action.type);
-const isChipAction = (action: EditorAction): action is ChipAction =>
-  Object.hasOwn(CHIP_ACTIONS, action.type);
-
-export const applyAction = (project: Project, action: EditorAction): Outcome => {
-  if (isInstanceAction(action)) {
-    return applyInstanceAction(project, action);
-  }
-  if (isPinAction(action)) {
-    return applyPinAction(project, action);
-  }
-  if (isChipAction(action)) {
-    return applyChipAction(project, action);
-  }
-  return applyWireAction(project, action);
-};
+export const applyAction = (project: Project, action: EditorAction): Outcome =>
+  isKnownAction(action) ? run(project, action) : assertNever(action);

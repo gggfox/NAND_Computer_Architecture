@@ -26,8 +26,15 @@ const SIMULATION_MESSAGES = {
   WorkerFailed: () => m.engine_error_worker_failed(),
 } satisfies Record<SimulationError["type"], () => string>;
 
+// The false branch narrows to `never`, so unknown input at runtime reaches `assertNever`.
+const isKnownSimulationError = (
+  simulationError: SimulationError,
+): simulationError is SimulationError => Object.hasOwn(SIMULATION_MESSAGES, simulationError.type);
+
 export const simulationErrorMessage = (simulationError: SimulationError): string =>
-  SIMULATION_MESSAGES[simulationError.type]();
+  isKnownSimulationError(simulationError)
+    ? SIMULATION_MESSAGES[simulationError.type]()
+    : assertNever(simulationError);
 
 // Compiler-linked: adding a union case without listing it here fails typecheck.
 const PERSISTENCE_ERRORS = {

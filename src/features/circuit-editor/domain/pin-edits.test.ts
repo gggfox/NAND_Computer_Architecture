@@ -115,6 +115,27 @@ describe("removePin", () => {
   });
 });
 
+describe("removePin without a piece", () => {
+  it("removes just the definition and keeps the rest of the circuit", () => {
+    const { project, host, circuit } = twoChips();
+    const pinId = circuit.pins[0]?.id ?? newPinId();
+    const withoutPiece: Circuit = {
+      ...circuit,
+      instances: circuit.instances.filter(
+        (item) => !(item.kind.type === "pin" && item.kind.pinId === pinId),
+      ),
+    };
+    const others = project.chips.filter((chip) => chip.id !== host.id);
+    const stripped = { ...project, chips: [{ ...host, draft: withoutPiece }, ...others] };
+    const result = removePin(stripped, { type: "removePin", chipId: host.id, pinId });
+    const draft = result.ok ? draftOf(result.value, host.id) : undefined;
+    expect(draft?.pins.map((pin) => pin.id)).toEqual(
+      circuit.pins.filter((pin) => pin.id !== pinId).map((pin) => pin.id),
+    );
+    expect(draft?.instances).toEqual(withoutPiece.instances);
+  });
+});
+
 describe("renamePin", () => {
   it("changes only the name", () => {
     const { project, host, circuit } = twoChips();
