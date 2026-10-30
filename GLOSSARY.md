@@ -19,3 +19,10 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Folder** / **Tag**: user-defined ways to organise chips in the chip library.
 - **Seed**: the number that decides how races resolve. Saved with the project; same seed + same inputs = same result. _Avoid_: random state.
 - **Race**: two or more gates changing on the same tick in a way where the outcome depends on which "wins".
+- **Saved version** / **Draft**: a chip's published circuit (what users of the chip run) and its in-progress edits. _Avoid_: published/unpublished, version 2.
+- **Pins panel**: the list of a chip's inputs and outputs where names, widths and order are edited.
+- **Bit tap**: a wire end attached to one bit of a multi-bit pin.
+- **Pin piece**: the canvas piece of one of the chip's own input or output pins.
+- **Step (clock)**: one toggle of the clock followed by a settle.
+- **Split** / **Merge**: built-in parts converting between one n-bit pin and n 1-bit pins.
+- **Library**: the browsable sheet/panel of chips (search, starred, folders, tags). **Quick-add menu**: the long-press/right-click menu that places a chip at the press point.

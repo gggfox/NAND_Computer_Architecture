@@ -15,6 +15,7 @@ export interface SettleResult {
 
 export interface Engine {
   readonly setInput: (index: number, value: 0 | 1) => void;
+  readonly setClock: (value: 0 | 1) => void;
   readonly tick: () => void;
   readonly runUntilStable: (maxTicks: number) => SettleResult;
   readonly readOutput: (index: number) => 0 | 1;
@@ -47,10 +48,10 @@ const commit = ({ netlist, signals, next, random, holdProbability }: Core): bool
   let quiet = true;
   for (let gate = 0; gate < nandCount; gate += 1) {
     const value = at(next, gate);
-    if (value !== at(signals, inputCount + gate)) {
+    if (value !== at(signals, inputCount + 1 + gate)) {
       quiet = false;
       if (random() >= holdProbability) {
-        signals[inputCount + gate] = value;
+        signals[inputCount + 1 + gate] = value;
       }
     }
   }
@@ -59,7 +60,7 @@ const commit = ({ netlist, signals, next, random, holdProbability }: Core): bool
 
 const createCore = (netlist: Netlist, seed: number, options?: EngineOptions): Core => ({
   netlist,
-  signals: new Uint8Array(netlist.inputCount + netlist.nandCount),
+  signals: new Uint8Array(netlist.inputCount + 1 + netlist.nandCount),
   next: new Uint8Array(netlist.nandCount),
   random: createPrng(seed),
   holdProbability: options?.raceHoldProbability ?? RACE_HOLD_PROBABILITY,
@@ -83,6 +84,9 @@ export const createEngine = (netlist: Netlist, seed: number, options?: EngineOpt
       if (index >= 0 && index < netlist.inputCount) {
         core.signals[index] = value;
       }
+    },
+    setClock: (value) => {
+      core.signals[netlist.inputCount] = value;
     },
     tick: () => {
       step();

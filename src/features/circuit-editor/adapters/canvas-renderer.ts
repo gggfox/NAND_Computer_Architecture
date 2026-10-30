@@ -1,17 +1,17 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance, Circuit, Point } from "~/features/projects";
-import { m } from "~/i18n/paraglide/messages";
+import type { ChipInstance, Circuit, Point, Project } from "~/features/projects";
+import type { PinId } from "~/shared/ids";
 
 import { GRID, partOf, rectOf, wireRoute } from "../domain/geometry";
 import type { Rect, Size } from "../domain/geometry";
+import { partName } from "../domain/messages";
 import { instanceLevel, wireDash, wireLevel } from "../domain/signals";
 import type { KnownLevels, Level } from "../domain/signals";
 import type { EditorSearch } from "../domain/view-search";
 
-export interface RenderState {
+export interface RenderState extends KnownLevels {
+  readonly project: Project;
   readonly circuit: Circuit;
-  readonly inputs: readonly Level[];
-  readonly outputs: readonly Level[];
   readonly view: EditorSearch;
 }
 
@@ -60,6 +60,7 @@ interface Frame {
   readonly ctx: CanvasRenderingContext2D;
   readonly palette: Palette;
   readonly known: KnownLevels;
+  readonly project: Project;
   readonly circuit: Circuit;
 }
 
@@ -110,8 +111,6 @@ const drawWires = (frame: Frame): void => {
   ctx.setLineDash(wireDash());
 };
 
-const inputLetter = (index: number): string => String.fromCodePoint("A".codePointAt(0)! + index);
-
 const centerText = (ctx: CanvasRenderingContext2D, text: string, rect: Rect): void => {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -134,46 +133,47 @@ const drawBody = (frame: Frame, rect: Rect, style: BodyStyle): void => {
   ctx.stroke();
 };
 
-const drawInputName = (frame: Frame, rect: Rect, inputIndex: number): void => {
-  const { ctx } = frame;
+/** An input is named A, B, ... by its position among the input pins in Pins-panel order. */
+const drawInputName = (frame: Frame, rect: Rect, pinId: PinId): void => {
+  const { ctx, circuit } = frame;
+  const index = circuit.pins
+    .filter((pin) => pin.direction === "input")
+    .findIndex((pin) => pin.id === pinId);
   ctx.fillStyle = frame.palette.text;
   ctx.textAlign = "right";
-  ctx.fillText(inputLetter(inputIndex), rect.x - LABEL_GAP, rect.y + rect.height * HALF);
+  const letter = String.fromCodePoint("A".codePointAt(0)! + index);
+  ctx.fillText(letter, rect.x - LABEL_GAP, rect.y + rect.height * HALF);
 };
 
-const bodyStyle = (palette: Palette, isNand: boolean, level: Level | undefined): BodyStyle =>
-  isNand
+const bodyStyle = (palette: Palette, isPart: boolean, level: Level | undefined): BodyStyle =>
+  isPart
     ? { fill: palette["chip-nand"], radius: CORNER }
     : { fill: levelColor(palette, level), radius: CHIP_RADIUS };
 
-const chipText = (part: string, level: Level | undefined): string => {
-  if (part === "nand") {
-    return m.chip_nand();
+const chipText = (frame: Frame, instance: ChipInstance, level: Level | undefined): string => {
+  if (instance.kind.type !== "pin") {
+    return partName(frame.project, frame.circuit, instance.kind);
   }
   return level === undefined ? UNKNOWN_LEVEL : String(level);
 };
 
-const drawChip = (frame: Frame, instance: ChipInstance, inputIndex: number): void => {
+const drawChip = (frame: Frame, instance: ChipInstance): void => {
   const { ctx, palette } = frame;
   const rect = rectOf(instance);
-  const part = partOf(instance);
+  const { kind } = instance;
   const level = instanceLevel(frame.circuit, frame.known, instance);
-  drawBody(frame, rect, bodyStyle(palette, part === "nand", level));
+  drawBody(frame, rect, bodyStyle(palette, kind.type !== "pin", level));
   ctx.font = FONT;
-  ctx.fillStyle = palette[part !== "nand" && level === 0 ? "chip-text-low" : "chip-text"];
-  centerText(ctx, chipText(part, level), rect);
-  if (part === "input") {
-    drawInputName(frame, rect, inputIndex);
+  ctx.fillStyle = palette[kind.type === "pin" && level === 0 ? "chip-text-low" : "chip-text"];
+  centerText(ctx, chipText(frame, instance, level), rect);
+  if (kind.type === "pin" && partOf(frame.circuit, instance) === "input") {
+    drawInputName(frame, rect, kind.pinId);
   }
 };
 
 const drawChips = (frame: Frame): void => {
-  let inputIndex = 0;
   for (const instance of frame.circuit.instances) {
-    drawChip(frame, instance, inputIndex);
-    if (partOf(instance) === "input") {
-      inputIndex += 1;
-    }
+    drawChip(frame, instance);
   }
 };
 
@@ -266,7 +266,7 @@ export const createCanvasRenderer = (
     const state = read();
     if (ctx !== null) {
       drawScene(
-        { ctx, palette, known: state, circuit: state.circuit },
+        { ctx, palette, known: state, project: state.project, circuit: state.circuit },
         fitBackingStore(canvas),
         state.view,
       );

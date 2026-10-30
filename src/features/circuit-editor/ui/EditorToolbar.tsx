@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
-import { downloadProjectFile } from "~/features/projects";
+import { downloadProjectFile, piece } from "~/features/projects";
 import { ThemePicker } from "~/features/theming";
 import type { ThemeId } from "~/features/theming";
 import { m } from "~/i18n/paraglide/messages";
-import { newInstanceId } from "~/shared/ids";
 import { Button, FileButton, LanguagePicker, Toolbar } from "~/shared/ui";
 
+import { openCircuit } from "../application/editor-store";
 import type { EditorStore } from "../application/editor-store";
 import { freeNandPosition } from "../domain/geometry";
 
@@ -39,14 +39,12 @@ export function EditorToolbar({ editor, onImport }: EditorToolbarProps): ReactNo
     downloadProjectFile(editor.getState().history.present);
   };
   const handleAddNand = (): void => {
-    const { dispatch, history } = editor.getState();
-    dispatch({
+    const state = editor.getState();
+    const position = freeNandPosition(openCircuit(state));
+    state.dispatch({
       type: "placeChip",
-      instance: {
-        id: newInstanceId(),
-        kind: { type: "builtin", builtin: "nand" },
-        position: freeNandPosition(history.present.rootCircuit),
-      },
+      chipId: state.chipId,
+      instance: piece({ type: "nand" }, position),
     });
   };
 

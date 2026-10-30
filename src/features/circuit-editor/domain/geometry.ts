@@ -1,5 +1,5 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance, Circuit, Point, Wire } from "~/features/projects";
+import type { ChipInstance, Circuit, PinKey, Point, Wire } from "~/features/projects";
 
 /** World units are CSS pixels at zoom 1. Chips snap to this grid. */
 export const GRID = 40;
@@ -21,19 +21,27 @@ const HALF = 0.5;
 const NAND_PIN_B = 1;
 const NAND_PIN_OUT = 2;
 
-/** `nand`, `input`, `output`, `clock`, or `custom` for a placed custom chip. */
-export const partOf = (instance: ChipInstance): string =>
-  instance.kind.type === "builtin" ? instance.kind.builtin : "custom";
+export type Part = "nand" | "clock" | "split" | "merge" | "custom" | "input" | "output";
+
+/** The part an instance is; a pin piece is the direction of its pin definition. */
+export const partOf = (circuit: Circuit, instance: ChipInstance): Part => {
+  const { kind } = instance;
+  if (kind.type !== "pin") {
+    return kind.type;
+  }
+  // The schema guarantees the definition; a dangling piece reads as an input.
+  return circuit.pins.find((pin) => pin.id === kind.pinId)?.direction ?? "input";
+};
 
 const sizeOf = (instance: ChipInstance): Size =>
-  partOf(instance) === "nand" ? NAND_SIZE : PIN_SIZE;
+  instance.kind.type === "nand" ? NAND_SIZE : PIN_SIZE;
 
 export const rectOf = (instance: ChipInstance): Rect => ({
   ...instance.position,
   ...sizeOf(instance),
 });
 
-const nandPin = (rect: Rect, pin: number): Point => {
+const nandPin = (rect: Rect, pin: PinKey): Point => {
   if (pin === NAND_PIN_OUT) {
     return { x: rect.x + rect.width, y: rect.y + rect.height * HALF };
   }
@@ -45,9 +53,9 @@ const nandPin = (rect: Rect, pin: number): Point => {
  * Where a pin sits in world space. NAND: 0 = a and 1 = b on the left, 2 = out on the right.
  * An `input` drives from its right edge; every other part is entered from its left edge.
  */
-export const pinPosition = (instance: ChipInstance, pin: number): Point => {
+export const pinPosition = (circuit: Circuit, instance: ChipInstance, pin: PinKey): Point => {
   const rect = rectOf(instance);
-  const part = partOf(instance);
+  const part = partOf(circuit, instance);
   if (part === "nand") {
     return nandPin(rect, pin);
   }
@@ -62,8 +70,8 @@ export const wireRoute = (circuit: Circuit, wire: Wire): readonly Point[] => {
   if (from === undefined || to === undefined) {
     return [];
   }
-  const start = pinPosition(from, wire.from.pin);
-  const end = pinPosition(to, wire.to.pin);
+  const start = pinPosition(circuit, from, wire.from.pin);
+  const end = pinPosition(circuit, to, wire.to.pin);
   if (wire.waypoints.length > 0) {
     return [start, ...wire.waypoints, end];
   }

@@ -1,40 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectRepository } from "~/features/persistence";
-import { createDemoProject } from "~/features/projects";
-import type { Project } from "~/features/projects";
-import { newInstanceId } from "~/shared/ids";
+import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
+import { newChipId, newInstanceId, newPinId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 
-import { createEditorStore } from "./editor-store";
+import { createEditorStore, openCircuit } from "./editor-store";
+import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
 
-const DEBOUNCE_MS = 300;
-
-// oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
-const SAVED = ok(undefined);
-
-const place = () => ({
+const place = (store: ReturnType<typeof createEditorStore>) => ({
   type: "placeChip" as const,
-  instance: {
-    id: newInstanceId(),
-    kind: { type: "builtin" as const, builtin: "nand" as const },
-    /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-    position: { x: 0, y: 0 },
-  },
+  chipId: store.getState().chipId,
+  instance: piece({ type: "nand" }),
 });
 
-const fakeRepo = (saveResult: Awaited<ReturnType<ProjectRepository["save"]>>) => {
-  const saved: Project[] = [];
-  const repo: ProjectRepository = {
-    save: (project) => {
-      saved.push(project);
-      return Promise.resolve(saveResult);
-    },
-    load: () => Promise.resolve(err({ type: "Unavailable" })),
-    list: () => Promise.resolve(ok([])),
-  };
-  return { repo, saved };
-};
+describe("openCircuit", () => {
+  it("opens the project's last opened chip and falls back to an empty circuit", () => {
+    const { repo } = fakeRepo(SAVED);
+    const project = createDemoProject("x");
+    const store = createEditorStore(project, repo);
+    expect(store.getState().chipId).toBe(project.lastOpenedChipId);
+    expect(openCircuit(store.getState())).toBe(project.chips[0]?.draft);
+    expect(openCircuit({ ...store.getState(), chipId: newChipId() })).toBe(EMPTY_CIRCUIT);
+  });
+});
 
 describe("createEditorStore", () => {
   beforeEach(() => {
@@ -48,12 +37,12 @@ describe("createEditorStore", () => {
     const { repo, saved } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
     for (let count = 0; count < 3; count += 1) {
-      store.getState().dispatch(place());
+      store.getState().dispatch(place(store));
     }
     expect(saved).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(saved).toHaveLength(1);
-    expect(saved[0]?.rootCircuit.instances).toHaveLength(7);
+    expect(saved[0]?.chips[0]?.draft.instances).toHaveLength(7);
     expect(store.getState().lastError).toBeNull();
   });
 
@@ -67,11 +56,11 @@ describe("createEditorStore", () => {
   it("stores a save failure in lastError and keeps editing", async () => {
     const { repo } = fakeRepo(err({ type: "QuotaExceeded" }));
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(store.getState().lastError).toEqual({ type: "QuotaExceeded" });
-    expect(store.getState().dispatch(place()).ok).toBe(true);
-    expect(store.getState().history.present.rootCircuit.instances).toHaveLength(6);
+    expect(store.getState().dispatch(place(store)).ok).toBe(true);
+    expect(openCircuit(store.getState()).instances).toHaveLength(6);
   });
 });
 
@@ -80,7 +69,9 @@ describe("createEditorStore errors", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
     const missing = newInstanceId();
-    const result = store.getState().dispatch({ type: "removeChip", instanceId: missing });
+    const result = store
+      .getState()
+      .dispatch({ type: "removeChip", chipId: store.getState().chipId, instanceId: missing });
     expect(result).toEqual({ ok: false, error: { type: "InstanceNotFound", instanceId: missing } });
     expect(store.getState().lastError).toEqual({ type: "InstanceNotFound", instanceId: missing });
     expect(store.getState().history.past).toHaveLength(0);
@@ -89,8 +80,12 @@ describe("createEditorStore errors", () => {
   it("clears a stale error on the next successful dispatch", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch({ type: "removeChip", instanceId: newInstanceId() });
-    store.getState().dispatch(place());
+    store.getState().dispatch({
+      type: "removeChip",
+      chipId: store.getState().chipId,
+      instanceId: newInstanceId(),
+    });
+    store.getState().dispatch(place(store));
     expect(store.getState().lastError).toBeNull();
   });
 });
@@ -106,17 +101,17 @@ describe("createEditorStore undo and inputs", () => {
   it("undo and redo move through history", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     store.getState().undo();
-    expect(store.getState().history.present.rootCircuit.instances).toHaveLength(4);
+    expect(openCircuit(store.getState()).instances).toHaveLength(4);
     store.getState().redo();
-    expect(store.getState().history.present.rootCircuit.instances).toHaveLength(5);
+    expect(openCircuit(store.getState()).instances).toHaveLength(5);
   });
 
   it("saves after undo", async () => {
     const { repo, saved } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(saved).toHaveLength(1);
     store.getState().undo();
@@ -127,11 +122,13 @@ describe("createEditorStore undo and inputs", () => {
   it("setInput updates only the signal level, not history", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    expect(store.getState().inputs).toEqual([0, 0]);
-    store.getState().setInput(1, 1);
-    expect(store.getState().inputs).toEqual([0, 1]);
-    store.getState().setInput(5, 1);
-    expect(store.getState().inputs).toEqual([0, 1]);
+    const [pinA, pinB] = openCircuit(store.getState()).pins;
+    assert(pinA !== undefined && pinB !== undefined);
+    expect(store.getState().inputs.size).toBe(0);
+    store.getState().setInput(pinB.id, 1);
+    expect([...store.getState().inputs]).toEqual([[pinB.id, 1]]);
+    store.getState().setInput(newPinId(), 1);
+    expect(store.getState().inputs.size).toBe(1);
     expect(store.getState().history.past).toHaveLength(0);
   });
 });
@@ -159,10 +156,10 @@ describe("createEditorStore save rejection", () => {
     "sets lastError when save fails (sync=%s) and editing continues",
     async (sync) => {
       const store = createEditorStore(createDemoProject("x"), rejectingRepo(sync));
-      store.getState().dispatch(place());
+      store.getState().dispatch(place(store));
       await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
       expect(store.getState().lastError).toEqual({ type: "Unavailable" });
-      expect(store.getState().dispatch(place()).ok).toBe(true);
+      expect(store.getState().dispatch(place(store)).ok).toBe(true);
     },
   );
 });
@@ -178,10 +175,10 @@ describe("createEditorStore flush", () => {
   it("saves a pending autosave immediately and only once", async () => {
     const { repo, saved } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     await store.getState().flush();
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toBe(store.getState().history.present);
+    expect(saved[0]).toEqual(store.getState().history.present);
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(saved).toHaveLength(1);
   });

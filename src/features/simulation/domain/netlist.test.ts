@@ -10,7 +10,7 @@ const singleNand = (a: NetlistSource["outputs"][number]): NetlistSource => ({
 });
 
 describe("compileNetlist", () => {
-  test("lays signals out as [inputs..., nand outputs...]", () => {
+  test("lays signals out as [inputs..., clock, nand outputs...]", () => {
     const result = compileNetlist(singleNand({ kind: "input", index: 0 }));
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -18,7 +18,7 @@ describe("compileNetlist", () => {
       expect(result.value.nandCount).toBe(1);
       expect([...result.value.nandA]).toEqual([0]);
       expect([...result.value.nandB]).toEqual([1]);
-      expect([...result.value.outputs]).toEqual([2]);
+      expect([...result.value.outputs]).toEqual([3]);
     }
   });
   test("a nand ref past the last nand is SignalOutOfRange", () => {
@@ -57,5 +57,21 @@ describe("compileNetlist", () => {
       ok: false,
       error: { type: "SignalOutOfRange", ref },
     });
+  });
+});
+
+describe("compileNetlist clock", () => {
+  test("the clock is the signal right after the inputs", () => {
+    const result = compileNetlist({
+      inputCount: 2,
+      nands: [{ a: { kind: "clock" }, b: { kind: "nand", index: 0 } }],
+      outputs: [{ kind: "nand", index: 0 }],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect([...result.value.nandA]).toEqual([2]);
+      expect([...result.value.nandB]).toEqual([3]);
+      expect([...result.value.outputs]).toEqual([3]);
+    }
   });
 });

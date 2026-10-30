@@ -1,118 +1,121 @@
 import { describe, expect, it } from "vitest";
 
-import { createDemoProject } from "~/features/projects";
-import type { ChipInstance, Project } from "~/features/projects";
-import { newChipId, newInstanceId } from "~/shared/ids";
+import { createDemoProject, piece, pinDef } from "~/features/projects";
+import { newChipId, newInstanceId, newPinId, newWireId } from "~/shared/ids";
 
-import { applyAction, editorErrorMessage } from "./reducer";
+import type { PlaceableInstance } from "./actions";
+import { at, twoChips } from "./circuit-edits.fixtures";
+import { editorErrorMessage } from "./editor-error-messages";
+import { applyAction } from "./reducer";
 
-const nandAt = (left: number): ChipInstance => ({
-  id: newInstanceId(),
-  kind: { type: "builtin", builtin: "nand" },
-  /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-  position: { x: left, y: 0 },
-});
-
-const firstOfKind = (project: Project, builtin: string): ChipInstance => {
-  const found = project.rootCircuit.instances.find(
-    (item) => item.kind.type === "builtin" && item.kind.builtin === builtin,
-  );
-  if (found === undefined) {
-    return nandAt(0);
-  }
-  return found;
-};
+const nand: PlaceableInstance = piece({ type: "nand" });
 
 describe("applyAction", () => {
-  it("placeChip adds an instance without mutating the input", () => {
-    const project = createDemoProject("x");
-    const instance = nandAt(5);
-    const result = applyAction(project, { type: "placeChip", instance });
-    expect(result.ok && result.value.rootCircuit.instances).toHaveLength(5);
-    expect(project.rootCircuit.instances).toHaveLength(4);
+  it("applies instance actions", () => {
+    const { project, host, circuit } = twoChips();
+    const instanceId = circuit.instances[0]?.id ?? newInstanceId();
+    expect(applyAction(project, { type: "placeChip", chipId: host.id, instance: nand }).ok).toBe(
+      true,
+    );
+    expect(
+      applyAction(project, { type: "moveChip", chipId: host.id, instanceId, position: at(1) }).ok,
+    ).toBe(true);
+    expect(applyAction(project, { type: "removeChip", chipId: host.id, instanceId }).ok).toBe(true);
   });
 
-  it("rejects a duplicate instance id", () => {
-    const project = createDemoProject("x");
-    const [existing] = project.rootCircuit.instances;
-    const result = applyAction(project, {
-      type: "placeChip",
-      instance: { ...nandAt(1), id: existing?.id ?? newInstanceId() },
+  it("applies wire actions", () => {
+    const { project, host, circuit, nand: target } = twoChips();
+    const wireId = circuit.wires[0]?.id ?? newWireId();
+    const chipId = host.id;
+    expect(applyAction(project, { type: "removeWire", chipId, wireId }).ok).toBe(true);
+    expect(applyAction(project, { type: "moveWaypoint", chipId, wireId, waypoints: [] }).ok).toBe(
+      true,
+    );
+    const pin = { instanceId: target.id, pin: 2 };
+    const connect = applyAction(project, {
+      type: "connectWire",
+      chipId,
+      wireId: newWireId(),
+      from: pin,
+      to: pin,
     });
-    expect(!result.ok && result.error.type).toBe("DuplicateInstance");
-  });
-
-  it("moveChip updates the position", () => {
-    const project = createDemoProject("x");
-    const target = firstOfKind(project, "nand");
-    /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-    const position = { x: 9, y: 9 };
-    const result = applyAction(project, { type: "moveChip", instanceId: target.id, position });
-    const moved = result.ok
-      ? result.value.rootCircuit.instances.find((item) => item.id === target.id)
-      : undefined;
-    expect(moved?.position).toEqual(position);
-  });
-
-  it("moveChip with an unknown id is InstanceNotFound", () => {
-    const missing = newInstanceId();
-    const result = applyAction(createDemoProject("x"), {
-      type: "moveChip",
-      instanceId: missing,
-      /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
-      position: { x: 0, y: 0 },
-    });
-    expect(result).toEqual({ ok: false, error: { type: "InstanceNotFound", instanceId: missing } });
+    expect(connect).toEqual({ ok: false, error: { type: "OutputToOutput" } });
   });
 });
 
-describe("applyAction removeChip", () => {
-  it("removeChip drops the instance and its attached wires", () => {
-    const project = createDemoProject("x");
-    const nand = firstOfKind(project, "nand");
-    const result = applyAction(project, { type: "removeChip", instanceId: nand.id });
-    expect(result.ok && result.value.rootCircuit.instances).toHaveLength(3);
-    expect(result.ok && result.value.rootCircuit.wires).toHaveLength(0);
-  });
-
-  it("removeChip with an unknown id is InstanceNotFound", () => {
-    const result = applyAction(createDemoProject("x"), {
-      type: "removeChip",
+describe("applyAction pins and chips", () => {
+  it("applies pin actions", () => {
+    const { project, host, circuit } = twoChips();
+    const chipId = host.id;
+    const pinId = circuit.pins[0]?.id ?? newPinId();
+    const added = {
+      type: "addPin",
+      chipId,
+      pin: pinDef("C", "input"),
       instanceId: newInstanceId(),
-    });
-    expect(!result.ok && result.error.type).toBe("InstanceNotFound");
+      position: at(1),
+    } as const;
+    expect(applyAction(project, added).ok).toBe(true);
+    expect(applyAction(project, { type: "removePin", chipId, pinId }).ok).toBe(true);
+    expect(applyAction(project, { type: "renamePin", chipId, pinId, name: "Z" }).ok).toBe(true);
+    expect(applyAction(project, { type: "setPinWidth", chipId, pinId, width: 8 }).ok).toBe(true);
+    expect(applyAction(project, { type: "reorderPin", chipId, pinId, toIndex: 1 }).ok).toBe(true);
   });
 
-  it("protects input and output instances", () => {
-    const project = createDemoProject("x");
-    for (const builtin of ["input", "output"]) {
-      const target = firstOfKind(project, builtin);
-      const result = applyAction(project, { type: "removeChip", instanceId: target.id });
-      expect(result).toEqual({
-        ok: false,
-        error: { type: "ProtectedInstance", instanceId: target.id },
-      });
-    }
+  it("applies chip actions", () => {
+    const { project, host } = twoChips();
+    const chipId = host.id;
+    const created = {
+      type: "createChip",
+      chipId: newChipId(),
+      name: "N",
+      color: "#000000",
+    } as const;
+    expect(applyAction(project, created).ok).toBe(true);
+    expect(applyAction(project, { type: "renameChip", chipId, name: "R" }).ok).toBe(true);
+    expect(applyAction(project, { type: "recolorChip", chipId, color: "#ffffff" }).ok).toBe(true);
+    expect(applyAction(project, { type: "saveChip", chipId }).ok).toBe(true);
+    expect(
+      applyAction(project, { type: "discardDraft", chipId: project.chips[1]?.id ?? chipId }).ok,
+    ).toBe(true);
   });
 
-  it("removes custom chips (not protected)", () => {
-    const project = createDemoProject("x");
-    const custom: ChipInstance = {
-      ...nandAt(1),
-      kind: { type: "custom", chipId: newChipId() },
-    };
-    const added = applyAction(project, { type: "placeChip", instance: custom });
-    const next = added.ok ? added.value : project;
-    const result = applyAction(next, { type: "removeChip", instanceId: custom.id });
-    expect(result.ok).toBe(true);
+  it("reports an unknown chip", () => {
+    const { project } = twoChips();
+    const missing = newChipId();
+    const result = applyAction(project, { type: "placeChip", chipId: missing, instance: nand });
+    expect(result).toEqual({ ok: false, error: { type: "ChipNotFound", chipId: missing } });
   });
 });
 
 describe("editorErrorMessage", () => {
   it("returns a non-empty message for every error", () => {
     const instanceId = newInstanceId();
-    for (const type of ["InstanceNotFound", "DuplicateInstance", "ProtectedInstance"] as const) {
-      expect(editorErrorMessage({ type, instanceId }).length).toBeGreaterThan(0);
+    const wireId = newWireId();
+    const chipId = newChipId();
+    const errors = [
+      { type: "InstanceNotFound", instanceId },
+      { type: "DuplicateInstance", instanceId },
+      { type: "WireNotFound", wireId },
+      { type: "DuplicateWire", wireId },
+      { type: "ChipNotFound", chipId },
+      { type: "ChipNotSaved", chipId },
+      { type: "WouldContainItself", chipId },
+      { type: "InvalidEndpoint", instanceId, pin: 0 },
+      { type: "BitOutOfRange", bit: 5, width: 4 },
+      { type: "WidthMismatch", from: 4, to: 8 },
+      { type: "OutputToOutput" },
+      { type: "InputToInput" },
+      { type: "InputAlreadyDriven", instanceId },
+      { type: "PinNotFound", pinId: newPinId() },
+      { type: "DuplicatePin", pinId: newPinId() },
+      { type: "PinIndexOutOfRange", index: 7 },
+      { type: "DuplicateChip", chipId },
+      { type: "EmptyName" },
+      { type: "InvalidColor", color: "red" },
+    ] as const;
+    for (const error of errors) {
+      expect(editorErrorMessage(error).length).toBeGreaterThan(0);
     }
   });
 

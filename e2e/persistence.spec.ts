@@ -22,7 +22,7 @@ const storedNandCount = (page: Page): Promise<number> =>
           getAll.addEventListener("success", () => {
             db.close();
             const texts = getAll.result.filter((text): text is string => typeof text === "string");
-            resolve(texts.join("").split('"builtin":"nand"').length - 1);
+            resolve(texts.join("").split('"type":"nand"').length - 1);
           });
         });
       }),

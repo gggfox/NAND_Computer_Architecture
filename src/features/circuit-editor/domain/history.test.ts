@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createHistory, pushHistory, redo, undo } from "./history";
+import { createHistory, mapHistory, pushHistory, redo, undo } from "./history";
 
 describe("history", () => {
   it("push 3, undo 2, redo 1 lands on the second state", () => {
@@ -37,5 +37,14 @@ describe("history", () => {
     const history = createHistory("a");
     expect(undo(history)).toBe(history);
     expect(redo(history)).toBe(history);
+  });
+
+  it("mapHistory maps past, present and future", () => {
+    const history = { past: [1], present: 2, future: [3] };
+    expect(mapHistory(history, (value) => value * 10)).toEqual({
+      past: [10],
+      present: 20,
+      future: [30],
+    });
   });
 });
