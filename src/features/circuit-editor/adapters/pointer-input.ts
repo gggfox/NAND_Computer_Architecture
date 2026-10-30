@@ -85,11 +85,16 @@ const createFeeder = (options: PointerInputOptions) => {
     for (const gesture of result.gestures) {
       options.onGesture(gesture);
     }
-    if (result.timerAt !== undefined) {
+    const deadline = result.timerAt;
+    if (deadline !== undefined) {
       clearTimeout(timer.id);
+      /*
+       * A timer may fire a fraction of a millisecond before the deadline (`setTimeout` drops the
+       * fraction); read early, the recognizer would ignore it and the long-press would never come.
+       */
       timer.id = setTimeout(() => {
-        feed({ type: "timer", time: performance.now() });
-      }, result.timerAt - performance.now());
+        feed({ type: "timer", time: Math.max(performance.now(), deadline) });
+      }, deadline - performance.now());
     }
   };
   return {
