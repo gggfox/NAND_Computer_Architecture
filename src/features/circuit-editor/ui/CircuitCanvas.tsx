@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
@@ -29,6 +29,7 @@ export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode 
   useUrlCamera(session, view);
   const spoken = useSpoken(session);
   const hintId = useId();
+  const hostRef = useRef<HTMLDivElement>(null);
   const chipName = useStore(
     session.editor,
     (state) => findChip(state.history.present, state.chipId)?.name ?? "",
@@ -37,6 +38,7 @@ export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode 
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- `application` is an interactive role: the host takes the canvas's keyboard map
     <div
+      ref={hostRef}
       className={styles.host}
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the application region is the canvas's one focus stop
       tabIndex={0}
@@ -56,7 +58,7 @@ export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode 
       <p className="visually-hidden" aria-live="polite">
         {spoken}
       </p>
-      <CanvasOverlays session={session} />
+      <CanvasOverlays session={session} hostRef={hostRef} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useStore } from "zustand";
 
 import { m } from "~/i18n/paraglide/messages";
@@ -61,11 +61,36 @@ function Dialog({ session, dialog, onClose }: DialogProps): ReactNode {
   );
 }
 
+/**
+ * A dialog opened from a menu has no trigger left to give focus back to once it closes (the menu
+ * is gone), so focus goes back to the canvas host, where the keyboard map is.
+ */
+const useFocusHostOnClose = (
+  dialog: OverlayDialog | undefined,
+  hostRef: RefObject<HTMLElement | null>,
+): void => {
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (dialog === undefined && wasOpen.current) {
+      hostRef.current?.focus();
+    }
+    wasOpen.current = dialog !== undefined;
+  }, [dialog, hostRef]);
+};
+
 /** The menus, bit picker, pin card, dialogs and keyboard help, laid over the canvas. */
-export function CanvasOverlays({ session }: { readonly session: EditorSession }): ReactNode {
+export function CanvasOverlays({
+  session,
+  hostRef,
+}: {
+  readonly session: EditorSession;
+  /** The canvas host, which takes focus back when a dialog closes. */
+  readonly hostRef: RefObject<HTMLElement | null>;
+}): ReactNode {
   const card = useStore(session.interaction.store, (state) => state.card);
   const help = useStore(session.interaction.store, (state) => state.help);
   const [dialog, setDialog] = useState<OverlayDialog>();
+  useFocusHostOnClose(dialog, hostRef);
   const close = (): void => {
     setDialog(undefined);
   };
