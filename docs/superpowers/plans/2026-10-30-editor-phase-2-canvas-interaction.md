@@ -408,7 +408,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 7: Hit-testing and the spatial index (domain)
+### Task 7: Hit-testing and the spatial index (domain) ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/domain/hit-test.ts`, `hit-test.test.ts`
@@ -430,7 +430,15 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
   - otherwise `empty`;
   - with `positions` overrides, the moved chip is hit at its new place;
   - an index over 300 chips answers `hitTest` touching ≤ 9 buckets (assert via an instrumented counter exported for tests only, kept off `index.ts`).
-- [ ] **Step 2: Implement. Step 3: Commit** `feat(circuit-editor): bucketed hit-testing with 24 px targets and nearest-pin snapping`
+- [x] **Step 2: Implement. Step 3: Commit** `feat(circuit-editor): bucketed hit-testing with 24 px targets and nearest-pin snapping`
+
+**As built:**
+- `buildIndex(scene)` takes a `Scene`, so the layout cache and the drag preview's `positions` apply.
+- A pin is hit inside its drawn tab, or within `TARGET_PX / 2 / zoom` of its anchor; the nearest pin wins.
+- `nearestPin(index, point, { reach, accept? })`.
+- Overlapping chips go to the topmost (last placed).
+- `instancesIn` is named `chipsIn(index, rect)`. It returns `{ instanceId, rect }` for chips that really touch the rect, not whole buckets.
+- Locality is tested through the exported `candidatesNear`: under 40 entries near a point among 300 chips, with no instrumentation counter needed.
 
 ---
 
