@@ -1,4 +1,10 @@
-export { createEngineClient, type EngineClient } from "./adapters/engine-client";
+export {
+  createEngineClient,
+  type EngineClient,
+  type EngineEvent,
+  type EngineEventError,
+  type WorkerFailure,
+} from "./adapters/engine-client";
 export {
   createEngine,
   RACE_HOLD_PROBABILITY,

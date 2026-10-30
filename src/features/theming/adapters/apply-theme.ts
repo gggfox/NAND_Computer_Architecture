@@ -1,7 +1,7 @@
 import { resolveInitialTheme } from "../domain/themes";
 import type { ThemeId } from "../domain/themes";
 
-const THEME_STORAGE_KEY = "nand.theme";
+export const THEME_STORAGE_KEY = "nand.theme";
 
 // A DOM element cannot be a readonly type; mutating it is this function's purpose.
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types

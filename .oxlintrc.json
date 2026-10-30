@@ -179,8 +179,8 @@
       "rules": { "react/jsx-props-no-spreading": "off" }
     },
     {
-      // `children: ReactNode` props can never satisfy prefer-readonly-parameter-types.
-      "files": ["**/src/**/ui/**"],
+      // `children: ReactNode` props can never satisfy prefer-readonly-parameter-types; route files are React components too.
+      "files": ["**/src/**/ui/**", "**/src/routes/**"],
       "rules": { "typescript/prefer-readonly-parameter-types": "off" }
     },
     {

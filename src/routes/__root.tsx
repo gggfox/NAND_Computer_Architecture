@@ -1,8 +1,10 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, ScriptOnce } from "@tanstack/react-router";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
-import { getLocale } from "~/i18n/locale";
+import { requestPersistentStorage } from "~/features/persistence";
+import { themeBootScript } from "~/features/theming";
+import { baseLocale, getLocale } from "~/i18n/locale";
 import { m } from "~/i18n/paraglide/messages";
 import { LocaleProvider } from "~/shared/ui";
 
@@ -21,14 +23,18 @@ export const Route = createRootRoute({
 });
 
 function RootComponent(): ReactNode {
-  // The pre-rendered SPA shell is always baseLocale; correct <html lang> once the stored locale is known.
   useEffect(() => {
+    // The pre-rendered SPA shell is always baseLocale; render that for hydration, then correct it.
     document.documentElement.lang = getLocale();
+    // Once per app start; the browser may refuse, and the export nudge covers that (ADR 14).
+    void requestPersistentStorage();
   }, []);
 
   return (
-    <html lang={getLocale()}>
+    <html lang={baseLocale}>
       <head>
+        {/* Server-only: sets data-theme before first paint; renders nothing on the client. */}
+        <ScriptOnce>{themeBootScript}</ScriptOnce>
         <HeadContent />
       </head>
       <body>

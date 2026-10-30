@@ -48,6 +48,7 @@
     "nand",
     "rrggbb",
     "netlist",
-    "nands"
+    "nands",
+    "dppx"
   ]
 }
