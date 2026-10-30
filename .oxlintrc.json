@@ -192,6 +192,23 @@
       }
     },
     {
+      // Playwright E2E runs in Node and drives the browser one user step at a time.
+      "files": ["e2e/**", "playwright.config.ts"],
+      "rules": {
+        "import/no-nodejs-modules": "off",
+        // Page, Locator and fixtures are mutable Playwright classes; no parameter can be deeply readonly.
+        "typescript/prefer-readonly-parameter-types": "off",
+        // Playwright's fixture callback is named `use`; it is not React's `use` hook.
+        "react-hooks/rules-of-hooks": "off",
+        // User steps are sequential by design; running them in parallel would race the UI.
+        "eslint/no-await-in-loop": "off",
+        // A spec body is a linear script of user steps and assertions.
+        "eslint/max-statements": "off",
+        // `a` and `b` are the NAND input pin names, as in the editor and simulation.
+        "eslint/id-length": ["error", { "checkGeneric": false, "exceptions": ["a", "b"] }]
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         // Tests read repo files (e.g. the committed tokens.css) to guard generated output.
