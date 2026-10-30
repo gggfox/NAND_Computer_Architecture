@@ -50,6 +50,7 @@
     "nand",
     "rrggbb",
     "netlist",
+    "unrouted",
     "nands",
     "dppx",
     "keymap",
