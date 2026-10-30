@@ -486,7 +486,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 9: Interaction state machine (domain) and store (application)
+### Task 9: Interaction state machine (domain) and store (application) ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/domain/interaction.ts` (+ test), `src/features/circuit-editor/domain/pin-info.ts` (+ test), `src/features/circuit-editor/application/interaction-store.ts` (+ test)
@@ -536,7 +536,26 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
   - `]` / `[` cycle in canvas order and wrap;
   - `prune on history change`: undo removes a selected chip and the selection drops it;
   - `pinInfo` gives `"0101 = 5"` for a 4-bit value 5, `"?"` when unknown, and lists the connections by wire.
-- [ ] **Step 2: Implement. Step 3: Commit** `feat(circuit-editor): canvas interaction state machine and store`
+- [x] **Step 2: Implement. Step 3: Commit** `feat(circuit-editor): canvas interaction state machine and store`
+
+**As built:**
+- **Domain files:**
+  - `interaction.ts`: the state, inputs, effects and shared helpers;
+  - `interact.ts`: the dispatcher;
+  - `interaction-gestures.ts`: tap, hover, long-press, context menu, pinch;
+  - `interaction-drag.ts`: move, pan, box and lasso;
+  - `interaction-commands.ts`: the keyboard and toolbar commands;
+  - `interaction-hits.ts`: screen-to-world hit-tests.
+  The gesture and command dispatchers are compiler-linked handler tables, like the reducer's.
+- **State fields beyond the plan:** `focus`, the chip `]` / `[` step from and that `P`/menu keys act on. `[`/`]` bring an off-screen chip into view. A drag starting on a *pin* moves its chip in this phase; Phase 3 turns it into wiring.
+- **Store** (`createInteractionStore({ editor, camera, tool, viewport, view })`):
+  - it returns `{ store, layout, sceneOf, dispose }` and shares one layout cache with the renderer;
+  - it builds the hit index lazily, once per circuit;
+  - announcements are numbered, so a repeated message is still re-read;
+  - `syncCamera` takes a back/forward camera without writing it back.
+- **Selection drawing** (moved here from Task 5):
+  - `adapters/draw-overlays.ts` draws selection outlines, wire halos, the hovered-pin ring (24 px) and the marquee in the theme's `focus-ring` colour, which is contrast-tested against the background in every theme, so no new token was needed;
+  - `RenderState.overlay` carries them, plus the drag-preview `positions`.
 
 ---
 

@@ -37,6 +37,10 @@ const anchoredAt = (world: Point, screen: Point, zoom: number): Camera => ({
 export const zoomAt = (camera: Camera, screen: Point, factor: number): Camera =>
   anchoredAt(screenToWorld(camera, screen), screen, clampZoom(camera.zoom * factor));
 
+/** Keeps the zoom and puts `world` at the centre of the viewport. */
+export const centreOn = (camera: Camera, world: Point, viewport: Size): Camera =>
+  anchoredAt(world, { x: viewport.width * HALF, y: viewport.height * HALF }, camera.zoom);
+
 /** Moves the content by `delta` screen pixels, as a finger dragging the canvas would. */
 export const panBy = (camera: Camera, delta: Point): Camera => ({
   ...camera,

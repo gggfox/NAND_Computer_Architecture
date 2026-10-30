@@ -1,17 +1,22 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Circuit, Project } from "~/features/projects";
+import type { Circuit, Point, Project } from "~/features/projects";
+import type { InstanceId } from "~/shared/ids";
 
 import { SCREEN_PAD, screenToWorld } from "../domain/camera";
 import { createLayoutCache, GRID } from "../domain/chip-layout";
 import type { Rect, Size } from "../domain/chip-layout";
 import type { KnownLevels } from "../domain/signals";
 import type { EditorSearch } from "../domain/view-search";
+import { drawOverlays, drawWireHalos } from "./draw-overlays";
+import type { OverlayView } from "./draw-overlays";
 import { drawChips, drawWires } from "./draw-parts";
 import { readPalette } from "./frame";
 import type { Frame } from "./frame";
 import { watchEnvironment } from "./watch-environment";
 
 export interface RenderState extends KnownLevels {
+  /** The interaction layer: selection, hover, marquee, and the drag preview's positions. */
+  readonly overlay?: OverlayView & { readonly positions?: ReadonlyMap<InstanceId, Point> };
   readonly project: Project;
   readonly circuit: Circuit;
   readonly view: EditorSearch;
@@ -71,15 +76,26 @@ const visibleWorld = (view: EditorSearch, viewport: Size): Rect => {
   };
 };
 
-const drawScene = (frame: Frame, viewport: Viewport, view: EditorSearch): void => {
+interface Layers {
+  readonly view: EditorSearch;
+  readonly overlay: OverlayView;
+}
+
+/** Clears to the background and draws the grid, in screen space. */
+const drawBackdrop = (frame: Frame, viewport: Viewport, view: EditorSearch): void => {
   const { ctx, palette } = frame;
   const { dpr } = viewport;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = palette.background;
   ctx.fillRect(0, 0, viewport.width, viewport.height);
   drawGrid(frame, viewport, view);
+};
+
+const drawScene = (frame: Frame, viewport: Viewport, { view, overlay }: Layers): void => {
+  drawBackdrop(frame, viewport, view);
+  const { dpr } = viewport;
   const scale = dpr * view.zoom;
-  ctx.setTransform(
+  frame.ctx.setTransform(
     scale,
     0,
     0,
@@ -87,8 +103,10 @@ const drawScene = (frame: Frame, viewport: Viewport, view: EditorSearch): void =
     (SCREEN_PAD - view.x * view.zoom) * dpr,
     (SCREEN_PAD - view.y * view.zoom) * dpr,
   );
+  drawWireHalos(frame, overlay);
   drawWires(frame);
   drawChips(frame);
+  drawOverlays(frame, overlay, view.zoom);
 };
 
 /**
@@ -113,7 +131,10 @@ export const createCanvasRenderer = (
       const viewport = fitBackingStore(canvas);
       const { project, circuit, view } = state;
       const visible = visibleWorld(view, viewport);
-      drawScene({ ctx, palette, known: state, project, circuit, layout, visible }, viewport, view);
+      const overlay = state.overlay ?? {};
+      const positions = overlay.positions ?? new Map();
+      const frame = { ctx, palette, known: state, project, circuit, layout, visible, positions };
+      drawScene(frame, viewport, { view, overlay });
     }
   };
   const invalidate = (): void => {

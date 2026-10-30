@@ -13,6 +13,7 @@ const TOKENS = [
   "chip-nand",
   "chip-text",
   "chip-text-low",
+  "focus-ring",
 ] as const;
 type Token = (typeof TOKENS)[number];
 export type Palette = Readonly<Record<Token, string>>;
