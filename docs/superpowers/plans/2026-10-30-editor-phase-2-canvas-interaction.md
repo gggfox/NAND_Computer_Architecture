@@ -363,14 +363,14 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 6: Gesture recognizer (domain)
+### Task 6: Gesture recognizer (domain) ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/domain/gestures.ts`, `gestures.test.ts`
 
 **Interfaces:**
 - `type PointerKind = "mouse" | "touch" | "pen"`
-- `type PointerInput = { type: "down" | "move" | "up" | "cancel"; id: number; kind: PointerKind; button: number /* 0 primary, 2 secondary */; point: Point /* screen */; time: number; modifiers: { shift; alt; ctrlOrMeta; space } } | { type: "timer"; time: number }`
+- `type PointerInput = { type: "down" | "move" | "up" | "cancel"; id: number; kind: PointerKind; button: number /* 0 primary, 2 secondary */; point: Point /* screen */; time: number; modifiers: { shift; alt; ctrlOrMeta; space } } | { type: "timer"; time: number }` (in `gesture-types.ts`)
 - `type Gesture =`
   - `| { type: "hover"; point }` (mouse only, no button down)
   - `| { type: "tap"; point; kind; modifiers }`
@@ -396,7 +396,15 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
   - a mouse move with no button down gives `hover`, and touch never hovers;
   - the `space` modifier is carried on `dragStart`;
   - `recognize` is pure: the same inputs give the same outputs, and the input state is not mutated.
-- [ ] **Step 2: Implement** as a discriminated `phase` union: `idle | pressed | longPressed | dragging | pinching | draining | secondary`. **Step 3: Commit** `feat(circuit-editor): pointer gesture recognizer with tap, drag, long-press and pinch`
+- [x] **Step 2: Implement** as a discriminated `phase` union: `idle | pressed | longPressed | dragging | pinching | draining | secondary`. **Step 3: Commit** `feat(circuit-editor): pointer gesture recognizer with tap, drag, long-press and pinch`
+
+**As built:**
+- The input and gesture types live in `domain/gesture-types.ts`, and the machine lives in `domain/gestures.ts`.
+- A press tracks its current point, so a second finger mid-drag ends the drag where the first finger is.
+- A pinch holds exactly two `{ id, point }` fingers.
+- Long-press is touch and pen only. A mouse never asks for the timer, and ignores a stray one.
+- The 16 px edge guard needs the element's width, so the pointer adapter (Task 10) drops touches that start near the left or right edge; the recognizer stays width-free.
+- 25 tests; 96% branches (only the `assertNever` defaults are uncovered).
 
 ---
 
