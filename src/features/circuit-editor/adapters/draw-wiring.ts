@@ -34,10 +34,17 @@ const FULL_TURN = Math.PI + Math.PI;
 const TARGET_RADIUS_PX = 12;
 const ARMED_WIDTH_PX = 3;
 const HANDLE_WIDTH_PX = 2;
-/** The new wire's dash, world px: unlike the low dash, so it never reads as a wire that is off. */
-const PREVIEW_DASH_ON = 10;
-const PREVIEW_DASH_OFF = 6;
-const PREVIEW_DASH: readonly number[] = [PREVIEW_DASH_ON, PREVIEW_DASH_OFF];
+/**
+ * The preview dash in screen px, like the marquee's: unlike the low dash, so a wire being drawn
+ * never reads as a wire that is off.
+ */
+const PREVIEW_DASH_ON_PX = 10;
+const PREVIEW_DASH_OFF_PX = 6;
+
+const previewDash = (zoom: number): readonly number[] => [
+  PREVIEW_DASH_ON_PX / zoom,
+  PREVIEW_DASH_OFF_PX / zoom,
+];
 const SOLID: readonly number[] = [];
 
 const strokeRoute = (ctx: CanvasRenderingContext2D, route: readonly Point[]): void => {
@@ -73,7 +80,7 @@ const drawWireDrag = (frame: Frame, { from, to, color }: WireDragView): void => 
   ctx.strokeStyle = palette[previewToken(color)];
   ctx.lineWidth = WIRE_WIDTH;
   ctx.lineJoin = "round";
-  ctx.setLineDash(PREVIEW_DASH);
+  ctx.setLineDash(previewDash(frame.zoom));
   strokeRoute(ctx, [from, { x: midX, y: from.y }, { x: midX, y: to.y }, to]);
   ctx.setLineDash(SOLID);
 };
@@ -92,7 +99,7 @@ const shownRoute = (frame: Frame, bends: BendsView): readonly Point[] => {
 /** A segment drag's route, dashed, so the move shows before it is let go. */
 const drawBendPreview = (frame: Frame, route: readonly Point[]): void => {
   const { ctx } = frame;
-  ctx.setLineDash(PREVIEW_DASH);
+  ctx.setLineDash(previewDash(frame.zoom));
   strokeRoute(ctx, route);
   ctx.setLineDash(SOLID);
 };

@@ -12,4 +12,6 @@ export interface RenderState extends KnownLevels {
   readonly project: Project;
   readonly circuit: Circuit;
   readonly view: Camera;
+  /** Which circuit is open (the chip's id): new wires are revealed only within one circuit. */
+  readonly scope: string;
 }

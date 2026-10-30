@@ -81,7 +81,7 @@ export const createCanvasRenderer = (
     frameId = undefined;
     if (ctx !== null) {
       const state = read();
-      const reveal = clock.tick(state.circuit.wires);
+      const reveal = clock.tick(state.scope, state.circuit.wires);
       paint({ canvas, ctx, palette, layout, cached, reveal }, state);
       // One rAF loop until every reveal is done.
       if (clock.running()) {

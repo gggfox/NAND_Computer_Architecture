@@ -1,47 +1,67 @@
 import { describe, expect, it } from "vitest";
 
 import { newWireId } from "~/shared/ids";
+import type { WireId } from "~/shared/ids";
 
 import { nextReveal, NO_REVEAL, REVEAL_MS, revealDash, revealFraction } from "./wire-reveal";
 
 const [first, second, third] = [newWireId(), newWireId(), newWireId()];
 
+/** One frame of chip `scope` with wires `ids` at `now`; animated unless `animate` is false. */
+const tick = (
+  scope: string,
+  ids: readonly WireId[],
+  { now = 0, animate = true }: { readonly now?: number; readonly animate?: boolean } = {},
+) => ({ scope, ids, now, animate });
+
 describe("nextReveal", () => {
   it("reveals nothing on the first frame", () => {
-    const reveal = nextReveal(NO_REVEAL, { ids: [first], now: 0, animate: true });
+    const reveal = nextReveal(NO_REVEAL, tick("chip", [first]));
     expect(reveal.started.size).toBe(0);
     expect(reveal.seen).toStrictEqual(new Set([first]));
   });
 
-  it("starts a new wire, then drops it once revealed", () => {
-    const loaded = nextReveal(NO_REVEAL, { ids: [first], now: 0, animate: true });
-    const added = nextReveal(loaded, { ids: [first, second], now: 10, animate: true });
+  it("reveals a new wire within the same chip, then drops it once revealed", () => {
+    const loaded = nextReveal(NO_REVEAL, tick("chip", [first]));
+    const added = nextReveal(loaded, tick("chip", [first, second], { now: 10 }));
     expect(added.started).toStrictEqual(new Map([[second, 10]]));
-    const midway = nextReveal(added, { ids: [first, second], now: 100, animate: true });
+    const midway = nextReveal(added, tick("chip", [first, second], { now: 100 }));
     expect(midway.started).toStrictEqual(new Map([[second, 10]]));
-    const done = nextReveal(midway, { ids: [first, second], now: 10 + REVEAL_MS, animate: true });
+    const done = nextReveal(midway, tick("chip", [first, second], { now: 10 + REVEAL_MS }));
     expect(done.started.size).toBe(0);
   });
 
-  it("reveals the first wire of an empty circuit", () => {
-    const empty = nextReveal(NO_REVEAL, { ids: [], now: 0, animate: true });
-    expect(nextReveal(empty, { ids: [first], now: 5, animate: true }).started.size).toBe(1);
+  it("reveals the first wire drawn in an empty chip", () => {
+    const empty = nextReveal(NO_REVEAL, tick("chip", []));
+    expect(nextReveal(empty, tick("chip", [first], { now: 5 })).started.size).toBe(1);
+  });
+
+  it("does not reveal a populated chip opened after an empty one", () => {
+    const empty = nextReveal(NO_REVEAL, tick("empty", []));
+    const opened = nextReveal(empty, tick("full", [first, second], { now: 5 }));
+    expect(opened.started.size).toBe(0);
+    // Its wires are seen now, so a wire drawn next in it is revealed.
+    expect(nextReveal(opened, tick("full", [first, second, third], { now: 6 })).started.size).toBe(
+      1,
+    );
+  });
+
+  it("drops a running reveal when another chip opens", () => {
+    const loaded = nextReveal(NO_REVEAL, tick("chip", [first]));
+    const added = nextReveal(loaded, tick("chip", [first, second], { now: 5 }));
+    expect(nextReveal(added, tick("other", [first, second], { now: 6 })).started.size).toBe(0);
   });
 
   it("skips the reveal under reduced motion", () => {
-    const loaded = nextReveal(NO_REVEAL, { ids: [first], now: 0, animate: true });
-    expect(nextReveal(loaded, { ids: [first, second], now: 5, animate: false }).started.size).toBe(
-      0,
-    );
+    const loaded = nextReveal(NO_REVEAL, tick("chip", [first]));
+    const added = nextReveal(loaded, tick("chip", [first, second], { now: 5, animate: false }));
+    expect(added.started.size).toBe(0);
   });
 
-  it("does not reveal a swapped-in circuit, and drops a removed wire", () => {
-    const loaded = nextReveal(NO_REVEAL, { ids: [first], now: 0, animate: true });
-    expect(nextReveal(loaded, { ids: [second, third], now: 5, animate: true }).started.size).toBe(
-      0,
-    );
-    const added = nextReveal(loaded, { ids: [first, second], now: 5, animate: true });
-    expect(nextReveal(added, { ids: [first], now: 6, animate: true }).started.size).toBe(0);
+  it("drops a removed wire", () => {
+    const loaded = nextReveal(NO_REVEAL, tick("chip", [first]));
+    const added = nextReveal(loaded, tick("chip", [first, second], { now: 5 }));
+    expect(nextReveal(added, tick("chip", [first], { now: 6 })).started.size).toBe(0);
   });
 });
 

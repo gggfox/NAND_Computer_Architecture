@@ -3,7 +3,6 @@ import type { Point, Wire } from "~/features/projects";
 
 import type { Rect } from "../domain/chip-layout";
 import { wireRoute } from "../domain/geometry";
-import { junctions } from "../domain/junctions";
 import { signalOf } from "../domain/routing/route";
 import { wireLevel } from "../domain/signals";
 import { revealDash } from "../domain/wire-reveal";
@@ -11,6 +10,7 @@ import { GLOW_ALPHA, GLOW_WIDTH, glowsAt, styleKey, wireStyle } from "../domain/
 import type { WireStyle, WireToken } from "../domain/wire-style";
 import { inPart, intersects } from "./frame";
 import type { Frame } from "./frame";
+import { junctionDots } from "./junction-cache";
 
 type Route = readonly Point[];
 
@@ -19,18 +19,22 @@ const JUNCTION_RADIUS = 4;
 const FULL_TURN = Math.PI + Math.PI;
 const SOLID: readonly number[] = [];
 
-/** Wires stroked together: one style, its settled routes, and every route by signal (for dots). */
-interface Batch {
-  readonly style: WireStyle;
-  readonly routes: Route[];
-  readonly signals: Map<string, Route[]>;
-}
-
 /** A wire drawing itself in: its route, its style, and how much of it is drawn. */
 interface Revealing {
   readonly route: Route;
   readonly style: WireStyle;
   readonly fraction: number;
+}
+
+/**
+ * Wires stroked together: one style, its settled routes, the wires of that style being revealed
+ * (drawn right after, so they keep the batch's place in the order), and its signals (for dots).
+ */
+interface Batch {
+  readonly style: WireStyle;
+  readonly routes: Route[];
+  readonly revealing: Revealing[];
+  readonly signals: Set<string>;
 }
 
 const boundsOfPoints = (points: Route): Rect => {
@@ -77,27 +81,43 @@ const batchOf = (batches: Map<string, Batch>, style: WireStyle): Batch => {
   if (known !== undefined) {
     return known;
   }
-  const batch: Batch = { style, routes: [], signals: new Map() };
+  const batch: Batch = { style, routes: [], revealing: [], signals: new Set() };
   batches.set(key, batch);
   return batch;
 };
 
-const addSignal = (batch: Batch, wire: Wire, route: Route): void => {
-  const signal = signalOf(wire);
-  const routes = batch.signals.get(signal);
+interface Gathered {
+  readonly batches: Map<string, Batch>;
+  /** Every visible route by signal: a drag frame's junctions come from these. */
+  readonly routes: Map<string, Route[]>;
+  /** Signals with a wire still being revealed: their dots wait for the reveal. */
+  readonly revealing: Set<string>;
+}
+
+const addRoute = (gathered: Gathered, signal: string, route: Route): void => {
+  const routes = gathered.routes.get(signal);
   if (routes === undefined) {
-    batch.signals.set(signal, [route]);
+    gathered.routes.set(signal, [route]);
   } else {
     routes.push(route);
   }
 };
 
-interface Gathered {
-  readonly batches: Map<string, Batch>;
-  readonly revealing: Revealing[];
-}
+/** A route goes with its batch's settled routes, or with those being revealed. */
+const fileRoute = (
+  { gathered, batch, signal }: { gathered: Gathered; batch: Batch; signal: string },
+  route: Route,
+  fraction: number | undefined,
+): void => {
+  if (fraction === undefined) {
+    batch.routes.push(route);
+  } else {
+    batch.revealing.push({ route, style: batch.style, fraction });
+    gathered.revealing.add(signal);
+  }
+};
 
-/** Files one visible wire under its style's batch, or with the wires being revealed. */
+/** Files one visible wire under its style's batch, settled or being revealed. */
 const addWire = (frame: Frame, gathered: Gathered, wire: Wire): void => {
   const route = visibleRoute(frame, wire);
   if (route.length === 0) {
@@ -108,25 +128,28 @@ const addWire = (frame: Frame, gathered: Gathered, wire: Wire): void => {
     level: wireLevel(frame.circuit, frame.known, wire),
   });
   const batch = batchOf(gathered.batches, style);
-  addSignal(batch, wire, route);
-  const fraction = frame.reveal?.get(wire.id);
-  if (fraction === undefined) {
-    batch.routes.push(route);
-  } else {
-    gathered.revealing.push({ route, style, fraction });
-  }
+  const signal = signalOf(wire);
+  batch.signals.add(signal);
+  addRoute(gathered, signal, route);
+  fileRoute({ gathered, batch, signal }, route, frame.reveal?.get(wire.id));
 };
 
-/** The visible wires, batched by stroke, dash and width (lowest rank first); revealing apart. */
-const gather = (frame: Frame): { batches: readonly Batch[]; revealing: readonly Revealing[] } => {
-  const gathered: Gathered = { batches: new Map(), revealing: [] };
+interface Gather {
+  readonly batches: readonly Batch[];
+  readonly routes: ReadonlyMap<string, readonly Route[]>;
+  readonly revealing: ReadonlySet<string>;
+}
+
+/** The visible wires, batched by stroke, dash and width, lowest rank first. */
+const gather = (frame: Frame): Gather => {
+  const gathered: Gathered = { batches: new Map(), routes: new Map(), revealing: new Set() };
   for (const wire of frame.circuit.wires) {
     addWire(frame, gathered, wire);
   }
   const batches = [...gathered.batches.values()].toSorted(
     (first, second) => first.style.rank - second.style.rank,
   );
-  return { batches, revealing: gathered.revealing };
+  return { batches, routes: gathered.routes, revealing: gathered.revealing };
 };
 
 /** One stroked path: every route in it shares colour, width, dash and opacity. */
@@ -163,17 +186,17 @@ const revealStrokes = ({ route, style, fraction }: Revealing, glow: boolean): St
   return glow && style.glow ? [glowOf(style, [route], dash), line] : [line];
 };
 
-/** Glows first, then one stroke per batch (high on top), then the wires being revealed. */
-const strokesOf = (frame: Frame): { strokes: readonly Stroke[]; batches: readonly Batch[] } => {
-  const { batches, revealing } = gather(frame);
+/** Glows first, then each batch in rank order, each followed by its wires being revealed. */
+const strokesOf = (frame: Frame, batches: readonly Batch[]): readonly Stroke[] => {
   const glow = glowsAt(frame.zoom);
   const glows = glow ? batches.filter((batch) => batch.style.glow) : [];
-  const strokes = [
+  return [
     ...glows.map((batch) => glowOf(batch.style, batch.routes)),
-    ...batches.map((batch) => strokeOf(batch.style, batch.routes)),
-    ...revealing.flatMap((item) => revealStrokes(item, glow)),
+    ...batches.flatMap((batch) => [
+      strokeOf(batch.style, batch.routes),
+      ...batch.revealing.flatMap((item) => revealStrokes(item, glow)),
+    ]),
   ];
-  return { strokes, batches };
 };
 
 const strokeOne = (frame: Frame, { token, width, dash, alpha, routes }: Stroke): void => {
@@ -187,35 +210,44 @@ const strokeOne = (frame: Frame, { token, width, dash, alpha, routes }: Stroke):
   ctx.stroke();
 };
 
-/** A dot where each shared trunk splits, in that trunk's colour. */
-const drawJunctions = (frame: Frame, batches: readonly Batch[]): void => {
+const fillDots = (ctx: CanvasRenderingContext2D, points: readonly Point[]): void => {
+  ctx.beginPath();
+  for (const dot of points) {
+    ctx.moveTo(dot.x + JUNCTION_RADIUS, dot.y);
+    ctx.arc(dot.x, dot.y, JUNCTION_RADIUS, 0, FULL_TURN);
+  }
+  ctx.fill();
+};
+
+/** A dot where each shared trunk splits, in that trunk's colour, once its wires are revealed. */
+const drawJunctions = (frame: Frame, { batches, routes, revealing }: Gather): void => {
   const { ctx, palette } = frame;
+  const dots = junctionDots(frame, routes);
   for (const { style, signals } of batches) {
-    const dots = junctions(signals);
-    if (dots.length > 0) {
+    const shown = [...signals].filter((signal) => !revealing.has(signal));
+    const points = shown.flatMap((signal) => dots.get(signal) ?? []);
+    if (points.length > 0) {
       ctx.fillStyle = palette[style.token];
-      ctx.beginPath();
-      for (const dot of dots) {
-        ctx.moveTo(dot.x + JUNCTION_RADIUS, dot.y);
-        ctx.arc(dot.x, dot.y, JUNCTION_RADIUS, 0, FULL_TURN);
-      }
-      ctx.fill();
+      fillDots(ctx, points);
     }
   }
 };
 
 /**
  * Visible wires: glows first, then one stroke per (colour, dash, width) so each style is set
- * once and high wires end on top, then wires being revealed, then the junction dots.
+ * once and high wires end on top (a wire being revealed keeps its style's place), then the
+ * junction dots.
  */
 export const drawWires = (frame: Frame): void => {
-  const { strokes, batches } = strokesOf(frame);
+  const gathered = gather(frame);
   const { ctx } = frame;
   ctx.lineJoin = "round";
-  for (const stroke of strokes.filter((item) => item.routes.length > 0)) {
-    strokeOne(frame, stroke);
+  for (const stroke of strokesOf(frame, gathered.batches)) {
+    if (stroke.routes.length > 0) {
+      strokeOne(frame, stroke);
+    }
   }
   ctx.globalAlpha = 1;
   ctx.setLineDash(SOLID);
-  drawJunctions(frame, batches);
+  drawJunctions(frame, gathered);
 };

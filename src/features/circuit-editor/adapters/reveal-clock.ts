@@ -8,8 +8,11 @@ import type { Reveal } from "../domain/wire-reveal";
 export type RevealFractions = ReadonlyMap<WireId, number>;
 
 export interface RevealClock {
-  /** This frame's wires: new ones start revealing. Returns each revealing wire's fraction. */
-  readonly tick: (wires: Circuit["wires"]) => RevealFractions;
+  /**
+   * This frame's circuit (`scope` names it) and wires: new ones start revealing. Returns each
+   * revealing wire's fraction.
+   */
+  readonly tick: (scope: string, wires: Circuit["wires"]) => RevealFractions;
   /** Whether a reveal is still running, so the renderer draws another frame. */
   readonly running: () => boolean;
 }
@@ -25,13 +28,13 @@ export const createRevealClock = (): RevealClock => {
   let reveal: Reveal = NO_REVEAL;
   let lastWires: Circuit["wires"] | undefined = undefined;
   return {
-    tick: (wires) => {
+    tick: (scope, wires) => {
       const now = performance.now();
       // Edits replace the wires array, so an unchanged array with nothing running needs no diff.
-      if (wires !== lastWires || reveal.started.size > 0) {
+      if (wires !== lastWires || scope !== reveal.scope || reveal.started.size > 0) {
         lastWires = wires;
         const ids = wires.map((wire) => wire.id);
-        reveal = nextReveal(reveal, { ids, now, animate: !prefersReducedMotion() });
+        reveal = nextReveal(reveal, { scope, ids, now, animate: !prefersReducedMotion() });
       }
       return new Map([...reveal.started].map(([id, at]) => [id, revealFraction(at, now)]));
     },

@@ -66,6 +66,7 @@ export const renderStateOf = (session: EditorSession): RenderState => {
     outputs,
     levels,
     view: state.camera,
+    scope: editorState.chipId,
     overlay: {
       selection: state.selection,
       positions: previewOf(state, scene.circuit),

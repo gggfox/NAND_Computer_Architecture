@@ -23,8 +23,11 @@ export interface WireStyle {
 }
 
 export const WIRE_WIDTH = 3;
-/** The glow under a high wire: its width in world px and its opacity. */
-export const GLOW_WIDTH = 9;
+/**
+ * The glow under a high wire: its width in world px and its opacity. Narrower than the selection
+ * halo (9), so a glow never reads as a selected wire.
+ */
+export const GLOW_WIDTH = 7;
 export const GLOW_ALPHA = 0.25;
 /** Below this zoom the glow is skipped: it would only blur thin wires together. */
 const GLOW_MIN_ZOOM = 0.5;

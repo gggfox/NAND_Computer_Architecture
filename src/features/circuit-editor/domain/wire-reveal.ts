@@ -3,9 +3,16 @@ import type { WireId } from "~/shared/ids";
 /** How long a new wire takes to draw itself along its route. */
 export const REVEAL_MS = 250;
 
-/** What the renderer remembers between frames: the wire ids it drew and when new ones appeared. */
+/**
+ * What the renderer remembers between frames: the circuit it drew (`scope`), the wire ids in it,
+ * and when new ones appeared.
+ */
 export interface Reveal {
-  /** Absent before the first frame, so the wires already there on load are never revealed. */
+  readonly scope?: string;
+  /**
+   * Absent before the first frame of a circuit, so the wires already there when a circuit is
+   * loaded or opened are never revealed.
+   */
   readonly seen?: ReadonlySet<WireId>;
   readonly started: ReadonlyMap<WireId, number>;
 }
@@ -19,6 +26,8 @@ const EASE_POWER = 3;
 export const NO_REVEAL: Reveal = { started: new Map() };
 
 interface Tick {
+  /** Which circuit this frame draws (the open chip's id): a change starts afresh. */
+  readonly scope: string;
   /** The wire ids in this frame's circuit. */
   readonly ids: readonly WireId[];
   readonly now: number;
@@ -27,25 +36,21 @@ interface Tick {
 }
 
 /**
- * Whether the circuit was swapped for another (a chip opened): wires were drawn last frame and
- * none of them is still here. Its wires are not new, so they are not revealed.
+ * The reveal after one frame: new ids start, finished or removed ones are dropped. Another
+ * circuit (a chip opened) counts as a first frame: its wires are not new.
  */
-const swapped = (seen: ReadonlySet<WireId>, ids: readonly WireId[]): boolean =>
-  seen.size > 0 && !ids.some((id) => seen.has(id));
-
-/** The reveal after one frame: new ids start, finished or removed ones are dropped. */
-export const nextReveal = (reveal: Reveal, { ids, now, animate }: Tick): Reveal => {
-  const { seen } = reveal;
+export const nextReveal = (reveal: Reveal, { scope, ids, now, animate }: Tick): Reveal => {
+  const same = reveal.scope === scope;
+  const seen = same ? reveal.seen : undefined;
   const current = new Set(ids);
-  const started = new Map(
-    [...reveal.started].filter(([id, at]) => current.has(id) && now - at < REVEAL_MS),
-  );
-  if (seen !== undefined && animate && !swapped(seen, ids)) {
+  const kept = same ? [...reveal.started] : [];
+  const started = new Map(kept.filter(([id, at]) => current.has(id) && now - at < REVEAL_MS));
+  if (seen !== undefined && animate) {
     for (const id of ids.filter((item) => !seen.has(item))) {
       started.set(id, now);
     }
   }
-  return { seen: current, started };
+  return { scope, seen: current, started };
 };
 
 /** How much of a revealing wire is drawn at `now`, 0 to 1, easing out. */
