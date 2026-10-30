@@ -4,65 +4,20 @@ import type { KeyboardEvent, RefObject } from "react";
 import { useStore } from "zustand";
 
 import { createCanvasRenderer } from "../adapters/canvas-renderer";
-import type { RenderState } from "../adapters/canvas-renderer";
 import { createMinimap } from "../adapters/minimap-renderer";
-import type { MinimapState } from "../adapters/minimap-renderer";
 import { attachPointerInput } from "../adapters/pointer-input";
 import type { EditorSession } from "../application/editor-session";
 import { announcementText } from "../domain/announcements";
 import { cameraForUrl } from "../domain/camera";
 import type { Camera } from "../domain/camera";
-import { previewOf } from "../domain/interaction";
 import { commandForKey } from "../domain/keymap";
+import { minimapStateOf, renderStateOf } from "./render-state-of";
 
 const EVERY_OTHER = 2;
 
 /** The host ref is always set after mount; this only satisfies the effect's return type. */
 const noCleanup = (): void => {
   // Nothing was started.
-};
-
-/** Everything the renderer reads for one frame. */
-const renderStateOf = (session: EditorSession): RenderState => {
-  const { editor, simulation, interaction } = session;
-  const editorState = editor.getState();
-  const scene = interaction.sceneOf(editorState);
-  const state = interaction.store.getState();
-  const { outputs, levels } = simulation.getState();
-  const marquee =
-    state.drag?.kind === "marquee"
-      ? { shape: state.drag.shape, points: state.drag.points }
-      : undefined;
-  return {
-    project: scene.project,
-    circuit: scene.circuit,
-    inputs: editorState.inputs,
-    outputs,
-    levels,
-    view: state.camera,
-    overlay: {
-      selection: state.selection,
-      positions: previewOf(state, scene.circuit),
-      ...(state.hover === undefined ? {} : { hover: state.hover }),
-      ...(marquee === undefined ? {} : { marquee }),
-    },
-  };
-};
-
-/** What the minimap reads for one frame. */
-const minimapStateOf = (session: EditorSession, canvas: HTMLCanvasElement): MinimapState => {
-  const { editor, interaction } = session;
-  const scene = interaction.sceneOf(editor.getState());
-  const state = interaction.store.getState();
-  return {
-    project: scene.project,
-    circuit: scene.circuit,
-    layout: interaction.layout,
-    positions: previewOf(state, scene.circuit),
-    view: state.camera,
-    viewport: { width: canvas.clientWidth, height: canvas.clientHeight },
-    dragging: state.drag !== undefined,
-  };
 };
 
 /** The renderer and the minimap, redrawn whenever the editor, simulation or interaction changes. */

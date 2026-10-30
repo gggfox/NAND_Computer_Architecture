@@ -166,6 +166,16 @@ export interface BendHandle {
   readonly axis: Axis;
 }
 
+/** The handles of a route: one per interior segment, in route order (also a drag preview's). */
+export const routeHandles = (route: readonly Point[]): readonly BendHandle[] =>
+  segmentsOf(route)
+    .slice(1, -1)
+    .map(([from, to], at) => ({
+      index: at + 1,
+      centre: midpoint(from, to),
+      axis: axisOf(from, to),
+    }));
+
 /** The route of wire `wireId` as drawn; empty when the wire is gone. */
 export const bentRoute = (scene: Scene, wireId: WireId): readonly Point[] => {
   const wire = scene.circuit.wires.find((item) => item.id === wireId);
@@ -176,14 +186,8 @@ export const bentRoute = (scene: Scene, wireId: WireId): readonly Point[] => {
  * The handles bend mode draws for wire `wireId`: one 24 px handle at the midpoint of each interior
  * segment (stubs have none), in route order. For the renderer and the bend interactions.
  */
-export const bendHandles = (scene: Scene, wireId: WireId): readonly BendHandle[] => {
-  const segments = segmentsOf(bentRoute(scene, wireId));
-  return segments.slice(1, -1).map(([from, to], at) => ({
-    index: at + 1,
-    centre: midpoint(from, to),
-    axis: axisOf(from, to),
-  }));
-};
+export const bendHandles = (scene: Scene, wireId: WireId): readonly BendHandle[] =>
+  routeHandles(bentRoute(scene, wireId));
 
 /** The handle whose square (half-side `reach`) holds `point`, nearest first. */
 export const handleAt = (

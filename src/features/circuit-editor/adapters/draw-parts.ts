@@ -1,15 +1,14 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance, Point } from "~/features/projects";
+import type { ChipInstance } from "~/features/projects";
 import { readableTextOn } from "~/shared/contrast";
 
 import type { ChipLayout, Rect } from "../domain/chip-layout";
-import { layoutIn, wireRoute } from "../domain/geometry";
-import { instanceLevel, pinValue, wireDash, wireLevel } from "../domain/signals";
+import { layoutIn } from "../domain/geometry";
+import { instanceLevel, pinLevelKey, pinValue } from "../domain/signals";
 import type { Level } from "../domain/signals";
 import { inPart, intersects, levelColor } from "./frame";
 import type { Frame } from "./frame";
 
-const WIRE_WIDTH = 3;
 const CHIP_RADIUS = 6;
 const CORNER = 4;
 const HALF = 0.5;
@@ -20,77 +19,8 @@ const LABEL_INSET = 10;
 const NAME_GAP = 8;
 /** Shown on an input or output body before the engine has reported a level. */
 const UNKNOWN_LEVEL = "?";
-/** Wires drawn later sit on top: high signals stay readable where wires cross (as in DLS). */
-const LEVEL_ORDER: readonly (Level | undefined)[] = [undefined, 0, 1];
-
-const boundsOfPoints = (points: readonly Point[]): Rect => {
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const [x, y] = [Math.min(...xs), Math.min(...ys)];
-  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
-};
-
-const drawPolyline = (ctx: CanvasRenderingContext2D, points: readonly Point[]): void => {
-  ctx.beginPath();
-  for (const [index, point] of points.entries()) {
-    if (index === 0) {
-      ctx.moveTo(point.x, point.y);
-    } else {
-      ctx.lineTo(point.x, point.y);
-    }
-  }
-  ctx.stroke();
-};
-
-const drawWireGroup = (
-  frame: Frame,
-  level: Level | undefined,
-  routes: readonly Point[][],
-): void => {
-  const { ctx } = frame;
-  ctx.strokeStyle = levelColor(frame.palette, level);
-  ctx.setLineDash(wireDash(level));
-  for (const route of routes) {
-    drawPolyline(ctx, route);
-  }
-};
-
-type Routes = Map<Level | undefined, Point[][]>;
-
-const addRoute = (groups: Routes, level: Level | undefined, route: readonly Point[]): void => {
-  const group = groups.get(level);
-  if (group === undefined) {
-    groups.set(level, [[...route]]);
-  } else {
-    group.push([...route]);
-  }
-};
-
-/** The routes of the wires on screen (in the frame's part), by level. */
-const visibleRoutes = (frame: Frame): Routes => {
-  const groups: Routes = new Map();
-  for (const wire of frame.circuit.wires) {
-    const route = inPart(frame, [wire.from.instanceId, wire.to.instanceId])
-      ? wireRoute(frame, wire)
-      : [];
-    if (route.length > 0 && intersects(boundsOfPoints(route), frame.visible)) {
-      addRoute(groups, wireLevel(frame.circuit, frame.known, wire), route);
-    }
-  }
-  return groups;
-};
-
-/** Visible wires, grouped by level so each colour is set once and high wires end on top. */
-export const drawWires = (frame: Frame): void => {
-  const groups = visibleRoutes(frame);
-  const { ctx } = frame;
-  ctx.lineWidth = WIRE_WIDTH;
-  ctx.lineJoin = "round";
-  for (const level of LEVEL_ORDER) {
-    drawWireGroup(frame, level, groups.get(level) ?? []);
-  }
-  ctx.setLineDash(wireDash());
-};
+/** While a pin is armed, pins it cannot reach are drawn this faint. */
+const DIM_ALPHA = 0.35;
 
 interface BodyStyle {
   readonly fill: string;
@@ -137,12 +67,18 @@ const drawTab = (frame: Frame, tab: Rect, level: Level | undefined): void => {
   ctx.stroke();
 };
 
+/** The pin tabs; while a pin is armed, the ones it cannot reach are faint. */
 const drawTabs = (frame: Frame, instance: ChipInstance, layout: ChipLayout): void => {
-  frame.ctx.lineWidth = 1;
+  const { ctx, armed } = frame;
+  ctx.lineWidth = 1;
   for (const pin of layout.pins) {
+    const key = pinLevelKey(instance.id, pin.key);
+    const dim = armed !== undefined && key !== armed.key && !armed.legal.has(key);
+    ctx.globalAlpha = dim ? DIM_ALPHA : 1;
     drawTab(frame, pin.tab, tabLevel(frame, instance, pin));
   }
-  frame.ctx.setLineDash(SOLID);
+  ctx.globalAlpha = 1;
+  ctx.setLineDash(SOLID);
 };
 
 /** Pin names inside the body, beside their pins (spec §5.1). */
