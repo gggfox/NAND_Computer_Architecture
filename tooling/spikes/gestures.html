@@ -1,0 +1,455 @@
+<!doctype html>
+<!--
+  Gesture disambiguation spike (Phase 2, Task 0). Throwaway: not part of the app build.
+  Open on a phone: `python3 -m http.server 8000 --directory tooling/spikes`, then
+  http://<your-ip>:8000/gestures.html (the app's dev server routes every path to the SPA).
+  Checklist and findings: docs/research/2026-10-30-gesture-spike.md
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>Gesture spike</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0d1017;
+        color: #e9ecf6;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+        padding: 8px 12px;
+        background: #171b27;
+      }
+      label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      input[type="range"] {
+        inline-size: 110px;
+      }
+      #surface {
+        position: relative;
+        block-size: 60dvh;
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        background: #10131c;
+        outline: 1px solid #1e2331;
+      }
+      #surface canvas {
+        position: absolute;
+        inset: 0;
+        inline-size: 100%;
+        block-size: 100%;
+      }
+      #gesture {
+        position: absolute;
+        inset-block-start: 8px;
+        inset-inline-start: 8px;
+        padding: 4px 10px;
+        font-size: 24px;
+        font-weight: 700;
+        background: #000a;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+      #fps {
+        position: absolute;
+        inset-block-start: 8px;
+        inset-inline-end: 8px;
+        padding: 4px 8px;
+        font:
+          12px ui-monospace,
+          monospace;
+        background: #000a;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+      #log {
+        block-size: calc(40dvh - 56px);
+        margin: 0;
+        padding: 8px 12px;
+        overflow: auto;
+        font:
+          11px/1.35 ui-monospace,
+          monospace;
+        white-space: pre;
+      }
+      button {
+        padding: 6px 12px;
+        font: inherit;
+        color: inherit;
+        background: #2a3042;
+        border: 1px solid #3a4258;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <label
+        >Touch slop <input id="slop" type="range" min="4" max="24" value="10" /><output id="slopOut"
+          >10</output
+        >
+        px</label
+      >
+      <label
+        >Long-press
+        <input id="hold" type="range" min="250" max="900" step="50" value="500" /><output
+          id="holdOut"
+          >500</output
+        >
+        ms</label
+      >
+      <label
+        >Edge guard <input id="edge" type="range" min="0" max="40" value="16" /><output id="edgeOut"
+          >16</output
+        >
+        px</label
+      >
+      <label><input id="raw" type="checkbox" /> raw events</label>
+      <button id="clear" type="button">Clear log</button>
+    </header>
+    <div id="surface">
+      <canvas id="scene"></canvas>
+      <div id="gesture">—</div>
+      <div id="fps">fps —</div>
+    </div>
+    <pre id="log"></pre>
+    <script>
+      "use strict";
+      const MOUSE_SLOP = 4;
+      const $ = (id) => document.getElementById(id);
+      const settings = { slop: 10, hold: 500, edge: 16 };
+      for (const [key, outId] of [
+        ["slop", "slopOut"],
+        ["hold", "holdOut"],
+        ["edge", "edgeOut"],
+      ]) {
+        $(key).addEventListener("input", (event) => {
+          settings[key] = Number(event.target.value);
+          $(outId).textContent = event.target.value;
+        });
+      }
+
+      const lines = [];
+      const log = (text) => {
+        lines.unshift(`${performance.now().toFixed(0).padStart(7)} ${text}`);
+        lines.length = Math.min(lines.length, 200);
+        $("log").textContent = lines.join("\n");
+      };
+      $("clear").addEventListener("click", () => {
+        lines.length = 0;
+        $("log").textContent = "";
+      });
+      const show = (name, detail = "") => {
+        $("gesture").textContent = name;
+        log(`★ ${name} ${detail}`);
+      };
+
+      // Scene: 300 chips on a grid; one-finger drag moves the chip under the finger.
+      const canvas = $("scene");
+      const ctx = canvas.getContext("2d");
+      const chips = Array.from({ length: 300 }, (_unused, index) => ({
+        x: 20 + (index % 20) * 60,
+        y: 20 + Math.floor(index / 20) * 50,
+        w: 44,
+        h: 34,
+      }));
+      const camera = { x: 0, y: 0, zoom: 1 };
+      const toWorld = (p) => ({ x: p.x / camera.zoom + camera.x, y: p.y / camera.zoom + camera.y });
+      const chipAt = (p) => {
+        const w = toWorld(p);
+        return chips.findLast(
+          (c) => w.x >= c.x && w.x <= c.x + c.w && w.y >= c.y && w.y <= c.y + c.h,
+        );
+      };
+      let dragged;
+      let dragOffset = { x: 0, y: 0 };
+      let frameQueued = false;
+      const draw = () => {
+        frameQueued = false;
+        const dpr = devicePixelRatio || 1;
+        const { clientWidth: width, clientHeight: height } = canvas;
+        if (canvas.width !== Math.round(width * dpr)) canvas.width = Math.round(width * dpr);
+        if (canvas.height !== Math.round(height * dpr)) canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        ctx.setTransform(
+          dpr * camera.zoom,
+          0,
+          0,
+          dpr * camera.zoom,
+          -camera.x * camera.zoom * dpr,
+          -camera.y * camera.zoom * dpr,
+        );
+        ctx.font = "600 11px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (const chip of chips) {
+          const x = chip === dragged ? chip.x + dragOffset.x : chip.x;
+          const y = chip === dragged ? chip.y + dragOffset.y : chip.y;
+          ctx.fillStyle = chip === dragged ? "#7f9bff" : "#ff5c8d";
+          ctx.beginPath();
+          ctx.roundRect(x, y, chip.w, chip.h, 4);
+          ctx.fill();
+          ctx.fillStyle = "#0d1017";
+          ctx.fillText("NAND", x + chip.w / 2, y + chip.h / 2);
+        }
+      };
+      const invalidate = () => {
+        if (!frameQueued) {
+          frameQueued = true;
+          requestAnimationFrame(draw);
+        }
+      };
+      new ResizeObserver(invalidate).observe(canvas);
+
+      // Frame-time sampling while a drag or pinch is active.
+      let sampling = false;
+      let samples = [];
+      let last = 0;
+      const sample = (time) => {
+        if (!sampling) return;
+        if (last > 0) samples.push(time - last);
+        last = time;
+        requestAnimationFrame(sample);
+      };
+      const startSampling = () => {
+        if (sampling) return;
+        sampling = true;
+        samples = [];
+        last = 0;
+        requestAnimationFrame(sample);
+      };
+      const stopSampling = () => {
+        if (!sampling) return;
+        sampling = false;
+        const sorted = samples.toSorted((a, b) => a - b);
+        const at = (q) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
+        const text = `frames ${sorted.length} p50 ${at(0.5).toFixed(1)} ms p95 ${at(0.95).toFixed(1)} ms`;
+        $("fps").textContent = text;
+        log(`⏱ ${text}`);
+      };
+
+      // Candidate recognizer: the Task 6 state machine, with live thresholds.
+      const pointers = new Map(); // id -> { start, point, kind, button, time }
+      let phase = "idle"; // idle | pressed | longPressed | dragging | pinching | draining | secondary
+      let primary;
+      let holdTimer;
+      let pinchLast;
+      const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+      const pointOf = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      };
+      const slopFor = (kind) => (kind === "mouse" ? MOUSE_SLOP : settings.slop);
+      const pair = () => [...pointers.values()].slice(0, 2).map((p) => p.point);
+      const centroid = ([a, b]) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+      const endDrag = (commit) => {
+        if (dragged && commit) {
+          dragged.x += dragOffset.x;
+          dragged.y += dragOffset.y;
+        }
+        dragged = undefined;
+        dragOffset = { x: 0, y: 0 };
+        invalidate();
+      };
+      const startPinch = () => {
+        clearTimeout(holdTimer);
+        if (phase === "dragging") {
+          show("dragEnd", "(second finger: commit)");
+          endDrag(true);
+        }
+        phase = "pinching";
+        const points = pair();
+        pinchLast = { center: centroid(points), spread: distance(...points) };
+        show("pinchStart");
+        startSampling();
+      };
+
+      const onDown = (event) => {
+        const point = pointOf(event);
+        const kind = event.pointerType || "mouse";
+        if (kind !== "mouse" && settings.edge > 0) {
+          const width = canvas.clientWidth;
+          if (point.x < settings.edge || point.x > width - settings.edge) {
+            log(`edge-guarded down at x=${point.x.toFixed(0)}`);
+            return;
+          }
+        }
+        if (pointers.size >= 2) {
+          log("third pointer ignored");
+          return;
+        }
+        canvas.setPointerCapture(event.pointerId);
+        pointers.set(event.pointerId, {
+          start: point,
+          point,
+          kind,
+          button: event.button,
+          time: event.timeStamp,
+        });
+        if (pointers.size === 2) {
+          if (phase === "secondary") return;
+          startPinch();
+          return;
+        }
+        primary = event.pointerId;
+        if (kind === "mouse" && event.button === 2) {
+          phase = "secondary";
+          show("contextMenu", chipAt(point) ? "on chip" : "on empty");
+          return;
+        }
+        phase = "pressed";
+        holdTimer = setTimeout(() => {
+          if (phase === "pressed") {
+            phase = "longPressed";
+            show("longPress", chipAt(point) ? "on chip" : "on empty");
+            navigator.vibrate?.(10);
+          }
+        }, settings.hold);
+      };
+
+      const onMove = (event) => {
+        const tracked = pointers.get(event.pointerId);
+        if (!tracked) {
+          if ((event.pointerType || "mouse") === "mouse" && event.buttons === 0) {
+            $("gesture").textContent = "hover";
+          }
+          return;
+        }
+        const coalesced = event.getCoalescedEvents?.() ?? [];
+        tracked.point = pointOf(coalesced.at(-1) ?? event);
+        if (phase === "pinching") {
+          const points = pair();
+          if (points.length < 2) return;
+          const center = centroid(points);
+          const spread = distance(...points);
+          const scale = pinchLast.spread > 0 ? spread / pinchLast.spread : 1;
+          // The world point under the previous centre ends up under the new one: zoom and pan at once.
+          const anchor = toWorld(pinchLast.center);
+          camera.zoom = Math.min(4, Math.max(0.25, camera.zoom * scale));
+          camera.x = anchor.x - center.x / camera.zoom;
+          camera.y = anchor.y - center.y / camera.zoom;
+          pinchLast = { center, spread };
+          $("gesture").textContent = `pinch ×${camera.zoom.toFixed(2)}`;
+          invalidate();
+          return;
+        }
+        if (event.pointerId !== primary) return;
+        const moved = distance(tracked.point, tracked.start);
+        if ((phase === "pressed" || phase === "longPressed") && moved > slopFor(tracked.kind)) {
+          clearTimeout(holdTimer);
+          const afterLongPress = phase === "longPressed";
+          phase = "dragging";
+          dragged = chipAt(tracked.start);
+          show(
+            "dragStart",
+            `${dragged ? "chip" : "empty"} afterLongPress=${afterLongPress} after ${(event.timeStamp - tracked.time).toFixed(0)} ms, ${coalesced.length} coalesced`,
+          );
+          startSampling();
+        }
+        if (phase === "dragging") {
+          const dx = (tracked.point.x - tracked.start.x) / camera.zoom;
+          const dy = (tracked.point.y - tracked.start.y) / camera.zoom;
+          if (dragged) {
+            dragOffset = { x: dx, y: dy };
+          }
+          $("gesture").textContent = `drag ${dx.toFixed(0)},${dy.toFixed(0)}`;
+          invalidate();
+        }
+      };
+
+      const finish = (event, cancelled) => {
+        const tracked = pointers.get(event.pointerId);
+        if (!tracked) return;
+        pointers.delete(event.pointerId);
+        clearTimeout(holdTimer);
+        if (phase === "pinching") {
+          show(cancelled ? "pinchEnd (cancel)" : "pinchEnd");
+          stopSampling();
+          phase = pointers.size > 0 ? "draining" : "idle";
+          return;
+        }
+        if (phase === "draining") {
+          if (pointers.size === 0) phase = "idle";
+          log("drained pointer (no tap)");
+          return;
+        }
+        if (phase === "dragging") {
+          show(cancelled ? "dragCancel" : "dragEnd");
+          endDrag(!cancelled);
+          stopSampling();
+        } else if (phase === "pressed" && !cancelled) {
+          show(
+            "tap",
+            `${chipAt(tracked.point) ? "on chip" : "on empty"} after ${(event.timeStamp - tracked.time).toFixed(0)} ms`,
+          );
+        } else if (cancelled) {
+          show("cancel", `in ${phase}`);
+        }
+        phase = "idle";
+      };
+
+      for (const type of [
+        "pointerdown",
+        "pointermove",
+        "pointerup",
+        "pointercancel",
+        "lostpointercapture",
+      ]) {
+        canvas.addEventListener(type, (event) => {
+          if ($("raw").checked && (type !== "pointermove" || pointers.has(event.pointerId))) {
+            log(
+              `${type} id=${event.pointerId} ${event.pointerType} btn=${event.button}/${event.buttons} p=${event.pressure.toFixed(2)} (${event.clientX.toFixed(0)},${event.clientY.toFixed(0)})`,
+            );
+          }
+        });
+      }
+      canvas.addEventListener("pointerdown", onDown);
+      canvas.addEventListener("pointermove", onMove);
+      canvas.addEventListener("pointerup", (event) => finish(event, false));
+      canvas.addEventListener("pointercancel", (event) => finish(event, true));
+      canvas.addEventListener("lostpointercapture", (event) => finish(event, true));
+      canvas.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        log("contextmenu (prevented)");
+      });
+      canvas.addEventListener(
+        "wheel",
+        (event) => {
+          event.preventDefault();
+          if (event.ctrlKey || event.metaKey) {
+            camera.zoom = Math.min(4, Math.max(0.25, camera.zoom * Math.exp(-event.deltaY / 200)));
+            $("gesture").textContent = `wheel zoom ×${camera.zoom.toFixed(2)}`;
+          } else {
+            camera.x += (event.shiftKey ? event.deltaY : event.deltaX) / camera.zoom;
+            camera.y += (event.shiftKey ? 0 : event.deltaY) / camera.zoom;
+            $("gesture").textContent = "wheel pan";
+          }
+          invalidate();
+        },
+        { passive: false },
+      );
+      log(`ready: ${navigator.userAgent}`);
+      log(
+        `maxTouchPoints=${navigator.maxTouchPoints} coarse=${matchMedia("(pointer: coarse)").matches} dpr=${devicePixelRatio}`,
+      );
+    </script>
+  </body>
+</html>

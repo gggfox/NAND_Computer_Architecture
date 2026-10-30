@@ -175,7 +175,7 @@ messages/en.json, messages/es.json, GLOSSARY.md
 ### Task 0: Spike — gesture disambiguation on real devices
 
 **Files:**
-- Create: `tooling/spikes/gestures.html` (self-contained, no build step; served by `pnpm dev --host` at `/tooling/spikes/gestures.html`)
+- Create: `tooling/spikes/gestures.html` (self-contained, no build step; served with `python3 -m http.server 8000 --directory tooling/spikes`, because the app's dev server routes every path to the SPA)
 - Create: `docs/research/2026-10-30-gesture-spike.md`
 
 The harness:
@@ -183,7 +183,7 @@ The harness:
 - runs a candidate recognizer with adjustable slop and long-press sliders, and shows the recognised gesture big on screen;
 - has a test scene of 300 rects to drag, with a frame-time readout (p50/p95 of rAF deltas).
 
-- [ ] **Step 1:** Write the harness. Set `touch-action: none` on the surface, use `setPointerCapture` on down, and handle `pointercancel` and `lostpointercapture`. Prevent `contextmenu`, and set `-webkit-touch-callout: none` and `user-select: none`, so iOS long-press shows neither the callout nor a text selection.
+- [x] **Step 1:** Write the harness. Set `touch-action: none` on the surface, use `setPointerCapture` on down, and handle `pointercancel` and `lostpointercapture`. Prevent `contextmenu`, and set `-webkit-touch-callout: none` and `user-select: none`, so iOS long-press shows neither the callout nor a text selection.
 - [ ] **Step 2 (owner, on devices):** On iOS Safari (iPhone) and Android Chrome (mid-range phone), run the checklist in the research doc:
   - tap;
   - drag at 3 speeds;
