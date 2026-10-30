@@ -60,6 +60,22 @@ A drag never dispatches per frame. The renderer draws a *preview* offset, and on
    - the flattener is not on the drag path.
    Owned by Task 1 (budget), Task 7 (index), Task 5 (layout cache) and Task 13 (`@perf`).
 
+
+## Status (handoff)
+
+**Done:** Tasks 0–11.
+
+Visual baselines match the current layout (regenerated after Task 11's taller toolbar). On the last full run, `pnpm check` and all 126 functional E2E tests passed across the six Playwright projects.
+
+**Not started:**
+- Task 12 (minimap);
+- Task 13 (canvas E2E for touch, mouse and keyboard; axe with overlays open; the `@perf` drag budget);
+- Task 14 (ADRs 0042/0043, glossary entries, roadmap update).
+
+**Known follow-up:** chips can be dropped overlapping each other.
+
+**Running E2E in a cloud container:** the preinstalled Playwright browsers do not match the pinned version, so run the suites in `mcr.microsoft.com/playwright:v1.64.1-noble`, as `pnpm e2e:visual:docker` does. Delete the `.pnpm-store/` it leaves in the repo before `pnpm check`.
+
 ---
 
 ## Decisions this plan fixes (builder calls, spec §7)
