@@ -209,7 +209,10 @@ const InstanceSchema = z.object({
   kind: z.object({ type: z.string() }),
   position: z.object({ x: z.number(), y: z.number() }),
 });
-const ChipSchema = z.object({ draft: z.object({ instances: z.array(InstanceSchema) }) });
+const ChipSchema = z.object({
+  name: z.string(),
+  draft: z.object({ instances: z.array(InstanceSchema) }),
+});
 const ExportedFileSchema = z.object({ project: z.object({ chips: z.array(ChipSchema) }) });
 
 type ExportedFile = z.output<typeof ExportedFileSchema>;

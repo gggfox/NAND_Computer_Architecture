@@ -1,6 +1,6 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { useEffect, useRef } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, RefObject } from "react";
 import { useStore } from "zustand";
 
 import { createCanvasRenderer } from "../adapters/canvas-renderer";
@@ -128,29 +128,16 @@ const attachInput = (
 };
 
 /**
- * The canvas's renderer and input for the component's life. Space is tracked here, because the
- * host, not the canvas, has keyboard focus.
+ * The host's keyboard map. Only keys aimed at the host itself drive it: the overlays render inside
+ * the host, and their keystrokes must stay theirs. Space is tracked here, because the host, not
+ * the canvas, has keyboard focus.
  */
-export const useCanvas = (session: EditorSession) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const minimapRef = useRef<HTMLCanvasElement>(null);
-  const spaceRef = useRef(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const minimap = minimapRef.current;
-    if (canvas === null || minimap === null) {
-      return noCleanup;
-    }
-    const detachRenderer = attachRenderer(session, canvas, minimap);
-    const detachInput = attachInput(session, canvas, () => spaceRef.current);
-    return () => {
-      detachInput();
-      detachRenderer();
-    };
-  }, [session]);
-
+const useKeyMap = (session: EditorSession, spaceRef: RefObject<boolean>) => {
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
+    // Keys typed in an overlay (menu, dialogs, help) bubble here through React's portals.
+    if (event.target !== event.currentTarget) {
+      return;
+    }
     if (event.key === " ") {
       spaceRef.current = true;
       event.preventDefault();
@@ -167,6 +154,7 @@ export const useCanvas = (session: EditorSession) => {
       session.interaction.store.getState().send({ type: "command", command });
     }
   };
+  // Not limited to the host: releasing Space anywhere ends the pan, so it can never stick.
   const onKeyUp = (event: KeyboardEvent<HTMLElement>): void => {
     if (event.key === " ") {
       spaceRef.current = false;
@@ -175,7 +163,31 @@ export const useCanvas = (session: EditorSession) => {
   const onBlur = (): void => {
     spaceRef.current = false;
   };
-  return { canvasRef, minimapRef, onKeyDown, onKeyUp, onBlur };
+  return { onKeyDown, onKeyUp, onBlur };
+};
+
+/** The canvas's renderer, input and keyboard map for the component's life. */
+export const useCanvas = (session: EditorSession) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const minimapRef = useRef<HTMLCanvasElement>(null);
+  const spaceRef = useRef(false);
+  const keyMap = useKeyMap(session, spaceRef);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const minimap = minimapRef.current;
+    if (canvas === null || minimap === null) {
+      return noCleanup;
+    }
+    const detachRenderer = attachRenderer(session, canvas, minimap);
+    const detachInput = attachInput(session, canvas, () => spaceRef.current);
+    return () => {
+      detachInput();
+      detachRenderer();
+    };
+  }, [session]);
+
+  return { canvasRef, minimapRef, ...keyMap };
 };
 
 const sameCamera = (first: Camera, second: Camera): boolean =>

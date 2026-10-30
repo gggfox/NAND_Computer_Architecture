@@ -1,3 +1,6 @@
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+import path from "node:path";
+
 import type { Page } from "@playwright/test";
 
 import {
@@ -13,6 +16,8 @@ import {
 } from "./support";
 
 const MAX_TABS = 40;
+/** A project whose open chip holds one instance of the custom chip "Inner", at (0, 0). */
+const CUSTOM_CHIP = path.join(import.meta.dirname, "fixtures", "custom-chip.json");
 /** `]` steps through the parts in canvas order: Input A, Input B, then the NAND. */
 const STEPS_TO_NAND = 3;
 
@@ -99,4 +104,62 @@ test("? opens the keyboard help, and Tab still leaves the canvas", async ({ page
   await page.keyboard.press("Tab");
   await expect(canvasHost(page)).not.toBeFocused();
   await expect(page.locator(":focus")).toHaveCount(1);
+});
+
+/** Imports the custom-chip fixture, selects its one instance from the keyboard and opens its menu. */
+const openCustomChipMenu = async (page: Page): Promise<void> => {
+  await createProject(page);
+  const chooserEvent = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Import" }).click();
+  const chooser = await chooserEvent;
+  await chooser.setFiles(CUSTOM_CHIP);
+  await expect(page.getByText("Inner 1", { exact: true })).toBeAttached();
+  await canvasHost(page).focus();
+  await page.keyboard.press("]");
+  await expect(spoken(page)).toHaveText(/Inner 1 selected/u);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu", { name: "Chip actions" })).toBeVisible();
+};
+
+test("keys typed in the rename dialog stay in it, out of the canvas keymap", async ({ page }) => {
+  await openCustomChipMenu(page);
+  await page.getByRole("menuitem", { name: "Rename chip…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Rename chip" });
+  const name = dialog.getByRole("textbox", { name: "Name" });
+  await name.focus();
+  // Ctrl+A selects the text, not every chip; Space, v, h, p, brackets and ? are typed, not run.
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type("Half v[h]p?x");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowRight");
+  // Backspace deletes a letter, not the selected chip; Enter submits, not opens the chip menu.
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Enter");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("menu", { name: "Chip actions" })).toHaveCount(0);
+
+  const file = await exportedProject(page);
+  expect(file.project.chips.map((chip) => chip.name)).toEqual(["Main", "Half v[h]p?"]);
+  expect(file.project.chips[0]?.draft.instances).toEqual([
+    { kind: { type: "custom" }, position: { x: 0, y: 0 } },
+  ]);
+});
+
+test("arrow keys in the recolor dialog never move the chip", async ({ page }) => {
+  await openCustomChipMenu(page);
+  await page.getByRole("menuitem", { name: "Recolor chip…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Recolor chip" });
+  await dialog.getByRole("radio", { checked: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
+  // The swatches handle their own arrows; a button does not, so its arrows bubble out too.
+  const cancel = dialog.getByRole("button", { name: "Cancel" });
+  await cancel.focus();
+  await page.keyboard.press("ArrowRight");
+  await cancel.click();
+  await expect(dialog).toHaveCount(0);
+
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  const file = await exportedProject(page);
+  expect(file.project.chips[0]?.draft.instances[0]?.position).toEqual({ x: 0, y: 0 });
 });

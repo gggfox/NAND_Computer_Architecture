@@ -1,0 +1,38 @@
+{
+  "format": "nand-project",
+  "version": 1,
+  "project": {
+    "id": "00000000-0000-4000-8000-000000000101",
+    "name": "Custom chip",
+    "seed": 42,
+    "chips": [
+      {
+        "id": "00000000-0000-4000-8000-000000000102",
+        "name": "Main",
+        "color": "#3b82f6",
+        "draft": {
+          "pins": [],
+          "instances": [
+            {
+              "id": "00000000-0000-4000-8000-000000000104",
+              "kind": { "type": "custom", "chipId": "00000000-0000-4000-8000-000000000103" },
+              "position": { "x": 0, "y": 0 }
+            }
+          ],
+          "wires": []
+        },
+        "tags": []
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000103",
+        "name": "Inner",
+        "color": "#22c55e",
+        "saved": { "pins": [], "instances": [], "wires": [] },
+        "draft": { "pins": [], "instances": [], "wires": [] },
+        "tags": []
+      }
+    ],
+    "lastOpenedChipId": "00000000-0000-4000-8000-000000000102",
+    "folders": []
+  }
+}
