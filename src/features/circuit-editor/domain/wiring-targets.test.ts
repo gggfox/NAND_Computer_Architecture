@@ -1,6 +1,14 @@
-import { assert, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { EMPTY_CIRCUIT, newChip, pinDef, pinPiece, projectWith, wire } from "~/features/projects";
+import {
+  EMPTY_CIRCUIT,
+  newChip,
+  pinDef,
+  pinKeys,
+  pinPiece,
+  projectWith,
+  wire,
+} from "~/features/projects";
 import type { ChipInstance, PinDef, Wire } from "~/features/projects";
 
 import type { Scene } from "./geometry";
@@ -171,10 +179,70 @@ describe("usedBits", () => {
     const source = nandAt(0, 0);
     const out = bus("q", "output");
     const wires = [3, 1, 3].map((bit) => wire(ref(source, NAND_OUT), ref(out.piece, 0, bit)));
-    const whole = wire(ref(source, NAND_OUT), ref(out.piece, 0));
-    const scene = sceneWith([out.def], [source, out.piece], [...wires, whole]);
-    expect(usedBits(scene.circuit, out.piece.id, 0)).toEqual([1, 3]);
-    expect(usedBits(scene.circuit, source.id, NAND_OUT)).toEqual([]);
-    assert(scene.circuit.wires.length === 4);
+    const scene = sceneWith([out.def], [source, out.piece], wires);
+    expect(usedBits(scene, out.piece.id, 0)).toEqual([1, 3]);
+    expect(usedBits(scene, source.id, NAND_OUT)).toEqual([]);
+  });
+
+  it("a whole-bus wire uses every bit", () => {
+    const input = bus("d", "input");
+    const out = bus("q", "output");
+    const whole = wire(ref(input.piece, 0), ref(out.piece, 0), 4);
+    const scene = sceneWith([input.def, out.def], [input.piece, out.piece], [whole]);
+    expect(usedBits(scene, out.piece.id, 0)).toEqual([0, 1, 2, 3]);
+    expect(usedBits(scene, input.piece.id, 0)).toEqual([0, 1, 2, 3]);
+  });
+});
+
+const driven = (bits: readonly number[]) => {
+  const source = nandAt(0, 0);
+  const out = bus("q", "output");
+  const wires = bits.map((bit) => wire(ref(source, NAND_OUT), ref(out.piece, 0, bit)));
+  return { source, out, scene: sceneWith([out.def], [source, out.piece], wires) };
+};
+
+describe("armed bus sink", () => {
+  it("connects directly on the armed end when one bit is free", () => {
+    const { source, out, scene } = driven([0, 2, 3]);
+    expect(completionFor(scene, ref(out.piece, 0), ref(source, NAND_OUT))).toEqual({
+      type: "connect",
+      from: ref(source, NAND_OUT),
+      to: ref(out.piece, 0, 1),
+    });
+  });
+
+  it("picks on the armed end among the free bits", () => {
+    const { source, out, scene } = driven([0, 3]);
+    expect(completionFor(scene, ref(out.piece, 0), ref(source, NAND_OUT))).toEqual({
+      type: "pickBit",
+      bus: "armed",
+      bits: [1, 2],
+    });
+  });
+});
+
+const mixedScene = () => {
+  const first = nandAt(0, 0);
+  const second = nandAt(300, 0);
+  const input = bus("d", "input");
+  const out = bus("q", "output");
+  const taken = wire(ref(first, NAND_OUT), ref(out.piece, 0, 1));
+  const scene = sceneWith([input.def, out.def], [first, second, input.piece, out.piece], [taken]);
+  return { scene, armed: [ref(first, NAND_OUT), ref(second, NAND_A), ref(input.piece, 0)] };
+};
+
+describe("legalTargets agrees with completionFor", () => {
+  it("lists a pin exactly when its completion is not illegal", () => {
+    const { scene, armed } = mixedScene();
+    const mismatches = armed.flatMap((from) => {
+      const targets = legalTargets(scene, from);
+      return scene.circuit.instances.flatMap((instance) =>
+        pinKeys(scene.project, instance).filter((pin) => {
+          const completion = completionFor(scene, from, { instanceId: instance.id, pin });
+          return targets.has(pinLevelKey(instance.id, pin)) !== (completion.type !== "illegal");
+        }),
+      );
+    });
+    expect(mismatches).toEqual([]);
   });
 });

@@ -86,6 +86,6 @@ export const pinInfo = (
     ...(value === undefined ? {} : { value }),
     valueText: valueText(value, layout.width),
     connections,
-    usedBits: usedBits(scene.circuit, instanceId, pin),
+    usedBits: usedBits(scene, instanceId, pin),
   };
 };

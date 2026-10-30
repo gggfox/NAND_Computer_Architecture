@@ -1,5 +1,5 @@
 import { checkConnection, endpointInfo, pinKeys } from "~/features/projects";
-import type { Circuit, PinKey, PinRef } from "~/features/projects";
+import type { PinKey, PinRef } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import type { Scene } from "./geometry";
@@ -86,19 +86,15 @@ export const legalTargets = (scene: Scene, armed: PinRef): ReadonlySet<string> =
   return keys;
 };
 
-/** Bits of a bus pin that have a wire attached (spec §5.10: the pin card shows them). */
-export const usedBits = (
-  circuit: Circuit,
-  instanceId: InstanceId,
-  pin: PinKey,
-): readonly number[] => {
-  const bits = new Set<number>();
-  for (const { from, to } of circuit.wires) {
-    for (const end of [from, to]) {
-      if (end.instanceId === instanceId && end.pin === pin && end.bit !== undefined) {
-        bits.add(end.bit);
-      }
-    }
-  }
-  return [...bits].toSorted((first, second) => first - second);
+/** Bits of a bus pin that have a wire attached; a whole-bus wire uses every bit. */
+export const usedBits = (scene: Scene, instanceId: InstanceId, pin: PinKey): readonly number[] => {
+  const width = sideWidth(scene, { instanceId, pin });
+  const ends = scene.circuit.wires
+    .flatMap(({ from, to }) => [from, to])
+    .filter((end) => end.instanceId === instanceId && end.pin === pin);
+  const whole = width > 1 && ends.some((end) => end.bit === undefined);
+  const bits = whole
+    ? Array.from({ length: width }, (_unused, bit) => bit)
+    : ends.flatMap((end) => (end.bit === undefined ? [] : [end.bit]));
+  return [...new Set(bits)].toSorted((first, second) => first - second);
 };
