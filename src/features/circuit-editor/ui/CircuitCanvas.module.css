@@ -1,6 +1,7 @@
 .host {
   position: relative;
   block-size: 100%;
+  container-type: inline-size;
   border-radius: 0.5rem;
 }
 
@@ -19,4 +20,25 @@
   border: 1px solid var(--color-grid);
   border-radius: 0.5rem;
   -webkit-touch-callout: none;
+}
+
+/* A pointer shortcut in the bottom-right corner; too cramped on a narrow canvas. */
+.minimap {
+  position: absolute;
+  inset-block-end: 0.5rem;
+  inset-inline-end: 0.5rem;
+  display: block;
+  inline-size: 160px;
+  block-size: 120px;
+  touch-action: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-grid);
+  border-radius: 0.25rem;
+  -webkit-touch-callout: none;
+}
+
+@container (width < 360px) {
+  .minimap {
+    display: none;
+  }
 }

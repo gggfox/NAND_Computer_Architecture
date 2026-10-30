@@ -15,7 +15,8 @@ for (const theme of THEMES) {
       await pickTheme(page, theme);
       await setInputs(page, true, true);
       await expect(output(page)).toHaveText("Output: 0");
-      await expect(page.locator("canvas")).toHaveScreenshot(`demo-${slug(theme)}.png`);
+      // The main canvas; its screenshot includes the minimap drawn over its corner.
+      await expect(page.locator("canvas").first()).toHaveScreenshot(`demo-${slug(theme)}.png`);
     },
   );
 }

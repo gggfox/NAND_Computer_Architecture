@@ -37,6 +37,13 @@ const anchoredAt = (world: Point, screen: Point, zoom: number): Camera => ({
 export const zoomAt = (camera: Camera, screen: Point, factor: number): Camera =>
   anchoredAt(screenToWorld(camera, screen), screen, clampZoom(camera.zoom * factor));
 
+/** The world rect a viewport of `viewport` CSS pixels shows. */
+export const visibleRect = (camera: Camera, viewport: Size): Rect => ({
+  ...screenToWorld(camera, { x: 0, y: 0 }),
+  width: viewport.width / camera.zoom,
+  height: viewport.height / camera.zoom,
+});
+
 /** Keeps the zoom and puts `world` at the centre of the viewport. */
 export const centreOn = (camera: Camera, world: Point, viewport: Size): Camera =>
   anchoredAt(world, { x: viewport.width * HALF, y: viewport.height * HALF }, camera.zoom);
@@ -48,19 +55,20 @@ export const panBy = (camera: Camera, delta: Point): Camera => ({
   y: camera.y - delta.y / camera.zoom,
 });
 
+/** The smallest rect holding both rects. */
+export const unionOf = (first: Rect, second: Rect): Rect => {
+  const x = Math.min(first.x, second.x);
+  const y = Math.min(first.y, second.y);
+  const right = Math.max(first.x + first.width, second.x + second.width);
+  const bottom = Math.max(first.y + first.height, second.y + second.height);
+  return { x, y, width: right - x, height: bottom - y };
+};
+
 /** The smallest rect holding every rect; `undefined` when there are none. */
 export const boundsOf = (rects: Iterable<Rect>): Rect | undefined => {
   let bounds: Rect | undefined = undefined;
   for (const rect of rects) {
-    if (bounds === undefined) {
-      bounds = rect;
-    } else {
-      const x = Math.min(bounds.x, rect.x);
-      const y = Math.min(bounds.y, rect.y);
-      const right = Math.max(bounds.x + bounds.width, rect.x + rect.width);
-      const bottom = Math.max(bounds.y + bounds.height, rect.y + rect.height);
-      bounds = { x, y, width: right - x, height: bottom - y };
-    }
+    bounds = bounds === undefined ? rect : unionOf(bounds, rect);
   }
   return bounds;
 };

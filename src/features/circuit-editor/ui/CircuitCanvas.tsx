@@ -22,9 +22,10 @@ interface CircuitCanvasProps {
  * The editing surface (ADR 3, 20, 21). The `<canvas>` is drawn outside React and hidden from
  * assistive technology; the focusable host around it takes the keyboard map, describes it, and
  * speaks each selection, move, delete and pin through a polite live region. Tab always leaves.
+ * The minimap in the corner is a pointer shortcut only, so it is hidden from assistive technology.
  */
 export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode {
-  const { canvasRef, onKeyDown, onKeyUp, onBlur } = useCanvas(session);
+  const { canvasRef, minimapRef, onKeyDown, onKeyUp, onBlur } = useCanvas(session);
   useUrlCamera(session, view);
   const spoken = useSpoken(session);
   const hintId = useId();
@@ -48,6 +49,7 @@ export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode 
       onBlur={onBlur}
     >
       <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+      <canvas ref={minimapRef} className={styles.minimap} aria-hidden="true" />
       <p id={hintId} className="visually-hidden">
         {m.canvas_hint()}
       </p>

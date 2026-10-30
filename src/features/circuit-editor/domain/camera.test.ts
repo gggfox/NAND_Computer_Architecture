@@ -9,6 +9,7 @@ import {
   panBy,
   SCREEN_PAD,
   screenToWorld,
+  visibleRect,
   worldToScreen,
   zoomAt,
 } from "./camera";
@@ -114,6 +115,17 @@ describe("cameraForUrl", () => {
       zoom: 1.235,
       x: -12.35,
       y: 0,
+    });
+  });
+});
+
+describe("visibleRect", () => {
+  it("is the world rect the viewport shows", () => {
+    expect(visibleRect({ zoom: 2, x: 10, y: 20 }, { width: 400, height: 300 })).toEqual({
+      x: 10 - SCREEN_PAD / 2,
+      y: 20 - SCREEN_PAD / 2,
+      width: 200,
+      height: 150,
     });
   });
 });

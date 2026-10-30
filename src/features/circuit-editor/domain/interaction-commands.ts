@@ -238,6 +238,11 @@ const HANDLERS: Handlers = {
   zoomBy: (state, command) =>
     done({ ...state, camera: zoomAt(state.camera, command.screen, command.factor) }),
   panBy: (state, command) => done({ ...state, camera: panBy(state.camera, command.delta) }),
+  jumpTo: (state, command) =>
+    done(
+      { ...withoutOverlays(state), camera: command.camera },
+      ...(command.settle ? [SETTLED] : []),
+    ),
   openMenu: (state, _command, context) => openMenu(state, context),
   nextPin,
   showHelp: (state) => done({ ...withoutOverlays(state), help: true }),

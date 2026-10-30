@@ -1,4 +1,4 @@
-import type { LayoutCache, Rect } from "../domain/chip-layout";
+import type { LayoutCache, Rect, Size } from "../domain/chip-layout";
 import type { Scene } from "../domain/geometry";
 import type { KnownLevels, Level } from "../domain/signals";
 
@@ -47,3 +47,21 @@ export const intersects = (first: Rect, second: Rect): boolean =>
   second.x <= first.x + first.width &&
   first.y <= second.y + second.height &&
   second.y <= first.y + first.height;
+
+export interface Viewport extends Size {
+  readonly dpr: number;
+}
+
+/** Matches the backing store to the element's CSS size times the device pixel ratio. */
+export const fitBackingStore = (canvas: HTMLCanvasElement): Viewport => {
+  const dpr = globalThis.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const backingWidth = Math.round(width * dpr);
+  const backingHeight = Math.round(height * dpr);
+  if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+    canvas.width = backingWidth;
+    canvas.height = backingHeight;
+  }
+  return { width, height, dpr };
+};

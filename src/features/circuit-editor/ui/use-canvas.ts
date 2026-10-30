@@ -5,6 +5,8 @@ import { useStore } from "zustand";
 
 import { createCanvasRenderer } from "../adapters/canvas-renderer";
 import type { RenderState } from "../adapters/canvas-renderer";
+import { createMinimap } from "../adapters/minimap-renderer";
+import type { MinimapState } from "../adapters/minimap-renderer";
 import { attachPointerInput } from "../adapters/pointer-input";
 import type { EditorSession } from "../application/editor-session";
 import { announcementText } from "../domain/announcements";
@@ -47,20 +49,54 @@ const renderStateOf = (session: EditorSession): RenderState => {
   };
 };
 
-/** The renderer, redrawn whenever the editor, simulation or interaction state changes. */
-const attachRenderer = (session: EditorSession, canvas: HTMLCanvasElement): (() => void) => {
+/** What the minimap reads for one frame. */
+const minimapStateOf = (session: EditorSession, canvas: HTMLCanvasElement): MinimapState => {
+  const { editor, interaction } = session;
+  const scene = interaction.sceneOf(editor.getState());
+  const state = interaction.store.getState();
+  return {
+    project: scene.project,
+    circuit: scene.circuit,
+    layout: interaction.layout,
+    positions: previewOf(state, scene.circuit),
+    view: state.camera,
+    viewport: { width: canvas.clientWidth, height: canvas.clientHeight },
+    dragging: state.drag !== undefined,
+  };
+};
+
+/** The renderer and the minimap, redrawn whenever the editor, simulation or interaction changes. */
+const attachRenderer = (
+  session: EditorSession,
+  canvas: HTMLCanvasElement,
+  minimapCanvas: HTMLCanvasElement,
+): (() => void) => {
   const { interaction, editor, simulation } = session;
   const renderer = createCanvasRenderer(canvas, () => renderStateOf(session), interaction.layout);
+  const minimap = createMinimap(minimapCanvas, {
+    read: () => minimapStateOf(session, canvas),
+    jump: (camera, settle) => {
+      interaction.store
+        .getState()
+        .send({ type: "command", command: { type: "jumpTo", camera, settle } });
+    },
+  });
   renderer.start();
+  minimap.start();
+  const invalidate = (): void => {
+    renderer.invalidate();
+    minimap.invalidate();
+  };
   const unsubscribes = [
-    editor.subscribe(renderer.invalidate),
-    simulation.subscribe(renderer.invalidate),
-    interaction.store.subscribe(renderer.invalidate),
+    editor.subscribe(invalidate),
+    simulation.subscribe(invalidate),
+    interaction.store.subscribe(invalidate),
   ];
   return () => {
     for (const unsubscribe of unsubscribes) {
       unsubscribe();
     }
+    minimap.stop();
     renderer.stop();
   };
 };
@@ -97,14 +133,16 @@ const attachInput = (
  */
 export const useCanvas = (session: EditorSession) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const minimapRef = useRef<HTMLCanvasElement>(null);
   const spaceRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas === null) {
+    const minimap = minimapRef.current;
+    if (canvas === null || minimap === null) {
       return noCleanup;
     }
-    const detachRenderer = attachRenderer(session, canvas);
+    const detachRenderer = attachRenderer(session, canvas, minimap);
     const detachInput = attachInput(session, canvas, () => spaceRef.current);
     return () => {
       detachInput();
@@ -137,7 +175,7 @@ export const useCanvas = (session: EditorSession) => {
   const onBlur = (): void => {
     spaceRef.current = false;
   };
-  return { canvasRef, onKeyDown, onKeyUp, onBlur };
+  return { canvasRef, minimapRef, onKeyDown, onKeyUp, onBlur };
 };
 
 const sameCamera = (first: Camera, second: Camera): boolean =>

@@ -76,6 +76,8 @@ export type InteractionCommand =
   /** Wheel input: zoom about a screen point, or pan by a screen delta. */
   | { readonly type: "zoomBy"; readonly screen: Point; readonly factor: number }
   | { readonly type: "panBy"; readonly delta: Point }
+  /** The minimap moved the camera; `settle` ends the gesture and writes the URL. */
+  | { readonly type: "jumpTo"; readonly camera: Camera; readonly settle: boolean }
   | { readonly type: "openMenu" }
   | { readonly type: "nextPin"; readonly backwards: boolean }
   | { readonly type: "showHelp" | "hideHelp" };

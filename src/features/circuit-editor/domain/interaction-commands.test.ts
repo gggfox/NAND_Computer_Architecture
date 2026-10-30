@@ -141,6 +141,19 @@ describe("camera commands", () => {
       10,
     );
   });
+
+  it("jumps the camera, closing overlays, and settles only when asked", () => {
+    const { context, state, nand } = setup();
+    const open = { ...state, menu: { instanceId: nand.id, screen: screen(0, 0) } };
+    const camera = { zoom: 1, x: 500, y: -40 };
+    expect(command(open, context, { type: "jumpTo", camera, settle: false })).toEqual({
+      state: { ...state, camera },
+      effects: [],
+    });
+    expect(command(state, context, { type: "jumpTo", camera, settle: true }).effects).toEqual([
+      { type: "cameraSettled" },
+    ]);
+  });
 });
 
 describe("menu and pin keys", () => {

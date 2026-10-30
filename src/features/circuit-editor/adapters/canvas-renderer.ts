@@ -2,16 +2,16 @@
 import type { Circuit, Point, Project } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
-import { SCREEN_PAD, screenToWorld } from "../domain/camera";
+import { SCREEN_PAD, visibleRect } from "../domain/camera";
 import type { Camera } from "../domain/camera";
 import { createLayoutCache, GRID } from "../domain/chip-layout";
-import type { LayoutCache, Rect, Size } from "../domain/chip-layout";
+import type { LayoutCache, Size } from "../domain/chip-layout";
 import type { KnownLevels } from "../domain/signals";
 import { drawOverlays, drawWireHalos } from "./draw-overlays";
 import type { OverlayView } from "./draw-overlays";
 import { drawChips, drawWires } from "./draw-parts";
-import { readPalette } from "./frame";
-import type { Frame } from "./frame";
+import { fitBackingStore, readPalette } from "./frame";
+import type { Frame, Viewport } from "./frame";
 import { watchEnvironment } from "./watch-environment";
 
 export interface RenderState extends KnownLevels {
@@ -46,34 +46,6 @@ const drawGrid = (frame: Frame, viewport: Size, view: Camera): void => {
       ctx.fillRect(x - 1, y - 1, GRID_DOT, GRID_DOT);
     }
   }
-};
-
-interface Viewport extends Size {
-  readonly dpr: number;
-}
-
-/** Matches the backing store to the element's CSS size times the device pixel ratio. */
-const fitBackingStore = (canvas: HTMLCanvasElement): Viewport => {
-  const dpr = globalThis.devicePixelRatio || 1;
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const backingWidth = Math.round(width * dpr);
-  const backingHeight = Math.round(height * dpr);
-  if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
-    canvas.width = backingWidth;
-    canvas.height = backingHeight;
-  }
-  return { width, height, dpr };
-};
-
-/** The world rect on screen, so off-screen chips and wires are skipped. */
-const visibleWorld = (view: Camera, viewport: Size): Rect => {
-  const topLeft = screenToWorld(view, { x: 0, y: 0 });
-  return {
-    ...topLeft,
-    width: viewport.width / view.zoom,
-    height: viewport.height / view.zoom,
-  };
 };
 
 interface Layers {
@@ -130,7 +102,8 @@ export const createCanvasRenderer = (
     if (ctx !== null) {
       const viewport = fitBackingStore(canvas);
       const { project, circuit, view } = state;
-      const visible = visibleWorld(view, viewport);
+      // The world rect on screen, so off-screen chips and wires are skipped.
+      const visible = visibleRect(view, viewport);
       const overlay = state.overlay ?? {};
       const positions = overlay.positions ?? new Map();
       const frame = { ctx, palette, known: state, project, circuit, layout, visible, positions };
