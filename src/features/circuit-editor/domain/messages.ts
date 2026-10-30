@@ -5,7 +5,7 @@ import { m } from "~/i18n/paraglide/messages";
 import { assertNever } from "~/shared/assert-never";
 
 import type { EditorError } from "./actions";
-import { editorErrorMessage } from "./reducer";
+import { editorErrorMessage } from "./editor-error-messages";
 import type { NetlistSourceError } from "./to-netlist-source";
 
 /** Why the circuit is not simulating: it cannot be turned into a netlist, or the engine failed. */
@@ -37,16 +37,17 @@ export const simulationErrorMessage = (simulationError: SimulationError): string
   }
 };
 
-const PERSISTENCE_ERRORS: ReadonlySet<string> = new Set([
-  "NotFound",
-  "Corrupt",
-  "QuotaExceeded",
-  "Unavailable",
-]);
+// Compiler-linked: adding a union case without listing it here fails typecheck.
+const PERSISTENCE_ERRORS = {
+  NotFound: true,
+  Corrupt: true,
+  QuotaExceeded: true,
+  Unavailable: true,
+} satisfies Record<PersistenceError["type"], true>;
 
 const isPersistenceError = (
   storeError: EditorError | PersistenceError,
-): storeError is PersistenceError => PERSISTENCE_ERRORS.has(storeError.type);
+): storeError is PersistenceError => Object.hasOwn(PERSISTENCE_ERRORS, storeError.type);
 
 /** The editor store's `lastError` is either a rejected action or a failed autosave. */
 export const editorStoreErrorMessage = (storeError: EditorError | PersistenceError): string =>

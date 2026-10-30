@@ -1,9 +1,9 @@
-import type { ConnectionError, PlaceError, Project } from "~/features/projects";
-import { m } from "~/i18n/paraglide/messages";
+import type { Project } from "~/features/projects";
 import { assertNever } from "~/shared/assert-never";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
+import { createChip, discardDraft, recolorChip, renameChip, saveChip } from "./chip-edits";
 import {
   connectWire,
   moveChip,
@@ -12,6 +12,7 @@ import {
   removeChip,
   removeWire,
 } from "./circuit-edits";
+import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
 
 type InstanceAction = Extract<EditorAction, { type: "placeChip" | "moveChip" | "removeChip" }>;
 
@@ -34,13 +35,66 @@ const applyInstanceAction = (project: Project, action: InstanceAction): Outcome 
   }
 };
 
-export const applyAction = (project: Project, action: EditorAction): Outcome => {
+type PinAction = Extract<
+  EditorAction,
+  { type: "addPin" | "removePin" | "renamePin" | "setPinWidth" | "reorderPin" }
+>;
+
+const applyPinAction = (project: Project, action: PinAction): Outcome => {
   switch (action.type) {
-    case "placeChip":
-    case "moveChip":
-    case "removeChip": {
-      return applyInstanceAction(project, action);
+    case "addPin": {
+      return addPin(project, action);
     }
+    case "removePin": {
+      return removePin(project, action);
+    }
+    case "renamePin": {
+      return renamePin(project, action);
+    }
+    case "setPinWidth": {
+      return setPinWidth(project, action);
+    }
+    case "reorderPin": {
+      return reorderPin(project, action);
+    }
+    default: {
+      return assertNever(action);
+    }
+  }
+};
+
+type ChipAction = Extract<
+  EditorAction,
+  { type: "createChip" | "renameChip" | "recolorChip" | "saveChip" | "discardDraft" }
+>;
+
+const applyChipAction = (project: Project, action: ChipAction): Outcome => {
+  switch (action.type) {
+    case "createChip": {
+      return createChip(project, action);
+    }
+    case "renameChip": {
+      return renameChip(project, action);
+    }
+    case "recolorChip": {
+      return recolorChip(project, action);
+    }
+    case "saveChip": {
+      return saveChip(project, action);
+    }
+    case "discardDraft": {
+      return discardDraft(project, action);
+    }
+    default: {
+      return assertNever(action);
+    }
+  }
+};
+
+type WireAction = Extract<EditorAction, { type: "connectWire" | "removeWire" | "moveWaypoint" }>;
+
+const applyWireAction = (project: Project, action: WireAction): Outcome => {
+  switch (action.type) {
     case "connectWire": {
       return connectWire(project, action);
     }
@@ -56,96 +110,43 @@ export const applyAction = (project: Project, action: EditorAction): Outcome => 
   }
 };
 
-const connectionErrorMessage = (failure: ConnectionError): string => {
-  switch (failure.type) {
-    case "InvalidEndpoint": {
-      return m.editor_error_invalid_endpoint();
-    }
-    case "BitOutOfRange": {
-      return m.editor_error_bit_out_of_range({ bit: failure.bit, width: failure.width });
-    }
-    case "WidthMismatch": {
-      return m.editor_error_width_mismatch({ from: failure.from, to: failure.to });
-    }
-    case "OutputToOutput": {
-      return m.editor_error_output_to_output();
-    }
-    case "InputToInput": {
-      return m.editor_error_input_to_input();
-    }
-    case "InputAlreadyDriven": {
-      return m.editor_error_input_already_driven();
-    }
-    default: {
-      return assertNever(failure);
-    }
+// Compiler-linked: adding an action without sorting it into a group fails typecheck.
+const INSTANCE_ACTIONS = {
+  placeChip: true,
+  moveChip: true,
+  removeChip: true,
+} satisfies Record<InstanceAction["type"], true>;
+const PIN_ACTIONS = {
+  addPin: true,
+  removePin: true,
+  renamePin: true,
+  setPinWidth: true,
+  reorderPin: true,
+} satisfies Record<PinAction["type"], true>;
+const CHIP_ACTIONS = {
+  createChip: true,
+  renameChip: true,
+  recolorChip: true,
+  saveChip: true,
+  discardDraft: true,
+} satisfies Record<ChipAction["type"], true>;
+
+const isInstanceAction = (action: EditorAction): action is InstanceAction =>
+  Object.hasOwn(INSTANCE_ACTIONS, action.type);
+const isPinAction = (action: EditorAction): action is PinAction =>
+  Object.hasOwn(PIN_ACTIONS, action.type);
+const isChipAction = (action: EditorAction): action is ChipAction =>
+  Object.hasOwn(CHIP_ACTIONS, action.type);
+
+export const applyAction = (project: Project, action: EditorAction): Outcome => {
+  if (isInstanceAction(action)) {
+    return applyInstanceAction(project, action);
   }
-};
-
-const placeErrorMessage = (failure: PlaceError): string => {
-  switch (failure.type) {
-    case "ChipNotFound": {
-      return m.editor_error_chip_not_found({ chipId: failure.chipId });
-    }
-    case "ChipNotSaved": {
-      return m.editor_error_chip_not_saved();
-    }
-    case "WouldContainItself": {
-      return m.editor_error_would_contain_itself();
-    }
-    default: {
-      return assertNever(failure);
-    }
+  if (isPinAction(action)) {
+    return applyPinAction(project, action);
   }
-};
-
-type EditError = Exclude<EditorError, PlaceError | ConnectionError>;
-
-const editErrorMessage = (failure: EditError): string => {
-  switch (failure.type) {
-    case "InstanceNotFound": {
-      return m.editor_error_instance_not_found({ instanceId: failure.instanceId });
-    }
-    case "DuplicateInstance": {
-      return m.editor_error_duplicate_instance({ instanceId: failure.instanceId });
-    }
-    case "WireNotFound": {
-      return m.editor_error_wire_not_found({ wireId: failure.wireId });
-    }
-    case "DuplicateWire": {
-      return m.editor_error_duplicate_wire({ wireId: failure.wireId });
-    }
-    default: {
-      return assertNever(failure);
-    }
+  if (isChipAction(action)) {
+    return applyChipAction(project, action);
   }
-};
-
-const PLACE_ERRORS: ReadonlySet<string> = new Set([
-  "ChipNotFound",
-  "ChipNotSaved",
-  "WouldContainItself",
-]);
-const CONNECTION_ERRORS: ReadonlySet<string> = new Set([
-  "InvalidEndpoint",
-  "BitOutOfRange",
-  "WidthMismatch",
-  "OutputToOutput",
-  "InputToInput",
-  "InputAlreadyDriven",
-]);
-
-const isPlaceError = (failure: EditorError): failure is PlaceError =>
-  PLACE_ERRORS.has(failure.type);
-
-const isConnectionError = (failure: EditorError): failure is ConnectionError =>
-  CONNECTION_ERRORS.has(failure.type);
-
-export const editorErrorMessage = (editorError: EditorError): string => {
-  if (isPlaceError(editorError)) {
-    return placeErrorMessage(editorError);
-  }
-  return isConnectionError(editorError)
-    ? connectionErrorMessage(editorError)
-    : editErrorMessage(editorError);
+  return applyWireAction(project, action);
 };

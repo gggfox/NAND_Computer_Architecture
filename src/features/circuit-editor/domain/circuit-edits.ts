@@ -1,6 +1,6 @@
 import { canPlace, checkConnection, findChip, replaceChip } from "~/features/projects";
 import type { Circuit, Project } from "~/features/projects";
-import type { ChipId } from "~/shared/ids";
+import type { ChipId, InstanceId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
@@ -52,22 +52,25 @@ export const moveChip: Edit<"moveChip"> = (project, action) =>
       : err({ type: "InstanceNotFound", instanceId: action.instanceId }),
   );
 
+/** Drops an instance and its wires; a pin piece takes its pin definition with it. */
+export const withoutInstance = (circuit: Circuit, instanceId: InstanceId): Circuit => {
+  const target = circuit.instances.find((item) => item.id === instanceId);
+  const removedPin = target?.kind.type === "pin" ? target.kind.pinId : undefined;
+  return {
+    pins: circuit.pins.filter((pin) => pin.id !== removedPin),
+    instances: circuit.instances.filter((item) => item.id !== instanceId),
+    wires: circuit.wires.filter(
+      (item) => item.from.instanceId !== instanceId && item.to.instanceId !== instanceId,
+    ),
+  };
+};
+
 export const removeChip: Edit<"removeChip"> = (project, action) =>
-  editDraft(project, action.chipId, (circuit) => {
-    const target = circuit.instances.find((item) => item.id === action.instanceId);
-    if (target === undefined) {
-      return err({ type: "InstanceNotFound", instanceId: action.instanceId });
-    }
-    const removedPin = target.kind.type === "pin" ? target.kind.pinId : undefined;
-    return ok({
-      pins: circuit.pins.filter((pin) => pin.id !== removedPin),
-      instances: circuit.instances.filter((item) => item.id !== action.instanceId),
-      wires: circuit.wires.filter(
-        (item) =>
-          item.from.instanceId !== action.instanceId && item.to.instanceId !== action.instanceId,
-      ),
-    });
-  });
+  editDraft(project, action.chipId, (circuit) =>
+    circuit.instances.some((item) => item.id === action.instanceId)
+      ? ok(withoutInstance(circuit, action.instanceId))
+      : err({ type: "InstanceNotFound", instanceId: action.instanceId }),
+  );
 
 export const connectWire: Edit<"connectWire"> = (project, action) =>
   editDraft(project, action.chipId, (circuit) => {

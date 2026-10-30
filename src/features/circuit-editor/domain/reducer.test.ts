@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { piece } from "~/features/projects";
-import { newChipId, newInstanceId, newWireId } from "~/shared/ids";
+import { piece, pinDef } from "~/features/projects";
+import { newChipId, newInstanceId, newPinId, newWireId } from "~/shared/ids";
 
 import type { PlaceableInstance } from "./actions";
 import { at, twoChips } from "./circuit-edits.fixtures";
-import { applyAction, editorErrorMessage } from "./reducer";
+import { editorErrorMessage } from "./editor-error-messages";
+import { applyAction } from "./reducer";
 
 const nand: PlaceableInstance = piece({ type: "nand" });
 
@@ -40,6 +41,44 @@ describe("applyAction", () => {
     });
     expect(connect).toEqual({ ok: false, error: { type: "OutputToOutput" } });
   });
+});
+
+describe("applyAction pins and chips", () => {
+  it("applies pin actions", () => {
+    const { project, host, circuit } = twoChips();
+    const chipId = host.id;
+    const pinId = circuit.pins[0]?.id ?? newPinId();
+    const added = {
+      type: "addPin",
+      chipId,
+      pin: pinDef("C", "input"),
+      instanceId: newInstanceId(),
+      position: at(1),
+    } as const;
+    expect(applyAction(project, added).ok).toBe(true);
+    expect(applyAction(project, { type: "removePin", chipId, pinId }).ok).toBe(true);
+    expect(applyAction(project, { type: "renamePin", chipId, pinId, name: "Z" }).ok).toBe(true);
+    expect(applyAction(project, { type: "setPinWidth", chipId, pinId, width: 8 }).ok).toBe(true);
+    expect(applyAction(project, { type: "reorderPin", chipId, pinId, toIndex: 1 }).ok).toBe(true);
+  });
+
+  it("applies chip actions", () => {
+    const { project, host } = twoChips();
+    const chipId = host.id;
+    const created = {
+      type: "createChip",
+      chipId: newChipId(),
+      name: "N",
+      color: "#000000",
+    } as const;
+    expect(applyAction(project, created).ok).toBe(true);
+    expect(applyAction(project, { type: "renameChip", chipId, name: "R" }).ok).toBe(true);
+    expect(applyAction(project, { type: "recolorChip", chipId, color: "#ffffff" }).ok).toBe(true);
+    expect(applyAction(project, { type: "saveChip", chipId }).ok).toBe(true);
+    expect(
+      applyAction(project, { type: "discardDraft", chipId: project.chips[1]?.id ?? chipId }).ok,
+    ).toBe(true);
+  });
 
   it("reports an unknown chip", () => {
     const { project } = twoChips();
@@ -68,6 +107,12 @@ describe("editorErrorMessage", () => {
       { type: "OutputToOutput" },
       { type: "InputToInput" },
       { type: "InputAlreadyDriven", instanceId },
+      { type: "PinNotFound", pinId: newPinId() },
+      { type: "DuplicatePin", pinId: newPinId() },
+      { type: "PinIndexOutOfRange", index: 7 },
+      { type: "DuplicateChip", chipId },
+      { type: "EmptyName" },
+      { type: "InvalidColor", color: "red" },
     ] as const;
     for (const error of errors) {
       expect(editorErrorMessage(error).length).toBeGreaterThan(0);

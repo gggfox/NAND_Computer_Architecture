@@ -11,6 +11,7 @@ export default defineConfig({
       exclude: [
         "**/*.test.ts",
         "**/*.test.tsx",
+        "**/*.fixtures.ts",
         "**/adapters/**",
         "**/ui/**",
         "src/shared/ui/**",

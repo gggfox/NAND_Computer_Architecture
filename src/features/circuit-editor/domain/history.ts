@@ -38,3 +38,9 @@ export const redo = <S>(history: History<S>): History<S> => {
   }
   return { past: [...history.past, history.present], present: next, future: rest };
 };
+
+export const mapHistory = <S>(history: History<S>, fn: (snapshot: S) => S): History<S> => ({
+  past: history.past.map((snapshot) => fn(snapshot)),
+  present: fn(history.present),
+  future: history.future.map((snapshot) => fn(snapshot)),
+});

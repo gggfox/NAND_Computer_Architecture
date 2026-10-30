@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { persistenceErrorMessage } from "~/features/persistence";
-import { newChipId, newInstanceId, newWireId, ProjectIdSchema } from "~/shared/ids";
+import { newChipId, newInstanceId, newPinId, newWireId, ProjectIdSchema } from "~/shared/ids";
 
 import type { EditorError } from "./actions";
+import { editorErrorMessage } from "./editor-error-messages";
 import { editorStoreErrorMessage, simulationErrorMessage } from "./messages";
 import type { SimulationError } from "./messages";
-import { editorErrorMessage } from "./reducer";
 
 const instanceId = newInstanceId();
 const projectId = ProjectIdSchema.parse("11111111-1111-4111-8111-111111111111");
@@ -47,6 +47,12 @@ describe("editorErrorMessage", () => {
       { type: "OutputToOutput" },
       { type: "InputToInput" },
       { type: "InputAlreadyDriven", instanceId },
+      { type: "PinNotFound", pinId: newPinId() },
+      { type: "DuplicatePin", pinId: newPinId() },
+      { type: "PinIndexOutOfRange", index: 7 },
+      { type: "DuplicateChip", chipId },
+      { type: "EmptyName" },
+      { type: "InvalidColor", color: "red" },
     ];
     const messages = errors.map((error) => editorErrorMessage(error));
     expect(new Set(messages).size).toBe(errors.length);
