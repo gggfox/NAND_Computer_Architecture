@@ -72,7 +72,7 @@ const useFocusHostOnClose = (
   const wasOpen = useRef(false);
   useEffect(() => {
     if (dialog === undefined && wasOpen.current) {
-      hostRef.current?.focus();
+      hostRef.current?.focus({ preventScroll: true });
     }
     wasOpen.current = dialog !== undefined;
   }, [dialog, hostRef]);
