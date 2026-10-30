@@ -123,6 +123,7 @@
   "pin_card_width": "{width} bits",
   "pin_card_value": "Value: {value}",
   "pin_card_unconnected": "Not connected",
+  "pin_card_bits_used": "Bits used: {bits}",
   "help_keys_step": "] and [",
   "help_step": "Select the next or previous chip; with Shift, add it",
   "help_keys_select_all": "Ctrl+A",

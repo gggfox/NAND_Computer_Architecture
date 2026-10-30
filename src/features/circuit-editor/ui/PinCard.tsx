@@ -5,7 +5,7 @@ import { m } from "~/i18n/paraglide/messages";
 
 import type { EditorSession } from "../application/editor-session";
 import type { PinCard as PinCardState } from "../domain/interaction";
-import { pinInfo } from "../domain/pin-info";
+import { bitsText, pinInfo } from "../domain/pin-info";
 
 import styles from "./PinCard.module.css";
 
@@ -44,6 +44,9 @@ export function PinCard({
         </span>
       </p>
       <p>{m.pin_card_value({ value: info.valueText })}</p>
+      {info.width > 1 && info.usedBits.length > 0 ? (
+        <p>{m.pin_card_bits_used({ bits: bitsText(info.usedBits) })}</p>
+      ) : undefined}
       <ul className={styles.connections}>
         {info.connections.length === 0 ? <li>{m.pin_card_unconnected()}</li> : undefined}
         {info.connections.map((connection) => (
