@@ -20,7 +20,10 @@ const expectDemoUnchanged = async (page: Page, url: string): Promise<void> => {
   await expect(page.getByText("NAND gate 2", { exact: true })).toHaveCount(0);
 };
 
-test("an exported project imports back to the same circuit", async ({ page }, testInfo) => {
+test("an exported project imports back to the same circuit", async ({
+  browserName,
+  page,
+}, testInfo) => {
   await createProject(page);
   await page.getByRole("button", { name: "Add NAND" }).click();
   await expect(page.getByText("NAND gate 2", { exact: true })).toBeVisible();
@@ -28,7 +31,12 @@ test("an exported project imports back to the same circuit", async ({ page }, te
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export" }).click();
   const download = await downloadEvent;
-  expect(download.suggestedFilename()).toBe("NAND demo.nand.json");
+  // WebKit on Linux (WPE/GTK) rewrites spaces in download names to underscores.
+  const expectedName =
+    browserName === "webkit" && process.platform === "linux"
+      ? "NAND_demo.nand.json"
+      : "NAND demo.nand.json";
+  expect(download.suggestedFilename()).toBe(expectedName);
   const exported = testInfo.outputPath("exported.nand.json");
   await download.saveAs(exported);
 
