@@ -12,12 +12,12 @@ SPA entry at `dist/client/_shell.html` (there is no `index.html`).
 
 ## Examples
 
-| File          | Host                      | Notes                                                    |
-| ------------- | ------------------------- | -------------------------------------------------------- |
-| `nginx.conf`  | Dokploy, any nginx        | `try_files $uri $uri/ /_shell.html;` plus cache headers  |
-| `.htaccess`   | Hostinger, Apache         | `FallbackResource /_shell.html`; needs `mod_headers`     |
-| `vercel.json` | Vercel                    | Rewrite excludes `sw.js`, manifest and `assets/`         |
-| `_redirects`  | Cloudflare Pages, Netlify | `/* /_shell.html 200`; add a `_headers` rule for `sw.js` |
+| File          | Host                      | Notes                                                                    |
+| ------------- | ------------------------- | ------------------------------------------------------------------------ |
+| `nginx.conf`  | Dokploy, any nginx        | `index _shell.html;` + `try_files $uri /_shell.html;` plus cache headers |
+| `.htaccess`   | Hostinger, Apache         | `FallbackResource` + `DirectoryIndex _shell.html`; needs `mod_headers`   |
+| `vercel.json` | Vercel                    | Rewrite excludes `sw.js`, manifest and `assets/`                         |
+| `_redirects`  | Cloudflare Pages, Netlify | `/* /_shell.html 200`; add a `_headers` rule for `sw.js`                 |
 
 For Cloudflare Pages, add a `_headers` file next to `_redirects`:
 
@@ -25,6 +25,10 @@ For Cloudflare Pages, add a `_headers` file next to `_redirects`:
 /sw.js
   Cache-Control: no-cache
 ```
+
+On Cloudflare Pages and Netlify, `/* /_shell.html 200` only applies when no static file matches, so `sw.js`, the manifest and assets are served as-is.
+
+`vercel.json` must be copied to the project root (Vercel reads it from there, not from the output directory).
 
 These files are examples: copy the one you need into the deployed output or host configuration.
 They are not part of the build.
