@@ -48,3 +48,12 @@ describe("history", () => {
     });
   });
 });
+
+describe("mapHistory identity", () => {
+  it("mapHistory keeps the history when every snapshot comes back unchanged", () => {
+    const history = { past: [1], present: 2, future: [3] };
+    expect(mapHistory(history, (value) => value)).toBe(history);
+    expect(mapHistory(history, (value) => (value === 1 ? 0 : value))).not.toBe(history);
+    expect(mapHistory(history, (value) => (value === 3 ? 0 : value))).not.toBe(history);
+  });
+});

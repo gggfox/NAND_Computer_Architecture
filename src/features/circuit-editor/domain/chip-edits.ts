@@ -5,6 +5,7 @@ import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
+import { rerouteAfterSave } from "./route-edits";
 
 type Edit<Type extends EditorAction["type"]> = (
   project: Project,
@@ -57,9 +58,10 @@ export const recolorChip: Edit<"recolorChip"> = (project, action) =>
     ? editChip(project, action.chipId, (chip) => ok({ ...chip, color: action.color }))
     : err({ type: "InvalidColor", color: action.color });
 
+/** Saves (with the cascade), then re-routes wires the chip's new shape covers where it is placed. */
 export const saveChip: Edit<"saveChip"> = (project, action) => {
   const plan = planSave(project, action.chipId);
-  return plan.ok ? ok(plan.value.project) : plan;
+  return plan.ok ? ok(rerouteAfterSave(plan.value.project, action.chipId)) : plan;
 };
 
 export const discardDraft: Edit<"discardDraft"> = (project, action) =>

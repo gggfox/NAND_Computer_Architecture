@@ -12,6 +12,7 @@ import type { EditorAction, EditorError } from "../domain/actions";
 import { createHistory, mapHistory, pushHistory, redo, undo } from "../domain/history";
 import type { History } from "../domain/history";
 import { applyAction } from "../domain/reducer";
+import { rerouteAfterSave, routeUnrouted } from "../domain/route-edits";
 
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -125,7 +126,9 @@ const withInput = (state: EditorState, pinId: PinId, value: number): Partial<Edi
  */
 const savedEverywhere = (history: History<Project>, chipId: ChipId): History<Project> => {
   const saved = draftOf(history.present, chipId);
-  return mapHistory(history, (snapshot) => applySavedVersion(snapshot, chipId, saved));
+  return mapHistory(history, (snapshot) =>
+    rerouteAfterSave(applySavedVersion(snapshot, chipId, saved), chipId),
+  );
 };
 
 /**
@@ -164,7 +167,8 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       }
     };
     return {
-      history: createHistory(project),
+      // Routing wires that have none (files from before the router) is not an edit.
+      history: createHistory(routeUnrouted(project)),
       chipId: project.lastOpenedChipId,
       lastError: NO_ERROR,
       inputs: new Map(),
@@ -183,7 +187,7 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
         if (findChip(get().history.present, chipId) === undefined) {
           return err({ type: "ChipNotFound", chipId });
         }
-        set({ chipId });
+        set({ chipId, history: mapHistory(get().history, routeUnrouted) });
         touch();
         // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
         return ok(undefined);

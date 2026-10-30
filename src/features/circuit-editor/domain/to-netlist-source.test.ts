@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createDemoProject, piece, wire } from "~/features/projects";
+import type { Wire } from "~/features/projects";
 import { newWireId } from "~/shared/ids";
 
 import { toNetlistSource } from "./to-netlist-source";
@@ -22,6 +23,10 @@ import {
   single,
   sourceOf,
 } from "./to-netlist-source.fixtures";
+
+/** Each wire's id and ends, without its route. */
+const ends = (wires: readonly Wire[] | undefined) =>
+  wires?.map((item) => [item.id, item.from, item.to, item.bitWidth]);
 
 describe("toNetlistSource", () => {
   it("the demo flattens to 2 inputs, 1 NAND, 1 output", () => {
@@ -215,7 +220,8 @@ describe("toNetlistSource structure", () => {
     );
     const chips = new Map(reordered.chips.map((chip) => [chip.id, chip]));
     expect(chips.get(chipX.id)?.saved?.pins.map((def) => def.name)).toEqual(["b", "a", "y", "z"]);
-    expect(chips.get(host.id)?.draft.wires).toEqual(host.draft.wires);
+    // The fixture's pieces overlap, so the wires are re-routed: compare connections.
+    expect(ends(chips.get(host.id)?.draft.wires)).toEqual(ends(host.draft.wires));
     expect(sourceOf(reordered, host.id)).toEqual(before);
   });
 

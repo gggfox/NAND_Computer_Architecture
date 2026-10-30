@@ -34,6 +34,8 @@
   "editor_error_chip_not_saved": "Save this chip before placing it in another chip.",
   "editor_error_nothing_to_move": "Select something to move first.",
   "editor_error_nothing_to_remove": "Select something to delete first.",
+  "editor_error_nothing_to_recolor": "Select wires to recolor first.",
+  "editor_error_nothing_to_reroute": "Select wires to re-route first.",
   "editor_error_would_contain_itself": "A chip can't contain itself, directly or through another chip.",
   "editor_error_invalid_endpoint": "That pin does not exist on this chip.",
   "editor_error_bit_out_of_range": "Bit {bit} does not exist on a {width}-bit pin.",

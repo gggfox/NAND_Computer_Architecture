@@ -7,6 +7,10 @@ import { newInstanceId, newPinId } from "~/shared/ids";
 import { at, draftOf, twoChips } from "./circuit-edits.fixtures";
 import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
 
+/** Each wire's id and ends, without its route. */
+const ends = (wires: Circuit["wires"] | undefined) =>
+  wires?.map((item) => [item.id, item.from, item.to, item.bitWidth]);
+
 const names = (circuit: Circuit | undefined): readonly string[] =>
   circuit?.pins.map((pin) => pin.name) ?? [];
 
@@ -169,7 +173,8 @@ describe("setPinWidth", () => {
     const result = setPinWidth(project, { type: "setPinWidth", chipId: host.id, pinId, width: 4 });
     const draft = result.ok ? draftOf(result.value, host.id) : undefined;
     expect(draft?.pins[0]?.width).toBe(4);
-    expect(draft?.wires).toEqual(circuit.wires.slice(1));
+    // The fixture's pieces overlap, so the wires are re-routed: compare connections.
+    expect(ends(draft?.wires)).toEqual(ends(circuit.wires.slice(1)));
   });
 
   it("narrowing a bus to 1 bit drops its bit taps", () => {

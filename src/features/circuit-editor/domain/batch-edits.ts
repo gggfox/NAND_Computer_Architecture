@@ -1,12 +1,15 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Circuit, Point, Wire } from "~/features/projects";
-import type { InstanceId } from "~/shared/ids";
+import type { Circuit, Point, Project, Wire } from "~/features/projects";
+import type { InstanceId, WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
+import type { Scene } from "./geometry";
+import { settled } from "./route-edits";
+import { blockedWires } from "./routing/route";
 
 const missingInstance = (
   circuit: Circuit,
@@ -34,12 +37,18 @@ const deltasOf = (
   );
 };
 
-/** A wire whose two ends move by the same delta keeps its shape: its bends move with it. */
-const carried = (wire: Wire, deltas: Deltas): Wire => {
+/** Hand bends of a wire whose two ends move by the same delta move with it; else `undefined`. */
+const carried = (wire: Wire, deltas: Deltas): Wire | undefined => {
   const from = deltas.get(wire.from.instanceId);
   const to = deltas.get(wire.to.instanceId);
-  if (from === undefined || to === undefined || from.x !== to.x || from.y !== to.y) {
-    return wire;
+  if (
+    !wire.manualWaypoints ||
+    from === undefined ||
+    to === undefined ||
+    from.x !== to.x ||
+    from.y !== to.y
+  ) {
+    return undefined;
   }
   return {
     ...wire,
@@ -47,20 +56,37 @@ const carried = (wire: Wire, deltas: Deltas): Wire => {
   };
 };
 
+const touches = (wire: Wire, deltas: Deltas): boolean =>
+  deltas.has(wire.from.instanceId) || deltas.has(wire.to.instanceId);
+
+/**
+ * Moves the chips. Hand bends that moved whole are carried; every other wire touching a moved
+ * chip, and every automatic wire a moved chip now covers, is routed again, all in this one edit.
+ */
 const applyMoves = (
+  project: Project,
   circuit: Circuit,
   action: Extract<EditorAction, { type: "moveChips" }>,
 ): Circuit => {
   const targets = new Map(action.moves.map((move) => [move.instanceId, move.position]));
   const deltas = deltasOf(circuit, action.moves);
-  return {
-    ...circuit,
-    instances: circuit.instances.map((item) => {
-      const position = targets.get(item.id);
-      return position === undefined ? item : { ...item, position };
-    }),
-    wires: circuit.wires.map((wire) => carried(wire, deltas)),
-  };
+  const stale = new Set<WireId>();
+  const wires = circuit.wires.map((wire) => {
+    if (!touches(wire, deltas)) {
+      return wire;
+    }
+    const kept = carried(wire, deltas);
+    if (kept === undefined) {
+      stale.add(wire.id);
+    }
+    return kept ?? wire;
+  });
+  const instances = circuit.instances.map((item) => {
+    const position = targets.get(item.id);
+    return position === undefined ? item : { ...item, position };
+  });
+  const scene: Scene = { project, circuit: { ...circuit, instances, wires } };
+  return settled(scene, new Set([...stale, ...blockedWires(scene)]));
 };
 
 /** All moves apply or none do. */
@@ -73,7 +99,7 @@ export const moveChips: Edit<"moveChips"> = (project, action) =>
       circuit,
       action.moves.map((move) => move.instanceId),
     );
-    return missing === undefined ? ok(applyMoves(circuit, action)) : err(missing);
+    return missing === undefined ? ok(applyMoves(project, circuit, action)) : err(missing);
   });
 
 const removeAll = (

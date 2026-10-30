@@ -2,9 +2,12 @@ import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { ProjectRepository } from "~/features/persistence";
 import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
-import { newChipId, newInstanceId, newPinId } from "~/shared/ids";
+import { newChipId, newInstanceId, newPinId, newWireId } from "~/shared/ids";
+import type { WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 
+import { link, NAND_A, NAND_OUT, nandAt } from "../domain/routing/routing.fixtures";
+import { projectOf, wireIn } from "../domain/wire-edits.fixtures";
 import { createEditorStore, openCircuit } from "./editor-store";
 import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
 
@@ -20,7 +23,9 @@ describe("openCircuit", () => {
     const project = createDemoProject("x");
     const store = createEditorStore(project, repo);
     expect(store.getState().chipId).toBe(project.lastOpenedChipId);
-    expect(openCircuit(store.getState())).toBe(project.chips[0]?.draft);
+    // Opening routes the demo's unrouted wires, so the open draft is the routed one.
+    expect(openCircuit(store.getState())).toBe(store.getState().history.present.chips[0]?.draft);
+    expect(openCircuit(store.getState()).instances).toBe(project.chips[0]?.draft.instances);
     expect(openCircuit({ ...store.getState(), chipId: newChipId() })).toBe(EMPTY_CIRCUIT);
   });
 });
@@ -188,5 +193,57 @@ describe("createEditorStore flush", () => {
     const store = createEditorStore(createDemoProject("x"), repo);
     await store.getState().flush();
     expect(saved).toHaveLength(0);
+  });
+});
+
+const [source, sink] = [nandAt(0, 0), nandAt(400, 120)];
+
+/** A store on a project holding `source`, `sink` and `wires`, and a reader of a wire's bends. */
+const routingStore = (wires: Parameters<typeof projectOf>[1]) => {
+  const { project, chipId } = projectOf([source, sink], wires);
+  const store = createEditorStore(project, fakeRepo(SAVED).repo);
+  const bends = (wireId: WireId) =>
+    wireIn(store.getState().history.present, chipId, wireId).waypoints;
+  return { store, chipId, bends };
+};
+
+describe("createEditorStore routing", () => {
+  it("connect, undo, redo gives the same waypoints", () => {
+    const { store, chipId, bends } = routingStore([]);
+    const wireId = newWireId();
+    const connected = store.getState().dispatch({
+      type: "connectWire",
+      chipId,
+      wireId,
+      from: { instanceId: source.id, pin: NAND_OUT },
+      to: { instanceId: sink.id, pin: NAND_A },
+    });
+    expect(connected.ok).toBe(true);
+    const routed = bends(wireId);
+    expect(routed.length).toBeGreaterThan(0);
+    store.getState().undo();
+    store.getState().redo();
+    expect(bends(wireId)).toEqual(routed);
+  });
+
+  it("opening a project routes unrouted wires without adding history", () => {
+    const unrouted = link([source, NAND_OUT], [sink, NAND_A]);
+    const { store, chipId, bends } = routingStore([unrouted]);
+    expect(bends(unrouted.id)).not.toEqual([]);
+    expect(store.getState().history.past).toHaveLength(0);
+    // Handing the wire back to the router leaves it unrouted until the chip is opened again.
+    store.getState().dispatch({ type: "moveWaypoint", chipId, wireId: unrouted.id, waypoints: [] });
+    expect(bends(unrouted.id)).toEqual([]);
+    const before = store.getState().history;
+    expect(store.getState().openChip(chipId).ok).toBe(true);
+    expect(store.getState().history.past).toEqual(before.past);
+    expect(bends(unrouted.id)).not.toEqual([]);
+  });
+
+  it("opening a chip with nothing to route keeps the history object", () => {
+    const { store, chipId } = routingStore([link([source, NAND_OUT], [sink, NAND_A])]);
+    const before = store.getState().history;
+    store.getState().openChip(chipId);
+    expect(store.getState().history).toBe(before);
   });
 });

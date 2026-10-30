@@ -2,15 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { newWireId } from "~/shared/ids";
 
-import {
-  connectWire,
-  moveChip,
-  moveWaypoint,
-  placeChip,
-  removeChip,
-  removeWire,
-} from "./circuit-edits";
+import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { at, draftOf, nandPiece, twoChips, unwired } from "./circuit-edits.fixtures";
+import { connectWire } from "./wire-edits";
 
 describe("connectWire", () => {
   it("stores source to sink, with the derived width, auto-routed", () => {
