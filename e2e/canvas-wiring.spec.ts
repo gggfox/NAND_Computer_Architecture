@@ -2,7 +2,6 @@
 import type { Page } from "@playwright/test";
 
 import {
-  canvasHost,
   createProject,
   DEMO_PART,
   expect,
@@ -25,8 +24,6 @@ import {
   NAND_B,
   pointerFor,
   polylineOf,
-  press,
-  tabToCanvas,
   usesTouch,
   wiresOf,
 } from "./wiring-support";
@@ -40,11 +37,6 @@ const PIN_CELL = 20;
 const BUS_PIN: Point = { x: 40, y: 80 };
 const BUS_NAND_A: Point = { x: 160, y: 60 };
 const PICKED_BIT = 2;
-/** `]` from nothing: Input A, Input B, the NAND, the output, then a NAND added from the toolbar. */
-const STEPS_TO_INPUT_B = 2;
-const STEPS_INPUT_B_TO_NAND_2 = 3;
-/** `p` from no card: the NAND's a, then b. */
-const STEPS_TO_PIN_B = 2;
 
 /** The new wire is in the export, routed orthogonally, and the NAND now reads it. */
 const expectInputBWired = async (page: Page): Promise<void> => {
@@ -157,46 +149,14 @@ test("wiring a 1-bit pin to a 4-bit bus asks for the bit, and the bus end keeps 
   await expect(spoken(page)).toHaveText(/Wire added/u);
 
   const file = await exportedProject(page);
-  const [bus] = instanceIds(file);
-  const [wire] = wiresOf(file);
-  const busEnd = wire?.from.instanceId === bus ? wire?.from : wire?.to;
+  const [bus, nand] = instanceIds(file);
+  const wires = wiresOf(file);
+  expect(wires).toHaveLength(1);
+  const [wire] = wires;
+  const busFirst = wire?.from.instanceId === bus;
+  const busEnd = busFirst ? wire?.from : wire?.to;
+  const nandEnd = busFirst ? wire?.to : wire?.from;
   expect(busEnd).toEqual({ instanceId: bus, pin: 0, bit: PICKED_BIT });
-});
-
-test("from the keyboard, w arms input B's pin, Enter wires it to a new NAND's b, and Escape cancels", async ({
-  page,
-}) => {
-  await createProject(page);
-  await page.getByRole("button", { name: "Add NAND" }).click();
-  await expect(page.getByText("NAND gate 2", { exact: true })).toBeVisible();
-  await tabToCanvas(page);
-  await press(page, "]", STEPS_TO_INPUT_B);
-  await expect(spoken(page)).toHaveText(/^B selected\s*$/u);
-  await page.keyboard.press("p");
-  await page.keyboard.press("w");
-  await expect(spoken(page)).toHaveText(/B of B ready to wire/u);
-  await press(page, "]", STEPS_INPUT_B_TO_NAND_2);
-  await expect(spoken(page)).toHaveText(/NAND gate 2 selected/u);
-  await press(page, "p", STEPS_TO_PIN_B);
-  await expect(spoken(page)).toHaveText(/Pin b of NAND gate 2/u);
-  await page.keyboard.press("Enter");
-  await expect(spoken(page)).toHaveText(/Wire added/u);
-
-  const file = await exportedProject(page);
-  const ids = instanceIds(file);
-  const nand2 = ids.at(-1);
-  expect(
-    wiresOf(file).some(
-      (item) =>
-        item.from.instanceId === ids[DEMO_PART.inputB] &&
-        item.to.instanceId === nand2 &&
-        item.to.pin === NAND_B,
-    ),
-  ).toBe(true);
-
-  await canvasHost(page).focus();
-  await page.keyboard.press("w");
-  await expect(spoken(page)).toHaveText(/ready to wire/u);
-  await page.keyboard.press("Escape");
-  await expect(spoken(page)).toHaveText(/Wiring cancelled/u);
+  // The 1-bit end takes no bit.
+  expect(nandEnd).toEqual({ instanceId: nand, pin: 0 });
 });

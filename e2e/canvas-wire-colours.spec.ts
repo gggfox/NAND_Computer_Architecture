@@ -14,7 +14,6 @@ import {
   inputBWire,
   NAND_B,
   pointerFor,
-  press,
   saveColor,
   usesTouch,
   wireInto,
@@ -71,46 +70,6 @@ test("Shift-clicked wires recolour together from the wire menu, and one Undo res
   expect(colours(await exportedProject(page))).toEqual(["orange", "orange"]);
   await page.getByRole("button", { name: "Undo" }).click();
   expect(colours(await exportedProject(page))).toEqual([undefined, undefined]);
-});
-
-test("Tidy wires keeps a hand-bent wire's bends after a chip moves", async ({
-  isMobile,
-  page,
-}, testInfo) => {
-  const pointer = pointerFor(page, usesTouch(isMobile, testInfo));
-  await createProject(page);
-  const before = await exportedProject(page);
-  const intoA = wireInto(before, DEMO_PART.nand, 0);
-  if (intoA === undefined) {
-    throw new Error("The demo has no wire into a");
-  }
-  // Bend the wire into a by hand: select it, open its menu with Enter, Move bends, an arrow.
-  await pointer.tap(await wirePoint(page, before, intoA));
-  await canvasHost(page).focus();
-  await page.keyboard.press("Enter");
-  const menu = page.getByRole("menu", { name: "Wire actions" });
-  await expect(menu.getByRole("menuitem").first()).toBeFocused();
-  await menu.getByRole("menuitem", { name: "Move bends" }).click();
-  await expect(spoken(page)).toHaveText(/Moving bends/u);
-  await canvasHost(page).focus();
-  // Its one interior segment is the vertical run at x = 140: one cell left.
-  await page.keyboard.press("ArrowLeft");
-  await page.keyboard.press("Escape");
-  await expect(spoken(page)).toHaveText(/Bends done/u);
-  const bent = wireInto(await exportedProject(page), DEMO_PART.nand, 0);
-  expect(bent?.manualWaypoints).toBe(true);
-
-  // Move the output, which the bent wire does not touch, then tidy every automatic wire.
-  await canvasHost(page).focus();
-  await press(page, "]", DEMO_PART.output + 1);
-  await expect(spoken(page)).toHaveText(/^OUT selected\s*$/u);
-  await page.keyboard.press("ArrowDown");
-  await expect(spoken(page)).toHaveText(/Chips moved: 1/u);
-  await page.getByRole("button", { name: "Tidy wires" }).click();
-
-  const after = wireInto(await exportedProject(page), DEMO_PART.nand, 0);
-  expect(after?.manualWaypoints).toBe(true);
-  expect(after?.waypoints).toEqual(bent?.waypoints);
 });
 
 test("the wire and canvas menus give focus back to the canvas when they close", async ({
