@@ -1,16 +1,14 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance, Circuit, Point, Project } from "~/features/projects";
-import type { PinId } from "~/shared/ids";
+import type { Circuit, Project } from "~/features/projects";
 
-import { SCREEN_PAD } from "../domain/camera";
-import { createLayoutCache } from "../domain/chip-layout";
-import type { LayoutCache } from "../domain/chip-layout";
-import { GRID, partOf, rectOf, wireRoute } from "../domain/geometry";
-import type { Rect, Scene, Size } from "../domain/geometry";
-import { partName } from "../domain/messages";
-import { instanceLevel, wireDash, wireLevel } from "../domain/signals";
-import type { KnownLevels, Level } from "../domain/signals";
+import { SCREEN_PAD, screenToWorld } from "../domain/camera";
+import { createLayoutCache, GRID } from "../domain/chip-layout";
+import type { Rect, Size } from "../domain/chip-layout";
+import type { KnownLevels } from "../domain/signals";
 import type { EditorSearch } from "../domain/view-search";
+import { drawChips, drawWires } from "./draw-parts";
+import { readPalette } from "./frame";
+import type { Frame } from "./frame";
 import { watchEnvironment } from "./watch-environment";
 
 export interface RenderState extends KnownLevels {
@@ -26,58 +24,15 @@ export interface CanvasRenderer {
   readonly invalidate: () => void;
 }
 
-const TOKENS = [
-  "background",
-  "surface",
-  "text",
-  "grid",
-  "wire",
-  "signal-high",
-  "signal-low",
-  "chip-nand",
-  "chip-text",
-  "chip-text-low",
-] as const;
-type Token = (typeof TOKENS)[number];
-type Palette = Readonly<Record<Token, string>>;
-
-/** Theme tokens are CSS custom properties on <html> (ADR 10); the canvas reads the same values. */
-const readPalette = (): Palette => {
-  const style = getComputedStyle(document.documentElement);
-  const entries = TOKENS.map((token) => [token, style.getPropertyValue(`--color-${token}`).trim()]);
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- built from the exhaustive TOKENS list above
-  return Object.fromEntries(entries) as Palette;
-};
-
-const WIRE_WIDTH = 3;
-const CHIP_RADIUS = 6;
-const LABEL_GAP = 8;
-const HALF = 0.5;
-const FONT = "600 14px system-ui, sans-serif";
-const CORNER = 4;
-/** Shown on an input or output body before the engine has reported a level. */
-const UNKNOWN_LEVEL = "?";
-
-/** One draw: the scene plus how to paint it. */
-interface Frame extends Scene {
-  readonly ctx: CanvasRenderingContext2D;
-  readonly palette: Palette;
-  readonly known: KnownLevels;
-  readonly layout: LayoutCache;
-}
-
-const levelColor = (palette: Palette, level: Level | undefined): string => {
-  if (level === undefined) {
-    return palette.wire;
-  }
-  return level === 1 ? palette["signal-high"] : palette["signal-low"];
-};
-
 const GRID_DOT = 2;
+/** Below this many screen pixels between dots, only every fourth grid line gets dots. */
+const MIN_DOT_SPACING = 8;
+const SPARSE_GRID = 4;
 
 const drawGrid = (frame: Frame, viewport: Size, view: EditorSearch): void => {
   const { ctx, palette } = frame;
-  const step = GRID * view.zoom;
+  const dense = GRID * view.zoom;
+  const step = dense < MIN_DOT_SPACING ? dense * SPARSE_GRID : dense;
   const offsetX = (SCREEN_PAD - view.x * view.zoom) % step;
   const offsetY = (SCREEN_PAD - view.y * view.zoom) % step;
   ctx.fillStyle = palette.grid;
@@ -85,97 +40,6 @@ const drawGrid = (frame: Frame, viewport: Size, view: EditorSearch): void => {
     for (let y = offsetY; y < viewport.height; y += step) {
       ctx.fillRect(x - 1, y - 1, GRID_DOT, GRID_DOT);
     }
-  }
-};
-
-const drawPolyline = (ctx: CanvasRenderingContext2D, points: readonly Point[]): void => {
-  ctx.beginPath();
-  for (const [index, point] of points.entries()) {
-    if (index === 0) {
-      ctx.moveTo(point.x, point.y);
-    } else {
-      ctx.lineTo(point.x, point.y);
-    }
-  }
-  ctx.stroke();
-};
-
-const drawWires = (frame: Frame): void => {
-  const { ctx, circuit } = frame;
-  ctx.lineWidth = WIRE_WIDTH;
-  ctx.lineJoin = "round";
-  for (const wire of circuit.wires) {
-    const level = wireLevel(circuit, frame.known, wire);
-    ctx.strokeStyle = levelColor(frame.palette, level);
-    ctx.setLineDash(wireDash(level));
-    drawPolyline(ctx, wireRoute(frame, wire));
-  }
-  ctx.setLineDash(wireDash());
-};
-
-const centerText = (ctx: CanvasRenderingContext2D, text: string, rect: Rect): void => {
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, rect.x + rect.width * HALF, rect.y + rect.height * HALF);
-};
-
-interface BodyStyle {
-  readonly fill: string;
-  readonly radius: number;
-}
-
-const drawBody = (frame: Frame, rect: Rect, style: BodyStyle): void => {
-  const { ctx } = frame;
-  ctx.fillStyle = style.fill;
-  ctx.strokeStyle = frame.palette.text;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(rect.x, rect.y, rect.width, rect.height, style.radius);
-  ctx.fill();
-  ctx.stroke();
-};
-
-/** An input is named A, B, ... by its position among the input pins in Pins-panel order. */
-const drawInputName = (frame: Frame, rect: Rect, pinId: PinId): void => {
-  const { ctx, circuit } = frame;
-  const index = circuit.pins
-    .filter((pin) => pin.direction === "input")
-    .findIndex((pin) => pin.id === pinId);
-  ctx.fillStyle = frame.palette.text;
-  ctx.textAlign = "right";
-  const letter = String.fromCodePoint("A".codePointAt(0)! + index);
-  ctx.fillText(letter, rect.x - LABEL_GAP, rect.y + rect.height * HALF);
-};
-
-const bodyStyle = (palette: Palette, isPart: boolean, level: Level | undefined): BodyStyle =>
-  isPart
-    ? { fill: palette["chip-nand"], radius: CORNER }
-    : { fill: levelColor(palette, level), radius: CHIP_RADIUS };
-
-const chipText = (frame: Frame, instance: ChipInstance, level: Level | undefined): string => {
-  if (instance.kind.type !== "pin") {
-    return partName(frame.project, frame.circuit, instance.kind);
-  }
-  return level === undefined ? UNKNOWN_LEVEL : String(level);
-};
-
-const drawChip = (frame: Frame, instance: ChipInstance): void => {
-  const { ctx, palette } = frame;
-  const rect = rectOf(frame, instance);
-  const { kind } = instance;
-  const level = instanceLevel(frame.circuit, frame.known, instance);
-  drawBody(frame, rect, bodyStyle(palette, kind.type !== "pin", level));
-  ctx.font = FONT;
-  ctx.fillStyle = palette[kind.type === "pin" && level === 0 ? "chip-text-low" : "chip-text"];
-  centerText(ctx, chipText(frame, instance, level), rect);
-  if (kind.type === "pin" && partOf(frame.circuit, instance) === "input") {
-    drawInputName(frame, rect, kind.pinId);
-  }
-};
-
-const drawChips = (frame: Frame): void => {
-  for (const instance of frame.circuit.instances) {
-    drawChip(frame, instance);
   }
 };
 
@@ -195,6 +59,16 @@ const fitBackingStore = (canvas: HTMLCanvasElement): Viewport => {
     canvas.height = backingHeight;
   }
   return { width, height, dpr };
+};
+
+/** The world rect on screen, so off-screen chips and wires are skipped. */
+const visibleWorld = (view: EditorSearch, viewport: Size): Rect => {
+  const topLeft = screenToWorld(view, { x: 0, y: 0 });
+  return {
+    ...topLeft,
+    width: viewport.width / view.zoom,
+    height: viewport.height / view.zoom,
+  };
 };
 
 const drawScene = (frame: Frame, viewport: Viewport, view: EditorSearch): void => {
@@ -236,11 +110,10 @@ export const createCanvasRenderer = (
     frameId = undefined;
     const state = read();
     if (ctx !== null) {
-      drawScene(
-        { ctx, palette, known: state, project: state.project, circuit: state.circuit, layout },
-        fitBackingStore(canvas),
-        state.view,
-      );
+      const viewport = fitBackingStore(canvas);
+      const { project, circuit, view } = state;
+      const visible = visibleWorld(view, viewport);
+      drawScene({ ctx, palette, known: state, project, circuit, layout, visible }, viewport, view);
     }
   };
   const invalidate = (): void => {

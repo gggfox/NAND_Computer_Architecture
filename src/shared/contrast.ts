@@ -37,3 +37,10 @@ export const contrastRatio = (fg: string, bg: string): number => {
   const lumBg = luminance(bg);
   return (Math.max(lumFg, lumBg) + FLARE) / (Math.min(lumFg, lumBg) + FLARE);
 };
+
+const BLACK = "#000000";
+const WHITE = "#ffffff";
+
+/** Black or white, whichever reads better on `background` (a `#rrggbb` colour). */
+export const readableTextOn = (background: string): typeof BLACK | typeof WHITE =>
+  contrastRatio(BLACK, background) >= contrastRatio(WHITE, background) ? BLACK : WHITE;

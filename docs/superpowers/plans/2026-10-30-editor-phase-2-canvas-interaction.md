@@ -331,7 +331,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 5: Renderer — anatomy, levels, overlays and layout cache
+### Task 5: Renderer — anatomy, levels and layout cache ✅ done (overlays moved to Task 9)
 
 **Files:**
 - Modify: `src/features/circuit-editor/adapters/canvas-renderer.ts`, `src/features/theming/tokens.css` and the token data (`pnpm tokens`) to add `--color-selection` and `--color-pin`. Add contrast tests for the new tokens in `theming/domain/themes.test.ts`.
@@ -349,9 +349,17 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 - `RenderState` gains `interaction: InteractionView` (Task 9's read-only slice) and `levels`. The renderer subscribes to the interaction store, and keeps `createLayoutCache()` for its lifetime.
 - **Grid dots** are skipped when `GRID * zoom < 8` px; then every 4th dot is drawn.
 
-- [ ] **Step 1:** Implement, and run `pnpm dev` to check each theme by eye (light, dark, high-contrast).
-- [ ] **Step 2:** Run `pnpm e2e:visual:docker -- --update-snapshots`. Review the three PNG diffs and commit only those.
-- [ ] **Step 3: Commit** `feat(circuit-editor): draw chip anatomy, live pin levels, selection and drag preview`
+**As built:**
+- The renderer is split into `adapters/frame.ts` (palette, `Frame`, `levelColor`, `intersects`), `adapters/draw-parts.ts` (wires, parts, pieces) and `canvas-renderer.ts` (grid, viewport, culling, scheduling). `contrast.ts` moved to `src/shared/contrast.ts` and gained `readableTextOn`.
+- Titles are centred *between* the label columns (measured with `measureText`), so a long label never runs into the title.
+- A pin piece draws its name outside its body, on the side away from its pin. This replaces the A/B letters, and the demo's pins are named A, B and OUT.
+- **Moved to Task 9:** selection outlines, the hover/focus pin ring, drawing the drag preview, the marquee, and the `--color-selection` token. They need the interaction state, which Task 9 creates. `wireRoute`/`layoutIn` already accept the preview `positions`.
+- The visual baselines were regenerated with `--update-snapshots=all`: the new labels and tabs are under the 1% pixel tolerance, so a plain update would have kept the old images.
+- Checked by eye on a production build, with a custom chip (Half adder), a NAND, a SPLIT 4 and a 4-bit input.
+
+- [x] **Step 1:** Implement, and run `pnpm dev` to check each theme by eye (light, dark, high-contrast).
+- [x] **Step 2:** Run `pnpm e2e:visual:docker -- --update-snapshots=all`. Review the three PNG diffs and commit only those.
+- [x] **Step 3: Commit** `feat(circuit-editor): draw chip anatomy, live pin levels, selection and drag preview`
 
 ---
 

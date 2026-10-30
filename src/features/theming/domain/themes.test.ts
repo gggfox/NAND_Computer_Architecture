@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, test } from "vitest";
 
-import { contrastRatio } from "./contrast";
+import { contrastRatio } from "~/shared/contrast";
+
 import { renderThemeCss, resolveInitialTheme, themeIds, themes, tokenToCssVar } from "./themes";
 import type { ThemeId } from "./themes";
 

@@ -6,7 +6,7 @@ import { GRID, layoutOf, layoutOfKind } from "./chip-layout";
 import type { ChipLayout, LayoutCache, LayoutSource, Rect } from "./chip-layout";
 
 export { GRID } from "./chip-layout";
-export type { Rect, Size } from "./chip-layout";
+export type { Rect } from "./chip-layout";
 
 export type Part = "nand" | "clock" | "split" | "merge" | "custom" | "input" | "output";
 

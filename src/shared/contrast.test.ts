@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { contrastRatio } from "./contrast";
+import { contrastRatio, readableTextOn } from "./contrast";
 
 const WHITE_ON_BLACK = 21;
 const PRECISION = 1;
@@ -20,4 +20,13 @@ test("contrastRatio: uppercase hex and low-channel (<= 0.03928) values", () => {
 
 test("contrastRatio: malformed hex yields NaN", () => {
   expect(contrastRatio("nope", "#ffffff")).toBeNaN();
+});
+
+test("readableTextOn picks the higher-contrast of black and white", () => {
+  expect(readableTextOn("#ffffff")).toBe("#000000");
+  expect(readableTextOn("#0d1017")).toBe("#ffffff");
+  const text = readableTextOn("#3b82f6");
+  expect(contrastRatio(text, "#3b82f6")).toBeGreaterThanOrEqual(
+    contrastRatio(text === "#000000" ? "#ffffff" : "#000000", "#3b82f6"),
+  );
 });
