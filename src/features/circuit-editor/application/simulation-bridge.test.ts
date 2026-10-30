@@ -49,8 +49,9 @@ const setup = () => {
   return { project, editor, simulation, disconnect, ...fake };
 };
 
-const placeNand = () => ({
+const placeNand = (editor: ReturnType<typeof setup>["editor"]) => ({
   type: "placeChip" as const,
+  chipId: editor.getState().chipId,
   /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
   instance: piece({ type: "nand" }, { x: 480, y: 0 }),
 });
@@ -77,7 +78,7 @@ describe("connectSimulation", () => {
 
   it("reports a netlist error and ignores stale replies and input changes", () => {
     const { editor, simulation, sent, reply } = setup();
-    editor.getState().dispatch(placeNand());
+    editor.getState().dispatch(placeNand(editor));
     expect(simulation.getState().error?.type).toBe("UnconnectedPin");
     sent.length = 0;
     reply({ type: "state", tick: 1, stable: true, outputs: [0] });
@@ -88,7 +89,7 @@ describe("connectSimulation", () => {
 
   it("reloads and recovers when an invalid edit is undone", () => {
     const { editor, simulation, sent, reply } = setup();
-    editor.getState().dispatch(placeNand());
+    editor.getState().dispatch(placeNand(editor));
     sent.length = 0;
     editor.getState().undo();
     expect(sent[0]?.type).toBe("load");

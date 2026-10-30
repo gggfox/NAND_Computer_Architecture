@@ -13,8 +13,9 @@ const DEBOUNCE_MS = 300;
 // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
 const SAVED = ok(undefined);
 
-const place = () => ({
+const place = (store: ReturnType<typeof createEditorStore>) => ({
   type: "placeChip" as const,
+  chipId: store.getState().chipId,
   instance: piece({ type: "nand" }),
 });
 
@@ -54,7 +55,7 @@ describe("createEditorStore", () => {
     const { repo, saved } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
     for (let count = 0; count < 3; count += 1) {
-      store.getState().dispatch(place());
+      store.getState().dispatch(place(store));
     }
     expect(saved).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
@@ -73,10 +74,10 @@ describe("createEditorStore", () => {
   it("stores a save failure in lastError and keeps editing", async () => {
     const { repo } = fakeRepo(err({ type: "QuotaExceeded" }));
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(store.getState().lastError).toEqual({ type: "QuotaExceeded" });
-    expect(store.getState().dispatch(place()).ok).toBe(true);
+    expect(store.getState().dispatch(place(store)).ok).toBe(true);
     expect(openCircuit(store.getState()).instances).toHaveLength(6);
   });
 });
@@ -86,7 +87,9 @@ describe("createEditorStore errors", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
     const missing = newInstanceId();
-    const result = store.getState().dispatch({ type: "removeChip", instanceId: missing });
+    const result = store
+      .getState()
+      .dispatch({ type: "removeChip", chipId: store.getState().chipId, instanceId: missing });
     expect(result).toEqual({ ok: false, error: { type: "InstanceNotFound", instanceId: missing } });
     expect(store.getState().lastError).toEqual({ type: "InstanceNotFound", instanceId: missing });
     expect(store.getState().history.past).toHaveLength(0);
@@ -95,8 +98,12 @@ describe("createEditorStore errors", () => {
   it("clears a stale error on the next successful dispatch", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch({ type: "removeChip", instanceId: newInstanceId() });
-    store.getState().dispatch(place());
+    store.getState().dispatch({
+      type: "removeChip",
+      chipId: store.getState().chipId,
+      instanceId: newInstanceId(),
+    });
+    store.getState().dispatch(place(store));
     expect(store.getState().lastError).toBeNull();
   });
 });
@@ -112,7 +119,7 @@ describe("createEditorStore undo and inputs", () => {
   it("undo and redo move through history", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     store.getState().undo();
     expect(openCircuit(store.getState()).instances).toHaveLength(4);
     store.getState().redo();
@@ -122,7 +129,7 @@ describe("createEditorStore undo and inputs", () => {
   it("saves after undo", async () => {
     const { repo, saved } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
     expect(saved).toHaveLength(1);
     store.getState().undo();
@@ -165,10 +172,10 @@ describe("createEditorStore save rejection", () => {
     "sets lastError when save fails (sync=%s) and editing continues",
     async (sync) => {
       const store = createEditorStore(createDemoProject("x"), rejectingRepo(sync));
-      store.getState().dispatch(place());
+      store.getState().dispatch(place(store));
       await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
       expect(store.getState().lastError).toEqual({ type: "Unavailable" });
-      expect(store.getState().dispatch(place()).ok).toBe(true);
+      expect(store.getState().dispatch(place(store)).ok).toBe(true);
     },
   );
 });
@@ -184,7 +191,7 @@ describe("createEditorStore flush", () => {
   it("saves a pending autosave immediately and only once", async () => {
     const { repo, saved } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);
-    store.getState().dispatch(place());
+    store.getState().dispatch(place(store));
     await store.getState().flush();
     expect(saved).toHaveLength(1);
     expect(saved[0]).toBe(store.getState().history.present);

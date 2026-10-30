@@ -37,22 +37,19 @@ export const simulationErrorMessage = (simulationError: SimulationError): string
   }
 };
 
+const PERSISTENCE_ERRORS: ReadonlySet<string> = new Set([
+  "NotFound",
+  "Corrupt",
+  "QuotaExceeded",
+  "Unavailable",
+]);
+
+const isPersistenceError = (
+  storeError: EditorError | PersistenceError,
+): storeError is PersistenceError => PERSISTENCE_ERRORS.has(storeError.type);
+
 /** The editor store's `lastError` is either a rejected action or a failed autosave. */
-export const editorStoreErrorMessage = (storeError: EditorError | PersistenceError): string => {
-  switch (storeError.type) {
-    case "InstanceNotFound":
-    case "DuplicateInstance":
-    case "ProtectedInstance": {
-      return editorErrorMessage(storeError);
-    }
-    case "NotFound":
-    case "Corrupt":
-    case "QuotaExceeded":
-    case "Unavailable": {
-      return persistenceErrorMessage(storeError);
-    }
-    default: {
-      return assertNever(storeError);
-    }
-  }
-};
+export const editorStoreErrorMessage = (storeError: EditorError | PersistenceError): string =>
+  isPersistenceError(storeError)
+    ? persistenceErrorMessage(storeError)
+    : editorErrorMessage(storeError);

@@ -29,7 +29,11 @@ export const pinDef = (name: string, direction: PinDirection, width: BitWidth = 
   direction,
 });
 
-export const piece = (kind: InstanceKind, position: Point = ORIGIN): ChipInstance => ({
+/** The instance keeps its precise kind type, so a NAND piece is a placeable one. */
+export const piece = <Kind extends InstanceKind>(
+  kind: Kind,
+  position: Point = ORIGIN,
+): ChipInstance & { readonly kind: Kind } => ({
   id: newInstanceId(),
   kind,
   position,

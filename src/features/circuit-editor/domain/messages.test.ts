@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { persistenceErrorMessage } from "~/features/persistence";
-import { newInstanceId, newWireId, ProjectIdSchema } from "~/shared/ids";
+import { newChipId, newInstanceId, newWireId, ProjectIdSchema } from "~/shared/ids";
 
+import type { EditorError } from "./actions";
 import { editorStoreErrorMessage, simulationErrorMessage } from "./messages";
 import type { SimulationError } from "./messages";
 import { editorErrorMessage } from "./reducer";
@@ -28,12 +29,36 @@ describe("simulationErrorMessage", () => {
   });
 });
 
+describe("editorErrorMessage", () => {
+  it("gives every editor error its own message", () => {
+    const wireId = newWireId();
+    const chipId = newChipId();
+    const errors: readonly EditorError[] = [
+      { type: "InstanceNotFound", instanceId },
+      { type: "DuplicateInstance", instanceId },
+      { type: "WireNotFound", wireId },
+      { type: "DuplicateWire", wireId },
+      { type: "ChipNotFound", chipId },
+      { type: "ChipNotSaved", chipId },
+      { type: "WouldContainItself", chipId },
+      { type: "InvalidEndpoint", instanceId, pin: 0 },
+      { type: "BitOutOfRange", bit: 5, width: 4 },
+      { type: "WidthMismatch", from: 4, to: 8 },
+      { type: "OutputToOutput" },
+      { type: "InputToInput" },
+      { type: "InputAlreadyDriven", instanceId },
+    ];
+    const messages = errors.map((error) => editorErrorMessage(error));
+    expect(new Set(messages).size).toBe(errors.length);
+  });
+});
+
 describe("editorStoreErrorMessage", () => {
   it("routes editor errors to the editor messages", () => {
     for (const error of [
       { type: "InstanceNotFound", instanceId },
       { type: "DuplicateInstance", instanceId },
-      { type: "ProtectedInstance", instanceId },
+      { type: "OutputToOutput" },
     ] as const) {
       expect(editorStoreErrorMessage(error)).toBe(editorErrorMessage(error));
     }
