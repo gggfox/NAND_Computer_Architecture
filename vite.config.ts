@@ -12,6 +12,8 @@ export default defineConfig({
       project: "./project.inlang",
       outdir: "./src/i18n/paraglide",
       strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+      // Same output as the `i18n` script, so `pnpm lint` still passes after `pnpm build`.
+      emitTsDeclarations: true,
     }),
     tanstackStart({ spa: { enabled: true } }),
     patchCssModules({ generateSourceTypes: true }),

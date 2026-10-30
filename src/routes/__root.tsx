@@ -2,8 +2,8 @@ import { createRootRoute, HeadContent, Outlet, Scripts, ScriptOnce } from "@tans
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
-import { requestPersistentStorage } from "~/features/persistence";
-import { themeBootScript } from "~/features/theming";
+import { registerServiceWorker, requestPersistentStorage } from "~/features/persistence";
+import { themeBootScript, themes } from "~/features/theming";
 import { baseLocale, getLocale } from "~/i18n/locale";
 import { m } from "~/i18n/paraglide/messages";
 import { LocaleProvider } from "~/shared/ui";
@@ -15,9 +15,15 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: themes.dark.colorBackground },
       { title: m.app_title() },
     ],
-    links: [{ rel: "stylesheet", href: globalCss }],
+    links: [
+      { rel: "stylesheet", href: globalCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/icons/icon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
+    ],
   }),
   component: RootComponent,
 });
@@ -28,6 +34,7 @@ function RootComponent(): ReactNode {
     document.documentElement.lang = getLocale();
     // Once per app start; the browser may refuse, and the export nudge covers that (ADR 14).
     void requestPersistentStorage();
+    void registerServiceWorker();
   }, []);
 
   return (
