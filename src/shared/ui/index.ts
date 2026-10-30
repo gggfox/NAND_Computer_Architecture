@@ -6,3 +6,4 @@ export { Select, type SelectOption } from "./Select";
 export { StatusMessages } from "./StatusMessages";
 export { Switch } from "./Switch";
 export { Toolbar } from "./Toolbar";
+export { UpdateBanner } from "./UpdateBanner";

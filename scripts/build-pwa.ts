@@ -45,8 +45,14 @@ const { count, size, warnings } = await generateSW({
   // Every route is client-rendered from the one shell; _shell.html is not an asset URL, so no `index.html` mapping applies.
   navigateFallback: SHELL,
   cleanupOutdatedCaches: true,
-  // AutoUpdate: a new worker takes over immediately instead of waiting for every tab to close.
-  skipWaiting: true,
+  /*
+   * Prompt to update: a new worker waits, because taking over deletes the old precache and an open
+   * tab's next lazy chunk would 404. With skipWaiting off, Workbox adds a SKIP_WAITING message
+   * listener; the app sends it when the user accepts, and every tab reloads on `controllerchange`
+   * after writing pending edits (src/features/persistence/adapters/service-worker.ts).
+   * clientsClaim only affects the first install, when no tab runs older code.
+   */
+  skipWaiting: false,
   clientsClaim: true,
 });
 

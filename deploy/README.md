@@ -12,12 +12,12 @@ SPA entry at `dist/client/_shell.html` (there is no `index.html`).
 
 ## Examples
 
-| File          | Host                      | Notes                                                                    |
-| ------------- | ------------------------- | ------------------------------------------------------------------------ |
-| `nginx.conf`  | Dokploy, any nginx        | `index _shell.html;` + `try_files $uri /_shell.html;` plus cache headers |
-| `.htaccess`   | Hostinger, Apache         | `FallbackResource` + `DirectoryIndex _shell.html`; needs `mod_headers`   |
-| `vercel.json` | Vercel                    | Rewrite excludes `sw.js`, manifest and `assets/`                         |
-| `_redirects`  | Cloudflare Pages, Netlify | `/* /_shell.html 200`; add a `_headers` rule for `sw.js`                 |
+| File          | Host                      | Notes                                                                                      |
+| ------------- | ------------------------- | ------------------------------------------------------------------------------------------ |
+| `nginx.conf`  | Dokploy, any nginx        | `index _shell.html;` + `try_files $uri /_shell.html;` plus cache headers                   |
+| `.htaccess`   | Hostinger, Apache         | `FallbackResource` (off for `/assets/`), `DirectoryIndex _shell.html`; needs `mod_headers` |
+| `vercel.json` | Vercel                    | Rewrite excludes `sw.js`, manifest and `assets/`                                           |
+| `_redirects`  | Cloudflare Pages, Netlify | `/* /_shell.html 200`; add a `_headers` rule for `sw.js`                                   |
 
 For Cloudflare Pages, add a `_headers` file next to `_redirects`:
 

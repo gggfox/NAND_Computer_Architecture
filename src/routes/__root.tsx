@@ -1,12 +1,13 @@
 import { createRootRoute, HeadContent, Outlet, Scripts, ScriptOnce } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { registerServiceWorker, requestPersistentStorage } from "~/features/persistence";
 import { themeBootScript, themes } from "~/features/theming";
 import { baseLocale, getLocale } from "~/i18n/locale";
 import { m } from "~/i18n/paraglide/messages";
-import { LocaleProvider } from "~/shared/ui";
+import { flushPendingWrites } from "~/shared/pending-writes";
+import { LocaleProvider, UpdateBanner } from "~/shared/ui";
 
 import globalCss from "../styles/global.css?url";
 
@@ -29,12 +30,22 @@ export const Route = createRootRoute({
 });
 
 function RootComponent(): ReactNode {
+  const [applyUpdate, setApplyUpdate] = useState<() => void>();
+
   useEffect(() => {
     // The pre-rendered SPA shell is always baseLocale; render that for hydration, then correct it.
     document.documentElement.lang = getLocale();
     // Once per app start; the browser may refuse, and the export nudge covers that (ADR 14).
     void requestPersistentStorage();
-    void registerServiceWorker();
+    void registerServiceWorker({
+      onUpdateReady: (apply) => {
+        setApplyUpdate(() => apply);
+      },
+      beforeReload: flushPendingWrites,
+      reload: () => {
+        globalThis.location.reload();
+      },
+    });
   }, []);
 
   return (
@@ -45,16 +56,21 @@ function RootComponent(): ReactNode {
         <HeadContent />
       </head>
       <body>
-        <LocalizedOutlet />
+        <LocalizedOutlet applyUpdate={applyUpdate} />
         <Scripts />
       </body>
     </html>
   );
 }
 
-function LocalizedOutlet(): ReactNode {
+function LocalizedOutlet({
+  applyUpdate,
+}: {
+  readonly applyUpdate: (() => void) | undefined;
+}): ReactNode {
   return (
     <LocaleProvider locale={getLocale()}>
+      <UpdateBanner onReload={applyUpdate} />
       <Outlet />
     </LocaleProvider>
   );

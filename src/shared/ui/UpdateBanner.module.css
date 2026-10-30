@@ -1,0 +1,11 @@
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-block-end: 4px solid var(--color-accent);
+}

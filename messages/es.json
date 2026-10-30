@@ -51,5 +51,7 @@
   "netlist_error_invalid_wire": "Un cable une dos pines que no se pueden conectar, así que el circuito no se puede simular.",
   "engine_error_signal_out_of_range": "El simulador rechazó el circuito porque una señal apunta fuera de él.",
   "engine_error_bad_message": "El simulador recibió una petición que no pudo entender.",
-  "engine_error_worker_failed": "El simulador dejó de funcionar. Recarga la página para intentarlo de nuevo."
+  "engine_error_worker_failed": "El simulador dejó de funcionar. Recarga la página para intentarlo de nuevo.",
+  "update_ready": "Hay una nueva versión de la aplicación lista.",
+  "update_reload": "Recargar para actualizar"
 }
