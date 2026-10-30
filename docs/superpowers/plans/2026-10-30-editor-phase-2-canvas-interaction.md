@@ -306,7 +306,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 4: Camera (domain) and view sync (application)
+### Task 4: Camera (domain) and view sync (application) ✅ done
 
 **Files:**
 - Create: `src/features/circuit-editor/domain/camera.ts` (+ test), `src/features/circuit-editor/application/view-sync.ts` (+ test)
@@ -327,7 +327,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
   - `zoomAt` keeps the anchor fixed and clamps at 0.25 and 4;
   - `fitBounds` centres the bounds;
   - `view-sync` writes once after a burst, and immediately on `settle` (fake timers).
-- [ ] **Step 2: Implement.** **Step 3: Commit** `feat(circuit-editor): camera transforms and debounced URL view sync`
+- [x] **Step 2: Implement.** **Step 3: Commit** `feat(circuit-editor): camera transforms and debounced URL view sync`. `fitBounds` uses a fixed 48 px margin, and `createViewSync(write, delayMs)` also has `dispose()`. The route wires `write` in Task 10.
 
 ---
 
