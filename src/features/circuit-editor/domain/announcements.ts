@@ -57,12 +57,51 @@ const pinText = (
       });
 };
 
+const armedText = (
+  scene: Scene,
+  known: KnownLevels,
+  announcement: Extract<Announcement, { type: "armed" }>,
+): string => {
+  const info = pinInfo(scene, known, [announcement.instanceId, announcement.pin]);
+  return info === undefined
+    ? ""
+    : m.canvas_armed({ pin: info.name, chip: chipLabel(scene, announcement.instanceId) });
+};
+
+type WiringAnnouncement = Extract<Announcement, { type: "armed" | "wired" | "disarmed" }>;
+
+const isWiring = (announcement: Announcement): announcement is WiringAnnouncement =>
+  announcement.type === "armed" ||
+  announcement.type === "wired" ||
+  announcement.type === "disarmed";
+
+/** The wiring announcements: a pin armed, a wire added, wiring cancelled. */
+const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnouncement): string => {
+  switch (announcement.type) {
+    case "armed": {
+      return armedText(scene, known, announcement);
+    }
+    case "wired": {
+      return m.canvas_wired();
+    }
+    case "disarmed": {
+      return m.canvas_disarmed();
+    }
+    default: {
+      return assertNever(announcement);
+    }
+  }
+};
+
 /** The live region's words for an announcement (ADR 3, 17). */
 export const announcementText = (
   scene: Scene,
   known: KnownLevels,
   announcement: Announcement,
 ): string => {
+  if (isWiring(announcement)) {
+    return wiringText(scene, known, announcement);
+  }
   switch (announcement.type) {
     case "selected": {
       return selectedText(scene, announcement);

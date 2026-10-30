@@ -13,6 +13,7 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
+import { cancelWiring, WIRING_COMMANDS } from "./interaction-wiring";
 import {
   addInstances,
   EMPTY_SELECTION,
@@ -89,8 +90,15 @@ const selectAll = (state: InteractionState, context: InteractionContext): Interp
   return selected(state, withInnerWires(circuit, all));
 };
 
-/** Escape closes the topmost thing: an overlay, then an armed lasso, then the selection. */
+/**
+ * Escape closes the topmost thing: the bit picker, then an armed pin, then an overlay, then an
+ * armed lasso, then the selection.
+ */
 const escape = (state: InteractionState): Interpreted => {
+  const wiring = cancelWiring(state);
+  if (wiring !== undefined) {
+    return wiring;
+  }
   if (state.menu !== undefined || state.card !== undefined) {
     return done(withoutOverlays(state));
   }
@@ -175,7 +183,7 @@ const openMenu = (state: InteractionState, context: InteractionContext): Interpr
     return done(state);
   }
   const screen = worldToScreen(state.camera, { x: rect.x + rect.width, y: rect.y });
-  return done({ ...withoutOverlays(state), menu: { instanceId, screen } });
+  return done({ ...withoutOverlays(state), menu: { kind: "chip", instanceId, screen } });
 };
 
 /** `P` / `Shift`+`P`: step through the target chip's pins, showing and announcing each one. */
@@ -254,6 +262,7 @@ const HANDLERS: Handlers = {
     const { help: _help, ...rest } = state;
     return done(rest);
   },
+  ...WIRING_COMMANDS,
 };
 
 const run = <Type extends InteractionCommand["type"]>(

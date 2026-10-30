@@ -1,5 +1,5 @@
-import type { Circuit, PinKey, Point } from "~/features/projects";
-import type { ChipId, InstanceId } from "~/shared/ids";
+import type { Circuit, PinKey, PinRef, Point, WireColor } from "~/features/projects";
+import type { ChipId, InstanceId, WireId } from "~/shared/ids";
 
 import type { EditorAction } from "./actions";
 import type { Camera } from "./camera";
@@ -8,7 +8,7 @@ import type { Scene } from "./geometry";
 import type { Gesture } from "./gesture-types";
 import type { Hit, SpatialIndex } from "./hit-test";
 import { previewPositions } from "./move";
-import { EMPTY_SELECTION, isEmpty, prune } from "./selection";
+import { EMPTY_SELECTION, isEmpty } from "./selection";
 import type { Selection } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
@@ -23,6 +23,20 @@ export type Drag =
       readonly shape: "box" | "lasso";
       readonly points: readonly Point[];
       readonly additive: boolean;
+    }
+  /** A new wire follows the pointer from `from`; it connects on release over a legal pin. */
+  | {
+      readonly kind: "wire";
+      readonly from: PinRef;
+      readonly color?: WireColor;
+      readonly point: Point;
+    }
+  /** Moves interior segment `index` of the wire in bend mode by `offset` world px. */
+  | {
+      readonly kind: "segment";
+      readonly wireId: WireId;
+      readonly index: number;
+      readonly offset: number;
     };
 
 export interface PinCard {
@@ -34,10 +48,29 @@ export interface PinCard {
   readonly pinned: boolean;
 }
 
-export interface ChipMenu {
-  readonly instanceId: InstanceId;
+/** A pin waiting for the other end of a wire; `legal` holds the `pinLevelKey`s it may reach. */
+export interface Armed {
+  readonly end: PinRef;
+  readonly color?: WireColor;
+  readonly legal: ReadonlySet<string>;
+}
+
+/** The bit picker: which bit of the bus end (`bus`) the new wire takes. */
+export interface BitPick {
+  readonly armed: PinRef;
+  readonly target: PinRef;
+  readonly bus: "armed" | "target";
+  readonly bits: readonly number[];
+  readonly color?: WireColor;
+  /** Where the picker points, in screen pixels. */
   readonly screen: Point;
 }
+
+/** A context menu: a chip's, a wire's or the canvas's. */
+export type Menu =
+  | { readonly kind: "chip"; readonly instanceId: InstanceId; readonly screen: Point }
+  | { readonly kind: "wire"; readonly wireId: WireId; readonly screen: Point }
+  | { readonly kind: "canvas"; readonly screen: Point };
 
 /** Everything the canvas shows that is not the circuit. None of it is an edit (ADR 8, 22). */
 export interface InteractionState {
@@ -50,8 +83,15 @@ export interface InteractionState {
   readonly drag?: Drag;
   /** A long-press on empty canvas in the Select tool: the next drag draws a lasso. */
   readonly lassoArmed: boolean;
-  readonly menu?: ChipMenu;
+  readonly menu?: Menu;
   readonly card?: PinCard;
+  /** A pin is armed: the next tap on a legal pin, or a drag's release over one, wires it. */
+  readonly armed?: Armed;
+  readonly bitPick?: BitPick;
+  /** The wire in bend mode. */
+  readonly bends?: WireId;
+  /** The colour new wires get; missing means the default. */
+  readonly wireColor?: WireColor;
   /** The keyboard help dialog is open. */
   readonly help?: true;
 }
@@ -80,7 +120,13 @@ export type InteractionCommand =
   | { readonly type: "jumpTo"; readonly camera: Camera; readonly settle: boolean }
   | { readonly type: "openMenu" }
   | { readonly type: "nextPin"; readonly backwards: boolean }
-  | { readonly type: "showHelp" | "hideHelp" };
+  | { readonly type: "showHelp" | "hideHelp" }
+  /** Arms the pin in the card, else the focused chip's first pin. */
+  | { readonly type: "arm" }
+  /** Wires the armed pin to the pin in the card. */
+  | { readonly type: "connect" }
+  | { readonly type: "pickBit"; readonly bit: number }
+  | { readonly type: "setWireColor"; readonly color?: WireColor };
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -99,7 +145,10 @@ export type Announcement =
   | { readonly type: "moved"; readonly count: number }
   | { readonly type: "deleted"; readonly count: number }
   | { readonly type: "tool"; readonly tool: Tool }
-  | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey };
+  | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey }
+  | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
+  | { readonly type: "wired" }
+  | { readonly type: "disarmed" };
 
 export type Effect =
   | { readonly type: "dispatch"; readonly action: EditorAction }
@@ -114,6 +163,8 @@ export interface InteractionContext {
   readonly chipId: ChipId;
   readonly viewport: Size;
   readonly index: () => SpatialIndex;
+  /** The id a new wire gets. */
+  readonly newWireId: () => WireId;
 }
 
 export interface Interpreted {
@@ -135,28 +186,9 @@ export const previewOf = (
     ? previewPositions(circuit, state.selection.instances, state.drag.delta)
     : new Map();
 
-const stillThere = <Overlay extends { readonly instanceId: InstanceId }>(
-  overlay: Overlay | undefined,
-  ids: ReadonlySet<InstanceId>,
-): Overlay | undefined =>
-  overlay !== undefined && ids.has(overlay.instanceId) ? overlay : undefined;
-
-/** After an edit, undo or redo: forget selected, focused and overlaid chips that are gone. */
-export const afterHistory = (state: InteractionState, circuit: Circuit): InteractionState => {
-  const ids = new Set(circuit.instances.map((item) => item.id));
-  const { focus, menu, card, hover: _hover, ...rest } = state;
-  return {
-    ...rest,
-    selection: prune(state.selection, circuit),
-    ...(focus !== undefined && ids.has(focus) ? { focus } : {}),
-    ...(stillThere(menu, ids) === undefined ? {} : { menu }),
-    ...(stillThere(card, ids) === undefined ? {} : { card }),
-  };
-};
-
-/** The state with the chip menu and pin card closed. */
+/** The state with the menu, pin card and bit picker closed; an armed pin stays armed. */
 export const withoutOverlays = (state: InteractionState): InteractionState => {
-  const { menu: _menu, card: _card, ...rest } = state;
+  const { menu: _menu, card: _card, bitPick: _bitPick, ...rest } = state;
   return rest;
 };
 

@@ -1,6 +1,8 @@
 import { createStore } from "zustand/vanilla";
 import type { StoreApi } from "zustand/vanilla";
 
+import { newWireId } from "~/shared/ids";
+
 import type { Camera } from "../domain/camera";
 import { createLayoutCache } from "../domain/chip-layout";
 import type { LayoutCache, Size } from "../domain/chip-layout";
@@ -133,7 +135,13 @@ export const createInteractionStore = (deps: InteractionDeps): InteractionHandle
     const editor = deps.editor.getState();
     const scene = sceneOf(editor);
     const index = (): SpatialIndex => indexOf(scene);
-    return { scene, chipId: editor.chipId, viewport: deps.viewport(), index };
+    return {
+      scene,
+      chipId: editor.chipId,
+      viewport: deps.viewport(),
+      index,
+      newWireId: () => newWireId(),
+    };
   };
   let announced = 0;
   const store = createStore<InteractionStoreState>((set, get) => ({

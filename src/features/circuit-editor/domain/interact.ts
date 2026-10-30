@@ -1,6 +1,6 @@
 import { assertNever } from "~/shared/assert-never";
 
-import { afterHistory, done } from "./interaction";
+import { done } from "./interaction";
 import type {
   InteractionContext,
   InteractionInput,
@@ -9,6 +9,7 @@ import type {
 } from "./interaction";
 import { onCommand } from "./interaction-commands";
 import { onGesture } from "./interaction-gestures";
+import { afterHistory } from "./interaction-history";
 
 /**
  * The canvas state machine (spec §5.1, §5.3, §5.8): gestures and commands in, a new interaction
@@ -28,7 +29,7 @@ export const interact = (
       return onCommand(state, input.command, context);
     }
     case "historyChanged": {
-      return done(afterHistory(state, context.scene.circuit));
+      return done(afterHistory(state, context.scene));
     }
     default: {
       return assertNever(input);

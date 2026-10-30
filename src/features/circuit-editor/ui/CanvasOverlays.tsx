@@ -8,11 +8,13 @@ import { PointMenu } from "~/shared/ui";
 import type { MenuEntry } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
-import type { ChipMenu } from "../domain/interaction";
+import type { Menu } from "../domain/interaction";
 import { RecolorChipDialog, RenameChipDialog } from "./ChipDialogs";
 import type { ChipDialog } from "./ChipDialogs";
 import { KeyboardHelp } from "./KeyboardHelp";
 import { PinCard } from "./PinCard";
+
+type ChipMenu = Extract<Menu, { kind: "chip" }>;
 
 /** Delete for every part; the chip-definition actions only for custom chips (spec §5.1). */
 const entriesFor = (custom: boolean): readonly MenuEntry[] => [
@@ -90,9 +92,9 @@ export function CanvasOverlays({ session }: { readonly session: EditorSession })
   const { dispatch } = session.editor.getState();
   return (
     <>
-      {menu === undefined ? undefined : (
+      {menu?.kind === "chip" ? (
         <ChipMenuOverlay session={session} menu={menu} onDialog={setDialog} />
-      )}
+      ) : undefined}
       {card === undefined ? undefined : <PinCard session={session} card={card} />}
       {dialog?.kind === "rename" ? (
         <RenameChipDialog

@@ -3,21 +3,23 @@ import type { Point } from "~/features/projects";
 import { assertNever } from "~/shared/assert-never";
 
 import { panBy } from "./camera";
-import type { Rect } from "./chip-layout";
 import type { Gesture } from "./gesture-types";
 import { chipsIn } from "./hit-test";
 import type { Hit } from "./hit-test";
 import { done, previewOf, selected, withoutOverlays } from "./interaction";
 import type { Drag, InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { chipOf, hitAt, toWorld } from "./interaction-hits";
+import { disarmed, endWireDrag, startWireDrag } from "./interaction-wiring";
 import { movesFor } from "./move";
 import { addInstances, inBox, inLasso, selectInstances, withInnerWires } from "./selection";
 
 type Of<Type extends Gesture["type"]> = Extract<Gesture, { type: Type }>;
+type Rect = Parameters<typeof chipsIn>[1];
 
 /**
- * A drag from a chip (or its pin) moves the selection; elsewhere it pans or draws a marquee. The
- * lasso needs Alt, or a drag that continues the long-press that armed it: a fresh press draws a box.
+ * A drag from a chip body moves the selection (from a pin or a wire it draws a wire instead, see
+ * `startWireDrag`); elsewhere it pans or draws a marquee. The lasso needs Alt, or a drag that
+ * continues the long-press that armed it: a fresh press draws a box.
  */
 const dragFor = (state: InteractionState, gesture: Of<"dragStart">, hit: Hit): Drag => {
   const { space, alt, shift } = gesture.modifiers;
@@ -37,6 +39,10 @@ export const onDragStart = (
   context: InteractionContext,
 ): Interpreted => {
   const hit = hitAt(state, context, gesture.origin);
+  const wiring = startWireDrag(state, { gesture, hit }, context);
+  if (wiring !== undefined) {
+    return onDragMove(wiring.state, { type: "dragMove", point: gesture.point }, wiring.effects);
+  }
   const drag = dragFor(state, gesture, hit);
   const instanceId = chipOf(hit);
   const keep =
@@ -67,6 +73,12 @@ const moved = (drag: Drag, state: InteractionState, point: Point): Drag => {
     }
     case "marquee": {
       return { ...drag, points: marqueePoints(drag, toWorld(state, point)) };
+    }
+    case "wire": {
+      return { ...drag, point: toWorld(state, point) };
+    }
+    case "segment": {
+      return drag;
     }
     default: {
       return assertNever(drag);
@@ -139,6 +151,10 @@ export const onDragEnd = (
     case "pan": {
       return done(rest, { type: "cameraSettled" });
     }
+    case "wire": {
+      return endWireDrag(rest, drag, context);
+    }
+    case "segment":
     case undefined: {
       return done(rest);
     }
@@ -150,5 +166,8 @@ export const onDragEnd = (
 
 export const onDragCancel = (state: InteractionState): Interpreted => {
   const { drag, ...rest } = state;
+  if (drag?.kind === "wire") {
+    return disarmed(rest);
+  }
   return drag?.kind === "pan" ? done(rest, { type: "cameraSettled" }) : done(rest);
 };
