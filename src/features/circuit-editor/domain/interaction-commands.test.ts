@@ -223,3 +223,14 @@ describe("history changes", () => {
     expect(pruned.card).toBeUndefined();
   });
 });
+
+describe("keyboard help", () => {
+  it("opens over closed overlays and closes again", () => {
+    const { context, state } = setup();
+    const opened = gesture(state, context, { type: "contextMenu", point: screen(220, 80) }).state;
+    const shown = command(opened, context, { type: "showHelp" }).state;
+    expect(shown.help).toBe(true);
+    expect(shown.menu).toBeUndefined();
+    expect(command(shown, context, { type: "hideHelp" }).state.help).toBeUndefined();
+  });
+});

@@ -7,9 +7,10 @@ import type { ThemeId } from "~/features/theming";
 import { m } from "~/i18n/paraglide/messages";
 import { Button, FileButton, LanguagePicker, Toolbar } from "~/shared/ui";
 
+import type { EditorSession } from "../application/editor-session";
 import { openCircuit } from "../application/editor-store";
-import type { EditorStore } from "../application/editor-store";
 import { freeNandPosition } from "../domain/geometry";
+import { CanvasButtons, ToolSwitch } from "./CanvasControls";
 
 const PROJECT_FILE_TYPES = ["application/json", ".json"];
 
@@ -20,12 +21,13 @@ const themeLabels = (): Readonly<Record<ThemeId, string>> => ({
 });
 
 interface EditorToolbarProps {
-  readonly editor: EditorStore;
+  readonly session: EditorSession;
   readonly onImport: (file: File) => void;
 }
 
 /** Every edit goes through `dispatch` / `undo` / `redo` (ADR 8). */
-export function EditorToolbar({ editor, onImport }: EditorToolbarProps): ReactNode {
+export function EditorToolbar({ session, onImport }: EditorToolbarProps): ReactNode {
+  const { editor } = session;
   const canUndo = useStore(editor, (state) => state.history.past.length > 0);
   const canRedo = useStore(editor, (state) => state.history.future.length > 0);
 
@@ -60,6 +62,8 @@ export function EditorToolbar({ editor, onImport }: EditorToolbarProps): ReactNo
         {m.redo()}
       </Button>
       <Button onPress={handleAddNand}>{m.add_nand()}</Button>
+      <ToolSwitch session={session} />
+      <CanvasButtons session={session} />
       <Button onPress={handleExport} variant="quiet">
         {m.export()}
       </Button>

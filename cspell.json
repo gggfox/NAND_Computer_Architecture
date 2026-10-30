@@ -54,6 +54,8 @@
     "keymap",
     "noninteractive",
     "roledescription",
-    "Supr"
+    "Supr",
+    "Mayús",
+    "Dismissable"
   ]
 }

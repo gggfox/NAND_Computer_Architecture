@@ -37,6 +37,7 @@ describe("commandForKey", () => {
     [press("P", { shift: true }), { type: "nextPin", backwards: true }],
     [press("v"), { type: "setTool", tool: "select" }],
     [press("h"), { type: "setTool", tool: "pan" }],
+    [press("?", { shift: true }), { type: "showHelp" }],
     [press("z", { ctrlOrMeta: true }), { type: "undo" }],
     [press("Z", { ctrlOrMeta: true, shift: true }), { type: "redo" }],
     [press("y", { ctrlOrMeta: true }), { type: "redo" }],

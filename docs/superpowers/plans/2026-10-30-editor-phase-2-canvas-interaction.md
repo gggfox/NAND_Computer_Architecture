@@ -604,7 +604,7 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 11: Toolbar, chip menu, pin card and dialogs (UI)
+### Task 11: Toolbar, chip menu, pin card and dialogs (UI) ✅ done
 
 **Files:**
 - Create: `src/shared/ui/{SegmentedControl,PointMenu,PromptDialog,SwatchPicker,KeyboardHelp}.tsx` (+ CSS modules), exported from `src/shared/ui/index.ts`
@@ -621,9 +621,22 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 - **`PointMenu`:** RAC `Popover` with `triggerRef` set to a 1×1 absolutely positioned anchor at the menu's screen point, and `Menu` items. Focus moves into the menu and Escape returns focus to the canvas host. The items, labels in en/es, are Delete, then (custom only) Rename chip…, Recolour chip… and Look inside. Rename opens `PromptDialog` → `renameChip`. Recolour opens `SwatchPicker` with 8 swatches from the theming palette → `recolorChip`. Look inside → `openChip`.
 - **Pin card:** a positioned, non-focusable `div`, `aria-hidden` (its text reaches screen readers through the live region). It shows the name, width, `valueText` and connections, and is kept inside the canvas bounds. A pinned card has a close button and closes on Escape or a tap elsewhere.
 
-- [ ] **Step 1:** Implement the shared components, each with its own story in an existing E2E or a dev check. These are UI-only and excluded from coverage.
-- [ ] **Step 2:** Implement the overlays and toolbar. Run `pnpm check`.
-- [ ] **Step 3: Commit** `feat(circuit-editor): tool switch, chip menu, pin card and keyboard help`
+- [x] **Step 1:** Implement the shared components, each with its own story in an existing E2E or a dev check. These are UI-only and excluded from coverage.
+- [x] **Step 2:** Implement the overlays and toolbar. Run `pnpm check`.
+- [x] **Step 3: Commit** `feat(circuit-editor): tool switch, chip menu, pin card and keyboard help`
+
+**As built:**
+- **Shared UI:** `SegmentedControl` (ToggleButtonGroup, exposed as radios), `PointMenu`, `ModalDialog`, `TextInput` and `SwatchPicker` (RadioField + RadioButton; RAC's `Radio` is deprecated). `Button` gains `type="submit"`. The help is `ui/KeyboardHelp.tsx` on `ModalDialog`, not a shared component.
+- **Help state:** `help` lives in the interaction state (`showHelp`/`hideHelp`, and `?` in the keymap), so the toolbar button and the key share it.
+- **Menu actions:** the menu closes *before* running its action. A modal opened by an action does not make the popover report its own close; this was caught in a browser run, where the menu stayed open behind the recolour dialog.
+- **Pin card:** shows the name and width, `Value: …`, and its connections. It flips to the left of pins right of 200 px, so it stays on a phone screen.
+- **Styles:** `global.css` gains `--font-mono`, `--font-size-small`/`-title` and `--z-overlay`/`--z-modal` (stylelint requires variables).
+- **Checked in a browser** (production build, Chromium):
+  - right-click menu with focus moving into it, then delete, rename, recolour and look inside;
+  - hover pin card;
+  - `?` help, closed with Escape;
+  - the Pan/Select radios with an announcement, and Delete disabled with nothing selected;
+  - **axe: zero WCAG violations** with the menu open, the rename dialog open, and the help open.
 
 ---
 

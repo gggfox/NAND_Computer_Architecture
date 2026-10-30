@@ -188,7 +188,7 @@ function Editor({ project }: EditorProps): ReactNode {
   const toolbar = (
     <>
       <BackLink />
-      <EditorToolbar editor={editor} onImport={onImport} />
+      <EditorToolbar session={session} onImport={onImport} />
     </>
   );
   return (

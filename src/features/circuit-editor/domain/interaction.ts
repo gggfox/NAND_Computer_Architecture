@@ -25,7 +25,7 @@ export type Drag =
       readonly additive: boolean;
     };
 
-interface PinCard {
+export interface PinCard {
   readonly instanceId: InstanceId;
   readonly pin: PinKey;
   /** Where the card points, in screen pixels. */
@@ -34,7 +34,7 @@ interface PinCard {
   readonly pinned: boolean;
 }
 
-interface ChipMenu {
+export interface ChipMenu {
   readonly instanceId: InstanceId;
   readonly screen: Point;
 }
@@ -52,6 +52,8 @@ export interface InteractionState {
   readonly lassoArmed: boolean;
   readonly menu?: ChipMenu;
   readonly card?: PinCard;
+  /** The keyboard help dialog is open. */
+  readonly help?: true;
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -75,7 +77,8 @@ export type InteractionCommand =
   | { readonly type: "zoomBy"; readonly screen: Point; readonly factor: number }
   | { readonly type: "panBy"; readonly delta: Point }
   | { readonly type: "openMenu" }
-  | { readonly type: "nextPin"; readonly backwards: boolean };
+  | { readonly type: "nextPin"; readonly backwards: boolean }
+  | { readonly type: "showHelp" | "hideHelp" };
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }

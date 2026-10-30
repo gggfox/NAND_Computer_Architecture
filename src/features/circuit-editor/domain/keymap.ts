@@ -42,6 +42,7 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
   ["P", () => ({ type: "nextPin", backwards: true })],
   ["v", () => ({ type: "setTool", tool: "select" })],
   ["h", () => ({ type: "setTool", tool: "pan" })],
+  ["?", () => ({ type: "showHelp" })],
 ]);
 
 /** With Ctrl or ⌘: only the editing shortcuts; everything else stays the browser's. */

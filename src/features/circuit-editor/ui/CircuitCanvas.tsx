@@ -7,6 +7,7 @@ import { m } from "~/i18n/paraglide/messages";
 
 import type { EditorSession } from "../application/editor-session";
 import type { EditorSearch } from "../domain/view-search";
+import { CanvasOverlays } from "./CanvasOverlays";
 import { useCanvas, useSpoken, useUrlCamera } from "./use-canvas";
 
 import styles from "./CircuitCanvas.module.css";
@@ -53,6 +54,7 @@ export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode 
       <p className="visually-hidden" aria-live="polite">
         {spoken}
       </p>
+      <CanvasOverlays session={session} />
     </div>
   );
 }

@@ -240,6 +240,11 @@ const HANDLERS: Handlers = {
   panBy: (state, command) => done({ ...state, camera: panBy(state.camera, command.delta) }),
   openMenu: (state, _command, context) => openMenu(state, context),
   nextPin,
+  showHelp: (state) => done({ ...withoutOverlays(state), help: true }),
+  hideHelp: (state) => {
+    const { help: _help, ...rest } = state;
+    return done(rest);
+  },
 };
 
 const run = <Type extends InteractionCommand["type"]>(
