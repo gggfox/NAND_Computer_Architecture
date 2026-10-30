@@ -45,13 +45,13 @@ describe("layoutOf custom chips", () => {
     expect(layout.pins[3]?.anchor.x).toBe(3 * GRID);
   });
 
-  it("spreads the slack evenly around the pins of the shorter side", () => {
+  it("spreads the slack around the pins of the shorter side, snapped to the half-grid", () => {
     // Six cells tall; two 2-cell slots on the left leave 2 cells of slack: 2/3 cell per gap.
     const layout = customLayout(savedChip("X", [["a"], ["b"]], [["x"], ["y"], ["z"]]));
     const [first, second] = layout.pins.map((pin) => pin.anchor.y);
     expect(layout.rect.height).toBe(6 * PIN_CELL);
-    expect(first).toBeCloseTo((5 / 3) * PIN_CELL);
-    expect(second).toBeCloseTo((13 / 3) * PIN_CELL);
+    expect(first).toBe(2 * PIN_CELL);
+    expect(second).toBe(4 * PIN_CELL);
   });
 
   it("widens to fit the title and labels, in whole grid steps", () => {
@@ -75,6 +75,37 @@ describe("layoutOf custom chips", () => {
     const layout = layoutOf(sourceWith([draft]), piece({ type: "custom", chipId: draft.id }));
     expect(layout).toMatchObject({ title: "Draft", pins: [] });
     expect(layout.rect).toMatchObject({ width: 2 * GRID, height: GRID });
+  });
+});
+
+const expectOnLattice = (layout: ChipLayout): void => {
+  for (const side of ["left", "right"] as const) {
+    const ys = layout.pins.filter((pin) => pin.side === side).map((pin) => pin.anchor.y);
+    expect(ys.toSorted((a, b) => a - b)).toEqual(ys);
+    expect(new Set(ys).size).toBe(ys.length);
+  }
+  for (const pin of layout.pins) {
+    expect((pin.anchor.y - layout.rect.y) % PIN_CELL).toBe(0);
+    expect(pin.anchor.y).toBeGreaterThan(layout.rect.y);
+    expect(pin.anchor.y).toBeLessThan(layout.rect.y + layout.rect.height);
+    expect([layout.rect.x, layout.rect.x + layout.rect.width]).toContain(pin.anchor.x);
+  }
+};
+
+describe("layoutOf pin anchors", () => {
+  it("pin anchors sit on the PIN_CELL lattice", () => {
+    const chips = [
+      savedChip("T", [["a"], ["b"], ["c"]], [["x"], ["y"]]),
+      savedChip("B", [["d", 4], ["e"]], [["f"]]),
+    ];
+    for (const chip of chips) {
+      expectOnLattice(customLayout(chip));
+    }
+  });
+
+  it("keeps the NAND anchors where they were", () => {
+    const layout = layoutOf(sourceWith([]), piece({ type: "nand" }, { x: 0, y: 100 }));
+    expect(layout.pins.map((pin) => pin.anchor.y)).toEqual([120, 160, 140]);
   });
 });
 
