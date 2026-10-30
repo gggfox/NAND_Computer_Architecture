@@ -60,6 +60,19 @@ describe("pairwise legibility", () => {
     );
   });
 
+  test.each(themeIds)(
+    "%s: chip labels on signal-high (chip-text) and signal-low (chip-text-low) bodies >= 4.5",
+    (id) => {
+      const tokens = themes[id];
+      expect(contrastRatio(tokens.colorChipText, tokens.colorSignalHigh)).toBeGreaterThanOrEqual(
+        MIN_TEXT,
+      );
+      expect(contrastRatio(tokens.colorChipTextLow, tokens.colorSignalLow)).toBeGreaterThanOrEqual(
+        MIN_TEXT,
+      );
+    },
+  );
+
   test.each(themeIds)("%s: accent and wire vs surface >= 3", (id) => {
     const tokens = themes[id];
     for (const color of [tokens.colorAccent, tokens.colorWire]) {

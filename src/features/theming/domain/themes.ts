@@ -14,6 +14,8 @@ export interface ThemeTokens {
   readonly colorWire: string;
   readonly colorChipNand: string;
   readonly colorChipText: string;
+  /** Label colour on a low-signal body: no single chip-text colour clears AA on both signal levels. */
+  readonly colorChipTextLow: string;
   readonly colorGrid: string;
 }
 
@@ -30,6 +32,7 @@ export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
     colorWire: "#585d78",
     colorChipNand: "#c92a64",
     colorChipText: "#ffffff",
+    colorChipTextLow: "#14172a",
     colorGrid: "#d8dbe8",
   },
   dark: {
@@ -44,6 +47,7 @@ export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
     colorWire: "#8089ad",
     colorChipNand: "#ff5c8d",
     colorChipText: "#0d1017",
+    colorChipTextLow: "#ffffff",
     colorGrid: "#1e2331",
   },
   "high-contrast": {
@@ -58,6 +62,7 @@ export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
     colorWire: "#ffffff",
     colorChipNand: "#ff4f9a",
     colorChipText: "#000000",
+    colorChipTextLow: "#ffffff",
     colorGrid: "#3a3a3a",
   },
 };

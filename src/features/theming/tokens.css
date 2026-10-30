@@ -10,6 +10,7 @@
   --color-wire: #585d78;
   --color-chip-nand: #c92a64;
   --color-chip-text: #ffffff;
+  --color-chip-text-low: #14172a;
   --color-grid: #d8dbe8;
 }
 
@@ -25,6 +26,7 @@
   --color-wire: #8089ad;
   --color-chip-nand: #ff5c8d;
   --color-chip-text: #0d1017;
+  --color-chip-text-low: #ffffff;
   --color-grid: #1e2331;
 }
 
@@ -40,5 +42,6 @@
   --color-wire: #ffffff;
   --color-chip-nand: #ff4f9a;
   --color-chip-text: #000000;
+  --color-chip-text-low: #ffffff;
   --color-grid: #3a3a3a;
 }

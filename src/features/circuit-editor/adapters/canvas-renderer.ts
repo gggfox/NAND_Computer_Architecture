@@ -32,6 +32,7 @@ const TOKENS = [
   "signal-low",
   "chip-nand",
   "chip-text",
+  "chip-text-low",
 ] as const;
 type Token = (typeof TOKENS)[number];
 type Palette = Readonly<Record<Token, string>>;
@@ -159,7 +160,7 @@ const drawChip = (frame: Frame, instance: ChipInstance, inputIndex: number): voi
   const level = instanceLevel(frame.circuit, frame.known, instance);
   drawBody(frame, rect, bodyStyle(palette, part === "nand", level));
   ctx.font = FONT;
-  ctx.fillStyle = palette["chip-text"];
+  ctx.fillStyle = palette[part !== "nand" && level === 0 ? "chip-text-low" : "chip-text"];
   centerText(ctx, chipText(part, level), rect);
   if (part === "input") {
     drawInputName(frame, rect, inputIndex);
