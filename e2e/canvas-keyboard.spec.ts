@@ -60,6 +60,8 @@ test("select, move, undo, delete and redo the NAND from the keyboard", async ({ 
 
   await page.keyboard.press("Control+z");
   await expect(page.getByText("NAND gate 1", { exact: true })).toBeVisible();
+  // Undo restores the part, not the selection.
+  await expect(page.getByText("selected", { exact: true })).toHaveCount(0);
   await page.keyboard.press("Control+Shift+z");
   await expect(page.getByText("NAND gate 1", { exact: true })).toHaveCount(0);
 });
@@ -92,8 +94,8 @@ test("? opens the keyboard help, and Tab still leaves the canvas", async ({ page
   await expect(help).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(help).toHaveCount(0);
+  await expect(canvasHost(page)).toBeFocused();
 
-  await canvasHost(page).focus();
   await page.keyboard.press("Tab");
   await expect(canvasHost(page)).not.toBeFocused();
   await expect(page.locator(":focus")).toHaveCount(1);

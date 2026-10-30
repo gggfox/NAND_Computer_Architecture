@@ -34,6 +34,10 @@ const NAND_CENTRE = { x: 60, y: 40 };
 /** The drag sweeps this far right and back once a second, and ends this far right. */
 const SWEEP_PX = 80;
 
+/* CPU throttling needs the Chrome DevTools Protocol; skipping here keeps the Pixel 7 emulation
+ * below off every other project. */
+test.skip(({ browserName }) => browserName !== "chromium", "Needs the Chrome DevTools Protocol");
+
 const { defaultBrowserType: _browser, ...pixel7 } = devices["Pixel 7"];
 test.use(pixel7);
 
@@ -125,8 +129,7 @@ const dragAndSample = async (
 test(
   "dragging 50 of 300 chips keeps p95 frames within 20 ms",
   { tag: "@perf" },
-  async ({ page, browserName }, testInfo) => {
-    test.skip(browserName !== "chromium", "CPU throttling needs the Chrome DevTools Protocol");
+  async ({ page }, testInfo) => {
     await createProject(page);
     await importFixture(page);
     await selectFirstChips(page);

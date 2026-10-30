@@ -46,6 +46,7 @@ test("right-click on the NAND deletes it from the menu, and Undo brings it back"
 
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByText("NAND gate 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("selected", { exact: true })).toHaveCount(0);
 });
 
 test("a box around both inputs selects them for Delete, and Undo restores them", async ({
@@ -69,4 +70,6 @@ test("a box around both inputs selects them for Delete, and Undo restores them",
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(inputSwitch(page, "Input A")).toHaveCount(1);
   await expect(inputSwitch(page, "Input B")).toHaveCount(1);
+  // Undo restores the parts, not the selection.
+  await expect(page.getByText("selected", { exact: true })).toHaveCount(0);
 });
