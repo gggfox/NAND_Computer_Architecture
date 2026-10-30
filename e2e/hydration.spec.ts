@@ -5,23 +5,51 @@ import { expect, test } from "./support";
 /** Dev messages say "hydrat…"; production React throws minified #418 (text), #423 and #425. */
 const HYDRATION = /hydrat|Minified React error #(?:418|423|425)/iu;
 
-interface StoredChoice {
+/** React reports hydration mismatches as errors, but some variants arrive as warnings. */
+const REPORTED_TYPES = new Set(["error", "warning"]);
+
+interface FirstLoad {
   readonly name: string;
-  readonly key: string;
-  readonly value: string;
-  readonly theme: string | undefined;
+  readonly colorScheme: "light" | "dark";
+  readonly stored: readonly (readonly [key: string, value: string])[];
+  readonly theme: string;
   readonly lang: string;
 }
 
-const choices: readonly StoredChoice[] = [
-  { name: "stored dark theme", key: "nand.theme", value: "dark", theme: "dark", lang: "en" },
-  { name: "stored es locale", key: "PARAGLIDE_LOCALE", value: "es", theme: undefined, lang: "es" },
+/*
+ * The boot script sets `data-theme` before hydration from storage or the OS preference, and the
+ * locale effect corrects `lang` after it; neither may make React report a mismatch (#12).
+ */
+const firstLoads: readonly FirstLoad[] = [
+  { name: "an OS light preference", colorScheme: "light", stored: [], theme: "light", lang: "en" },
+  { name: "an OS dark preference", colorScheme: "dark", stored: [], theme: "dark", lang: "en" },
+  {
+    name: "a stored dark theme",
+    colorScheme: "light",
+    stored: [["nand.theme", "dark"]],
+    theme: "dark",
+    lang: "en",
+  },
+  {
+    name: "a stored light theme",
+    colorScheme: "dark",
+    stored: [["nand.theme", "light"]],
+    theme: "light",
+    lang: "en",
+  },
+  {
+    name: "a stored es locale",
+    colorScheme: "dark",
+    stored: [["PARAGLIDE_LOCALE", "es"]],
+    theme: "dark",
+    lang: "es",
+  },
 ];
 
-const collectHydrationErrors = (page: Page): string[] => {
+const collectHydrationProblems = (page: Page): string[] => {
   const problems: string[] = [];
   page.on("console", (message: ConsoleMessage) => {
-    if (message.type() === "error" && HYDRATION.test(message.text())) {
+    if (REPORTED_TYPES.has(message.type()) && HYDRATION.test(message.text())) {
       problems.push(message.text());
     }
   });
@@ -33,21 +61,19 @@ const collectHydrationErrors = (page: Page): string[] => {
   return problems;
 };
 
-for (const choice of choices) {
-  test(`first load logs no hydration error with a ${choice.name}`, async ({ page }) => {
-    const problems = collectHydrationErrors(page);
-    await page.addInitScript(
-      ([key, value]) => {
+for (const load of firstLoads) {
+  test(`first load reports no hydration mismatch with ${load.name}`, async ({ page }) => {
+    const problems = collectHydrationProblems(page);
+    await page.emulateMedia({ colorScheme: load.colorScheme });
+    await page.addInitScript((entries) => {
+      for (const [key, value] of entries) {
         localStorage.setItem(key, value);
-      },
-      [choice.key, choice.value] as const,
-    );
+      }
+    }, load.stored);
     await page.goto("/");
     await expect(page.getByRole("button", { name: /new project|nuevo proyecto/iu })).toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("lang", choice.lang);
-    if (choice.theme !== undefined) {
-      await expect(page.locator("html")).toHaveAttribute("data-theme", choice.theme);
-    }
+    await expect(page.locator("html")).toHaveAttribute("lang", load.lang);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", load.theme);
     expect(problems).toEqual([]);
   });
 }
