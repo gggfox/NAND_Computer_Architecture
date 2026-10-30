@@ -6,7 +6,7 @@ import type { ChipLayout, Rect } from "../domain/chip-layout";
 import { layoutIn, wireRoute } from "../domain/geometry";
 import { instanceLevel, pinValue, wireDash, wireLevel } from "../domain/signals";
 import type { Level } from "../domain/signals";
-import { intersects, levelColor } from "./frame";
+import { inPart, intersects, levelColor } from "./frame";
 import type { Frame } from "./frame";
 
 const WIRE_WIDTH = 3;
@@ -57,19 +57,24 @@ const drawWireGroup = (
 
 type Routes = Map<Level | undefined, Point[][]>;
 
-/** The routes of the wires on screen, by level. */
+const addRoute = (groups: Routes, level: Level | undefined, route: readonly Point[]): void => {
+  const group = groups.get(level);
+  if (group === undefined) {
+    groups.set(level, [[...route]]);
+  } else {
+    group.push([...route]);
+  }
+};
+
+/** The routes of the wires on screen (in the frame's part), by level. */
 const visibleRoutes = (frame: Frame): Routes => {
   const groups: Routes = new Map();
   for (const wire of frame.circuit.wires) {
-    const route = wireRoute(frame, wire);
+    const route = inPart(frame, [wire.from.instanceId, wire.to.instanceId])
+      ? wireRoute(frame, wire)
+      : [];
     if (route.length > 0 && intersects(boundsOfPoints(route), frame.visible)) {
-      const level = wireLevel(frame.circuit, frame.known, wire);
-      const group = groups.get(level);
-      if (group === undefined) {
-        groups.set(level, [[...route]]);
-      } else {
-        group.push([...route]);
-      }
+      addRoute(groups, wireLevel(frame.circuit, frame.known, wire), route);
     }
   }
   return groups;
@@ -217,12 +222,18 @@ const drawPiece = (frame: Frame, instance: ChipInstance, layout: ChipLayout): vo
   drawTabs(frame, instance, layout);
 };
 
-/** Every chip that is at least partly on screen. */
+const drawIfVisible = (frame: Frame, instance: ChipInstance): void => {
+  const layout = layoutIn(frame, instance);
+  if (intersects(layout.rect, frame.visible)) {
+    (instance.kind.type === "pin" ? drawPiece : drawPart)(frame, instance, layout);
+  }
+};
+
+/** Every chip (in the frame's part) that is at least partly on screen. */
 export const drawChips = (frame: Frame): void => {
   for (const instance of frame.circuit.instances) {
-    const layout = layoutIn(frame, instance);
-    if (intersects(layout.rect, frame.visible)) {
-      (instance.kind.type === "pin" ? drawPiece : drawPart)(frame, instance, layout);
+    if (inPart(frame, [instance.id])) {
+      drawIfVisible(frame, instance);
     }
   }
 };

@@ -11,7 +11,9 @@ import { drawOverlays, drawWireHalos } from "./draw-overlays";
 import type { OverlayView } from "./draw-overlays";
 import { drawChips, drawWires } from "./draw-parts";
 import { fitBackingStore, readPalette } from "./frame";
-import type { Frame, Viewport } from "./frame";
+import type { Frame, Palette, Viewport } from "./frame";
+import { createStaticLayer } from "./static-layer";
+import type { StaticLayer } from "./static-layer";
 import { watchEnvironment } from "./watch-environment";
 
 export interface RenderState extends KnownLevels {
@@ -63,11 +65,11 @@ const drawBackdrop = (frame: Frame, viewport: Viewport, view: Camera): void => {
   drawGrid(frame, viewport, view);
 };
 
-const drawScene = (frame: Frame, viewport: Viewport, { view, overlay }: Layers): void => {
-  drawBackdrop(frame, viewport, view);
+/** Switches to world coordinates for the camera. */
+const toWorld = (ctx: CanvasRenderingContext2D, viewport: Viewport, view: Camera): void => {
   const { dpr } = viewport;
   const scale = dpr * view.zoom;
-  frame.ctx.setTransform(
+  ctx.setTransform(
     scale,
     0,
     0,
@@ -75,10 +77,84 @@ const drawScene = (frame: Frame, viewport: Viewport, { view, overlay }: Layers):
     (SCREEN_PAD - view.x * view.zoom) * dpr,
     (SCREEN_PAD - view.y * view.zoom) * dpr,
   );
+};
+
+const drawScene = (frame: Frame, viewport: Viewport, { view, overlay }: Layers): void => {
+  drawBackdrop(frame, viewport, view);
+  toWorld(frame.ctx, viewport, view);
   drawWireHalos(frame, overlay);
   drawWires(frame);
   drawChips(frame);
   drawOverlays(frame, overlay, view.zoom);
+};
+
+interface DragLayers extends Layers {
+  readonly cached: StaticLayer;
+}
+
+/** The cached layer of what stays put, painted when its key changed. */
+const stillLayer = (
+  frame: Frame,
+  viewport: Viewport,
+  { view, cached, moved }: DragLayers & { readonly moved: ReadonlySet<InstanceId> },
+): HTMLCanvasElement | undefined => {
+  const { ctx, palette, known, project, circuit } = frame;
+  const key = { ...known, project, circuit, view, viewport, palette, moved };
+  return cached.get(key, ctx.canvas, (layerCtx) => {
+    const still = { ...frame, ctx: layerCtx, part: { moved, drawMoved: false } };
+    drawScene(still, viewport, { view, overlay: {} });
+  });
+};
+
+/** The moved chips, the wires touching them and the overlays, over the still layer. */
+const drawMoving = (moving: Frame, viewport: Viewport, { view, overlay }: Layers): void => {
+  toWorld(moving.ctx, viewport, view);
+  drawWireHalos(moving, overlay);
+  drawWires(moving);
+  drawChips(moving);
+  drawOverlays(moving, overlay, view.zoom);
+};
+
+/**
+ * A drag frame: the parts that stay put come from the cached layer (painted once per drag, or
+ * when the camera, levels, theme or size change); only the moved chips, the wires touching them
+ * and the overlays are drawn again.
+ */
+const drawDragScene = (frame: Frame, viewport: Viewport, layers: DragLayers): void => {
+  const moved = new Set(frame.positions?.keys());
+  const layer = stillLayer(frame, viewport, { ...layers, moved });
+  if (layer === undefined) {
+    drawScene(frame, viewport, layers);
+    return;
+  }
+  frame.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  frame.ctx.drawImage(layer, 0, 0);
+  drawMoving({ ...frame, part: { moved, drawMoved: true } }, viewport, layers);
+};
+
+interface Painter {
+  readonly canvas: HTMLCanvasElement;
+  readonly ctx: CanvasRenderingContext2D;
+  readonly palette: Palette;
+  readonly layout: LayoutCache;
+  readonly cached: StaticLayer;
+}
+
+/** One frame of `state`: the whole scene, or a drag frame over the cached still layer. */
+const paint = (painter: Painter, state: RenderState): void => {
+  const { canvas, ctx, palette, layout, cached } = painter;
+  const viewport = fitBackingStore(canvas);
+  const { project, circuit, view, overlay = {} } = state;
+  const { positions = new Map<InstanceId, Point>() } = overlay;
+  // The world rect on screen, so off-screen chips and wires are skipped.
+  const visible = visibleRect(view, viewport);
+  const frame = { ctx, palette, known: state, project, circuit, layout, positions, visible };
+  if (positions.size === 0) {
+    cached.clear();
+    drawScene(frame, viewport, { view, overlay });
+  } else {
+    drawDragScene(frame, viewport, { view, overlay, cached });
+  }
 };
 
 /**
@@ -95,19 +171,12 @@ export const createCanvasRenderer = (
   let palette = readPalette();
   let frameId: number | undefined = undefined;
   let unwatch: (() => void) | undefined = undefined;
+  const cached = createStaticLayer();
 
   const draw = (): void => {
     frameId = undefined;
-    const state = read();
     if (ctx !== null) {
-      const viewport = fitBackingStore(canvas);
-      const { project, circuit, view } = state;
-      // The world rect on screen, so off-screen chips and wires are skipped.
-      const visible = visibleRect(view, viewport);
-      const overlay = state.overlay ?? {};
-      const positions = overlay.positions ?? new Map();
-      const frame = { ctx, palette, known: state, project, circuit, layout, visible, positions };
-      drawScene(frame, viewport, { view, overlay });
+      paint({ canvas, ctx, palette, layout, cached }, read());
     }
   };
   const invalidate = (): void => {

@@ -1,3 +1,5 @@
+import type { InstanceId } from "~/shared/ids";
+
 import type { LayoutCache, Rect, Size } from "../domain/chip-layout";
 import type { Scene } from "../domain/geometry";
 import type { KnownLevels, Level } from "../domain/signals";
@@ -33,7 +35,18 @@ export interface Frame extends Scene {
   readonly known: KnownLevels;
   readonly layout: LayoutCache;
   readonly visible: Rect;
+  /**
+   * During a drag the scene is drawn in two parts: everything that stays put (cached once), then
+   * the chips being moved and every wire touching them. Absent: draw everything.
+   */
+  readonly part?: { readonly moved: ReadonlySet<InstanceId>; readonly drawMoved: boolean };
 }
+
+/** Whether a chip or wire touching `instanceIds` belongs to the part this frame draws. */
+export const inPart = (frame: Frame, instanceIds: readonly InstanceId[]): boolean => {
+  const { part } = frame;
+  return part === undefined || instanceIds.some((id) => part.moved.has(id)) === part.drawMoved;
+};
 
 export const levelColor = (palette: Palette, level: Level | undefined): string => {
   if (level === undefined) {
