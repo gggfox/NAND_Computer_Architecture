@@ -1,8 +1,8 @@
-import { findChip } from "~/features/projects";
-import type { InstanceKind, Project } from "~/features/projects";
+import { endpointInfo, findChip, pinKeys } from "~/features/projects";
+import type { ChipInstance, InstanceKind, PinKey, Project } from "~/features/projects";
 import type { NetlistSource, SignalRef } from "~/features/simulation";
 import { assertNever } from "~/shared/assert-never";
-import type { ChipId } from "~/shared/ids";
+import type { ChipId, InstanceId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
@@ -14,10 +14,19 @@ import type { IoLayout } from "./io-layout";
 
 export type { NetlistSourceError } from "./flatten-walk";
 
+/** One pin of an instance on the open chip, and the signal behind each of its bits. */
+interface Probe {
+  readonly instanceId: InstanceId;
+  readonly pin: PinKey;
+  readonly bits: readonly SignalRef[];
+}
+
 /** The engine's netlist and where each of the open chip's pins sits in its inputs and outputs. */
 export interface Flattened {
   readonly source: NetlistSource;
   readonly layout: IoLayout;
+  /** Every pin on the open chip whose bits all resolve; unconnected pins are left out. */
+  readonly probes: readonly Probe[];
 }
 
 type Outcome<T> = Result<T, NetlistSourceError>;
@@ -202,11 +211,42 @@ const resolveNetlist = (resolver: Resolver, top: Frame): Outcome<NetlistSource> 
     : outputs;
 };
 
+/** The signal behind each bit of one pin, or `undefined` when the pin or a bit does not resolve. */
+// oxlint-disable-next-line eslint/max-params -- the resolver, the open chip's frame, the instance and its pin
+const probePin = (
+  resolver: Resolver,
+  top: Frame,
+  instance: ChipInstance,
+  pin: PinKey,
+): Probe | undefined => {
+  const info = endpointInfo(resolver.walk.project, top.circuit, instance, pin);
+  if (info === undefined) {
+    return undefined;
+  }
+  const follow = info.role === "source" ? source : sink;
+  const bitIndices = Array.from({ length: info.width }, (_unused, bit) => bit);
+  const bits = mapAll(bitIndices, (bit) =>
+    follow(resolver, top, { instanceId: instance.id, pin, bit }),
+  );
+  return bits.ok ? { instanceId: instance.id, pin, bits: bits.value } : undefined;
+};
+
+const probesOf = (resolver: Resolver, top: Frame): readonly Probe[] =>
+  top.circuit.instances.flatMap((instance) =>
+    pinKeys(resolver.walk.project, instance).flatMap((pin) => {
+      const probe = probePin(resolver, top, instance, pin);
+      return probe === undefined ? [] : [probe];
+    }),
+  );
+
 /** Resolves an already-walked circuit; exported so tests can hand it walks `toNetlistSource` never builds. */
 export const build = (walk: Walk, top: Frame): Outcome<Flattened> => {
   const layout = ioLayout(top.circuit);
-  const netlist = resolveNetlist({ walk, layout, memo: new Map(), active: new Map() }, top);
-  return netlist.ok ? ok({ source: netlist.value, layout }) : netlist;
+  const resolver: Resolver = { walk, layout, memo: new Map(), active: new Map() };
+  const netlist = resolveNetlist(resolver, top);
+  return netlist.ok
+    ? ok({ source: netlist.value, layout, probes: probesOf(resolver, top) })
+    : netlist;
 };
 
 /**

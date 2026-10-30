@@ -5,7 +5,7 @@ import type { Circuit, Wire } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
 import { newInstanceId, newWireId } from "~/shared/ids";
 
-import { instanceLevel, wireDash, wireLevel } from "./signals";
+import { instanceLevel, pinLevelKey, pinValue, wireDash, wireLevel } from "./signals";
 import type { KnownLevels } from "./signals";
 
 const demo = (): Circuit => createDemoProject("x").chips[0]?.draft ?? EMPTY_CIRCUIT;
@@ -100,6 +100,34 @@ describe("signals on multi-bit pins", () => {
     const [toA] = wiresOf(circuit);
     const known = { inputs: new Map<PinId, number>(), outputs: new Map<PinId, number>() };
     expect(wireLevel(circuit, known, toA)).toBe(0);
+  });
+});
+
+describe("signals from probes", () => {
+  it("a NAND to NAND wire is known once its source pin is probed", () => {
+    const circuit = demo();
+    const [toA, , toOut] = wiresOf(circuit);
+    const nandToNand: Wire = { ...toOut, id: newWireId(), to: toA.to };
+    const rewired = { ...circuit, wires: [nandToNand] };
+    const probed = new Map([[pinLevelKey(toOut.from.instanceId, toOut.from.pin), 0]]);
+    const known = { ...levels(circuit, [0, 0]), levels: probed };
+    expect(wireLevel(rewired, known, nandToNand)).toBe(0);
+    expect(pinValue(known, toOut.from.instanceId, toOut.from.pin)).toBe(0);
+  });
+
+  it("a tap reads its bit; a whole bus has no single level", () => {
+    const circuit = demo();
+    const [toA] = wiresOf(circuit);
+    const value = 0b0100;
+    const known = {
+      ...levels(circuit, [0, 0]),
+      levels: new Map([[pinLevelKey(toA.from.instanceId, toA.from.pin), value]]),
+    };
+    const tap: Wire = { ...toA, from: { ...toA.from, bit: 2 } };
+    const bus: Wire = { ...toA, bitWidth: 4 };
+    expect(wireLevel(circuit, known, tap)).toBe(1);
+    expect(wireLevel(circuit, known, { ...tap, from: { ...toA.from, bit: 1 } })).toBe(0);
+    expect(wireLevel(circuit, { ...known, inputs: new Map() }, bus)).toBe(0);
   });
 });
 

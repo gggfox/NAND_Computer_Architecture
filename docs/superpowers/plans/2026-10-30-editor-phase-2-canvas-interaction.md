@@ -128,13 +128,11 @@ src/shared/ui/
   PromptDialog.tsx (+ .module.css)      NEW  RAC Dialog + TextField (rename)
   SwatchPicker.tsx (+ .module.css)      NEW  RAC RadioGroup of colour swatches (recolour)
   KeyboardHelp.tsx (+ .module.css)      NEW  RAC Dialog listing a key map
-src/features/simulation/domain/
-  protocol.ts         + load.probes, state.probes
-  session.ts          + probe readout
 src/features/circuit-editor/domain/
   flatten-index.ts    NEW  per-circuit indexes (wires by sink, instances by id, pieces by pin), WeakMap-memoised
   flatten-walk.ts     validation memoised per circuit, PerFrame maps
   to-netlist-source.ts uses flatten-index; + probes
+  probes.ts           NEW  withProbes (append probed signals to outputs), probeLevels
   chip-layout.ts      NEW  layoutOf, PinLayout, ChipLayout, CHAR_WIDTH, PIN_CELL
   geometry.ts         rectOf/pinPosition/wireRoute take a LayoutSource; freeNandPosition kept
   camera.ts           NEW  Camera, screenToWorld, worldToScreen, zoomAt, panBy, fitBounds, clampZoom
@@ -239,29 +237,25 @@ The remaining hierarchy cost is lookups across about 22k nested frames. If a lat
 
 ---
 
-### Task 2: Live levels via engine probes
+### Task 2: Live levels via engine probes ✅ done
+
+**As built.** No protocol change was needed: the probed signals are appended to the netlist's `outputs`, so the engine, session and worker are untouched.
 
 **Files:**
-- Modify: `src/features/simulation/domain/{protocol,session}.ts` (+ tests), `src/features/circuit-editor/domain/{to-netlist-source,signals}.ts` (+ tests), `src/features/circuit-editor/application/simulation-bridge.ts` (+ tests), `src/features/circuit-editor/adapters/canvas-renderer.ts`
+- Modify: `src/features/projects/domain/pins.ts`, which gains `pinKeys(project, instance)`: every pin in drawing order, and a custom chip's saved pins in Pins-panel order.
+- Modify: `src/features/circuit-editor/domain/to-netlist-source.ts`. `Flattened` gains `probes: { instanceId; pin; bits: SignalRef[] }[]`, covering every pin of every top-level instance whose bits all resolve. Unresolvable pins (for example an unused MERGE) are left out, and that is not an error.
+- Create: `src/features/circuit-editor/domain/probes.ts`:
+  - `withProbes(flattened)` gives `{ source, slots }`. Each distinct probed signal is appended once to `source.outputs`, and a signal that is already an output reuses its slot;
+  - `probeLevels(slots, bits)` gives a `Map` keyed by `pinLevelKey`, with bits packed bit 0 first.
+- Modify: `src/features/circuit-editor/domain/signals.ts`:
+  - `KnownLevels.levels?` is new;
+  - `pinLevelKey` and `pinValue` are new;
+  - `wireLevel` prefers the probed level. A tap reads its bit, and a whole bus has no single level.
+- Modify: `src/features/circuit-editor/application/simulation-bridge.ts`. It loads `withProbes(...).source` and keeps a `Readout` (`layout` and `slots`). `SimulationState.levels` keeps its identity while values are unchanged, and is cleared when the circuit cannot be compiled.
+- Modify: `src/features/circuit-editor/ui/CircuitCanvas.tsx`, which passes `levels` to the renderer. NAND-to-NAND wires now show their level.
+- Tests: `probes.test.ts` (new), plus `pins.test.ts`, `signals.test.ts` and `simulation-bridge.test.ts`.
 
-**Interfaces:**
-- Protocol:
-  - `load` gains `probes: readonly SignalRef[]` (max `MAX_SIGNALS`);
-  - `state` gains `probes: readonly (0|1)[]`, in the same order.
-  - The session reads probes the same way it reads outputs.
-- `Flattened` gains `probes: readonly { instanceId: InstanceId; pin: PinKey; bit: number; ref: SignalRef }[]`. This covers every bit of every pin of every **top-level** instance that resolves. A pin that does not resolve (unconnected) is simply absent; that is not an error.
-- `SimulationState` gains `levels: ReadonlyMap<string, number>`, keyed `${instanceId}:${pin}`, with a pin's bits packed LSB-first. It keeps the same `sameOrNew` identity rule as `outputs`.
-- `signals.ts`: `pinValue(known, instanceId, pin): number | undefined`. `wireLevel` and `instanceLevel` prefer probe levels, and fall back to the current rules.
-
-- [ ] **Step 1: Failing tests:**
-  - protocol round-trip with probes;
-  - the session reports probe bits after settle;
-  - `toNetlistSource(demo).probes` lists NAND pins 0, 1 and 2 and each pin piece;
-  - the bridge's `levels` map updates and keeps its identity when values are unchanged;
-  - `wireLevel` of a NAND→NAND wire is known once probed.
-- [ ] **Step 2: Implement.** Probes are deduplicated by `ref`, so a fan-out is probed once.
-- [ ] **Step 3: Verify** with `pnpm typecheck && pnpm vitest run src/features/simulation src/features/circuit-editor`.
-- [ ] **Step 4: Commit** `feat(simulation): report probed signal levels so every pin and wire shows its level`
+- [x] **Commit** `feat(circuit-editor): probe every pin on the open chip so wires and pins show live levels`
 
 ---
 

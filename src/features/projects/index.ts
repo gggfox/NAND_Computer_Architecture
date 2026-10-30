@@ -29,7 +29,7 @@ export {
   type MigrationChain,
 } from "./domain/migrations";
 export { isHexColor } from "./domain/model";
-export { endpointInfo, type EndpointInfo, type PinRole } from "./domain/pins";
+export { endpointInfo, pinKeys, type EndpointInfo, type PinRole } from "./domain/pins";
 export {
   applySavedVersion,
   planSave,

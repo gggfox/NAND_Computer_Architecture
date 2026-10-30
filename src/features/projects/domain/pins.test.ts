@@ -5,7 +5,7 @@ import { newPinId } from "~/shared/ids";
 
 import { newChip, piece, pinDef, pinPiece, projectWith } from "./builders";
 import type { ChipInstance, Circuit, PinKey } from "./model";
-import { endpointInfo } from "./pins";
+import { endpointInfo, pinKeys } from "./pins";
 
 const chips = () => {
   const notIn = pinDef("a", "input");
@@ -39,7 +39,8 @@ const scenario = () => {
   const project = projectWith("p", [newChip("Main", circuit), not, draftOnly]);
   const info = (instance: ChipInstance, pin: PinKey) =>
     endpointInfo(project, circuit, instance, pin);
-  return { pieces, info, notIn, notOut };
+  const keys = (instance: ChipInstance) => pinKeys(project, instance);
+  return { pieces, info, keys, notIn, notOut };
 };
 
 describe("endpointInfo built-ins", () => {
@@ -111,5 +112,27 @@ describe("endpointInfo custom chips", () => {
     expect(info(pieces.dangling, 0)).toBeUndefined();
     const missing = piece({ type: "custom", chipId: newChip("gone").id });
     expect(info(missing, notIn.id)).toBeUndefined();
+  });
+});
+
+describe("pinKeys", () => {
+  test("lists every pin endpointInfo resolves, in drawing order", () => {
+    const { pieces, keys, info, notIn, notOut } = scenario();
+    expect(keys(pieces.nand)).toEqual([0, 1, 2]);
+    expect(keys(pieces.clock)).toEqual([0]);
+    expect(keys(pieces.inD)).toEqual([0]);
+    expect(keys(pieces.split)).toEqual([0, 1, 2, 3, 4]);
+    expect(keys(pieces.merge)).toHaveLength(9);
+    expect(keys(pieces.saved)).toEqual([notIn.id, notOut.id]);
+    for (const part of [pieces.nand, pieces.split, pieces.merge, pieces.saved]) {
+      expect(keys(part).every((pin) => info(part, pin) !== undefined)).toBe(true);
+    }
+  });
+
+  test("a draft-only or missing chip has no pins", () => {
+    const { pieces, keys } = scenario();
+    expect(keys(pieces.draftOnly)).toEqual([]);
+    const missing = piece({ type: "custom", chipId: newChip("gone").id });
+    expect(keys(missing)).toEqual([]);
   });
 });
