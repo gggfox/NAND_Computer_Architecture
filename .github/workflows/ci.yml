@@ -71,10 +71,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # TODO: drop `--update-snapshots=missing` once the Linux baselines from the
-      # `visual-snapshots` artifact are committed. Until then this job writes missing baselines
-      # instead of failing, so the owner can download and commit them after the first run.
-      - run: pnpm e2e:visual --update-snapshots=missing
+      - run: pnpm e2e:visual
       - uses: actions/upload-artifact@v4
         if: always()
         with:
