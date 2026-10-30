@@ -115,4 +115,18 @@ describe("editorErrorMessage", () => {
       expect(editorErrorMessage({ type, instanceId }).length).toBeGreaterThan(0);
     }
   });
+
+  it("rejects an unknown error with assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => editorErrorMessage(unknown)).toThrow("Unexpected value");
+  });
+});
+
+describe("applyAction exhaustiveness", () => {
+  it("rejects an unknown action with assertNever", () => {
+    /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
+    const unknown = JSON.parse('{"type":"Bogus"}') as never;
+    expect(() => applyAction(createDemoProject("x"), unknown)).toThrow("Unexpected value");
+  });
 });
