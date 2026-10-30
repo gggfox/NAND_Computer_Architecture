@@ -166,3 +166,30 @@ describe("createEditorStore save rejection", () => {
     },
   );
 });
+
+describe("createEditorStore flush", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("saves a pending autosave immediately and only once", async () => {
+    const { repo, saved } = fakeRepo(SAVED);
+    const store = createEditorStore(createDemoProject("x"), repo);
+    store.getState().dispatch(place());
+    await store.getState().flush();
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toBe(store.getState().history.present);
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(saved).toHaveLength(1);
+  });
+
+  it("does nothing when no save is pending", async () => {
+    const { repo, saved } = fakeRepo(SAVED);
+    const store = createEditorStore(createDemoProject("x"), repo);
+    await store.getState().flush();
+    expect(saved).toHaveLength(0);
+  });
+});

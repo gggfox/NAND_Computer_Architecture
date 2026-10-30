@@ -24,6 +24,8 @@ export interface EditorState {
   readonly undo: () => void;
   readonly redo: () => void;
   readonly setInput: (index: number, value: Level) => void;
+  /** Saves a pending (debounced) autosave now; resolves once it is written. No-op when none. */
+  readonly flush: () => Promise<void>;
 }
 
 export type EditorStore = StoreApi<EditorState>;
@@ -40,24 +42,44 @@ const countInputs = (project: Project): number =>
 const resizeInputs = (inputs: readonly Level[], count: number): readonly Level[] =>
   Array.from({ length: count }, (_unused, index) => inputs[index] ?? 0);
 
+interface Debounce {
+  readonly schedule: (run: () => Promise<void>) => void;
+  /** Runs the pending call now, if any, and resolves when it finishes. */
+  readonly flush: () => Promise<void>;
+}
+
 /** Trailing-edge debounce: only the latest scheduled call runs. */
-const createDebounce = (delayMs: number): ((run: () => void) => void) => {
+const createDebounce = (delayMs: number): Debounce => {
   let timer: ReturnType<typeof setTimeout> | undefined = undefined;
-  return (run) => {
+  let pending: (() => Promise<void>) | undefined = undefined;
+  const flush = async (): Promise<void> => {
     clearTimeout(timer);
-    timer = setTimeout(run, delayMs);
+    const run = pending;
+    pending = undefined;
+    await run?.();
+  };
+  return {
+    schedule: (run) => {
+      clearTimeout(timer);
+      pending = run;
+      timer = setTimeout(() => {
+        void flush();
+      }, delayMs);
+    },
+    flush,
   };
 };
 
 type Set = StoreApi<EditorState>["setState"];
+
+interface Commit {
+  readonly commit: (next: History<Project>) => void;
+  readonly flush: () => Promise<void>;
+}
 type Get = StoreApi<EditorState>["getState"];
 
-const createCommit = (
-  set: Set,
-  get: Get,
-  repo: ProjectRepository,
-): ((next: History<Project>) => void) => {
-  const schedule = createDebounce(SAVE_DEBOUNCE_MS);
+const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
+  const { schedule, flush } = createDebounce(SAVE_DEBOUNCE_MS);
   const persist = async (): Promise<void> => {
     try {
       const result = await repo.save(get().history.present);
@@ -69,14 +91,15 @@ const createCommit = (
       set({ lastError: { type: "Unavailable" } });
     }
   };
-  return (next) => {
-    set((state) => ({
-      history: next,
-      inputs: resizeInputs(state.inputs, countInputs(next.present)),
-    }));
-    schedule(() => {
-      void persist();
-    });
+  return {
+    commit: (next) => {
+      set((state) => ({
+        history: next,
+        inputs: resizeInputs(state.inputs, countInputs(next.present)),
+      }));
+      schedule(persist);
+    },
+    flush,
   };
 };
 
@@ -87,7 +110,7 @@ const withInput = (state: EditorState, index: number, value: Level): Partial<Edi
 
 export const createEditorStore = (project: Project, repo: ProjectRepository): EditorStore =>
   createStore<EditorState>((set, get) => {
-    const commit = createCommit(set, get, repo);
+    const { commit, flush } = createCommit(set, get, repo);
     const step = (move: (history: History<Project>) => History<Project>): void => {
       const next = move(get().history);
       if (next !== get().history) {
@@ -118,5 +141,6 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       setInput: (index, value) => {
         set((state) => withInput(state, index, value));
       },
+      flush,
     };
   });

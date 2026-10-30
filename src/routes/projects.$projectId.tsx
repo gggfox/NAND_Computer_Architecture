@@ -33,10 +33,17 @@ export const Route = createFileRoute("/projects/$projectId")({
     }
     const repo = getAppProjectRepository();
     const loaded = await repo.load(parsed.data);
-    // A fresh token per load remounts the editor, so an import over the same id starts clean.
+    // Editor key: changes only when the loader really runs (route entered or import invalidated).
     const token = crypto.randomUUID();
     return { kind: "loaded", loaded, degraded: repo.isDegraded(), token } as const;
   },
+  /*
+   * The open project lives in the editor store, not in loader data. Reload only when the route is
+   * entered (or invalidated by an import); search-only and back/forward navigations within the
+   * route keep the mounted editor, its undo history and input levels. Search is not a loader dep.
+   */
+  staleTime: Number.POSITIVE_INFINITY,
+  shouldReload: ({ cause }) => cause === "enter",
   pendingComponent: Pending,
   component: ProjectRoute,
 });
@@ -95,7 +102,10 @@ const importFailureMessage = (failure: ImportFailure): string =>
     : persistenceErrorMessage(failure.error);
 
 /** Reads and validates the file, saves it, then opens it (reloading if it replaced this project). */
-function useImport(currentId: Project["id"]): {
+function useImport(
+  currentId: Project["id"],
+  editor: EditorSession["editor"],
+): {
   readonly failure: ImportFailure | undefined;
   readonly onImport: (file: File) => void;
 } {
@@ -116,6 +126,8 @@ function useImport(currentId: Project["id"]): {
       setFailure({ kind: "import", error: read.error });
       return;
     }
+    // Write any pending autosave first, so it cannot land after (and overwrite) the import.
+    await editor.getState().flush();
     const saved = await getAppProjectRepository().save(read.value);
     if (!saved.ok) {
       setFailure({ kind: "save", error: saved.error });
@@ -155,7 +167,7 @@ interface EditorProps {
 function Editor({ project, degraded }: EditorProps): ReactNode {
   const view = Route.useSearch();
   const session = useEditorSession(project, getAppProjectRepository());
-  const { failure, onImport } = useImport(project.id);
+  const { failure, onImport } = useImport(project.id, session.editor);
   const notices = useNotices(session, degraded, failure);
   const { editor, simulation } = session;
 

@@ -17,7 +17,8 @@ export interface EditorSession {
 /**
  * Creates the open project's stores once per mount (remount with a `key` to open another
  * project) and keeps an engine worker connected while mounted. The worker is browser-only, so it
- * is started in an effect, never during render or pre-rendering.
+ * is started in an effect, never during render or pre-rendering. A pending autosave is flushed on
+ * unmount and on `pagehide` (tab close, reload, locale switch), so the debounce never drops edits.
  */
 export const useEditorSession = (project: Project, repo: ProjectRepository): EditorSession => {
   // oxlint-disable-next-line react/hook-use-state -- created once and never replaced, so there is no setter to name
@@ -29,7 +30,13 @@ export const useEditorSession = (project: Project, repo: ProjectRepository): Edi
   useEffect(() => {
     const client = createEngineClient();
     const disconnect = connectSimulation(session.editor, session.simulation, client);
+    const flushSave = (): void => {
+      void session.editor.getState().flush();
+    };
+    globalThis.addEventListener("pagehide", flushSave);
     return () => {
+      globalThis.removeEventListener("pagehide", flushSave);
+      flushSave();
       disconnect();
       client.dispose();
     };
