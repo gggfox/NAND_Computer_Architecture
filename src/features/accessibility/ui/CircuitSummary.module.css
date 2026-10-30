@@ -19,6 +19,7 @@
 
 .item {
   display: flex;
+  gap: 0.5rem;
   align-items: center;
   min-block-size: 2.75rem;
 }
@@ -26,4 +27,9 @@
 .output {
   font-weight: 600;
   color: var(--color-text);
+}
+
+.selected {
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
 }

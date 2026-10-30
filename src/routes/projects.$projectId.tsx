@@ -183,7 +183,6 @@ function Editor({ project }: EditorProps): ReactNode {
   const session = useEditorSession(project, getAppProjectRepository(), { camera: view, write });
   const { failure, onImport } = useImport(project.id, session.editor);
   const notices = useNotices(session, failure);
-  const { editor, simulation } = session;
 
   const toolbar = (
     <>
@@ -198,7 +197,7 @@ function Editor({ project }: EditorProps): ReactNode {
         toolbar={toolbar}
         status={<StatusMessages messages={notices} />}
         canvas={<CircuitCanvas session={session} view={view} />}
-        panel={<CircuitSummary editor={editor} simulation={simulation} />}
+        panel={<CircuitSummary session={session} />}
       />
     </main>
   );

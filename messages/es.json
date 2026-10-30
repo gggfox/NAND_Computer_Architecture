@@ -56,6 +56,7 @@
   "back_to_projects": "Todos los proyectos",
   "project_corrupt_title": "No se pudo abrir este proyecto",
   "editor_toolbar_label": "Herramientas del editor",
+  "summary_selected": "seleccionado",
   "summary_heading": "Resumen del circuito",
   "input_named": "Entrada {name}",
   "nand_numbered": "Puerta NAND {number}",

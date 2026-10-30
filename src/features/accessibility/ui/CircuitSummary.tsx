@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
 import { openCircuit, partName, partOf } from "~/features/circuit-editor";
-import type { EditorStore, Part, SimulationStore } from "~/features/circuit-editor";
+import type { EditorSession, Part } from "~/features/circuit-editor";
 import type { ChipInstance, Circuit, PinDirection, Project } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import type { PinId } from "~/shared/ids";
@@ -12,8 +12,7 @@ import { Switch } from "~/shared/ui";
 import styles from "./CircuitSummary.module.css";
 
 interface CircuitSummaryProps {
-  readonly editor: EditorStore;
-  readonly simulation: SimulationStore;
+  readonly session: EditorSession;
 }
 
 interface PinEntry<Direction extends PinDirection> {
@@ -76,41 +75,61 @@ const outputText = (ordinal: number, value: number | undefined): string => {
 const otherLabel = (name: string, number: number, isNand: boolean): string =>
   isNand ? m.nand_numbered({ number }) : m.part_numbered({ name, number });
 
+interface EntryProps {
+  readonly entry: Entry;
+  readonly editor: EditorSession["editor"];
+  readonly inputs: ReadonlyMap<PinId, number>;
+  readonly outputs: ReadonlyMap<PinId, number>;
+}
+
+/** One part: an input as a switch, an output as a polite live value, anything else by name. */
+function EntryControl({ entry, editor, inputs, outputs }: EntryProps): ReactNode {
+  if (entry.part === "input") {
+    const { pinId } = entry;
+    return (
+      <Switch
+        isSelected={inputs.get(pinId) === 1}
+        onChange={(isSelected) => {
+          editor.getState().setInput(pinId, isSelected ? 1 : 0);
+        }}
+      >
+        {inputLabel(entry.ordinal)}
+      </Switch>
+    );
+  }
+  if (entry.part === "output") {
+    return (
+      <output className={styles.output} aria-live="polite">
+        {outputText(entry.ordinal, outputs.get(entry.pinId))}
+      </output>
+    );
+  }
+  const { name, number, part } = entry;
+  return <span>{otherLabel(name, number, part === "nand")}</span>;
+}
+
 /**
  * The non-canvas view of the circuit (ADR 3): every part as a list item, inputs as switches
- * that go through the store, and outputs announced politely when the engine reports them.
+ * that go through the store, and outputs announced politely when the engine reports them. A part
+ * selected on the canvas says so after its name (Phase 6 builds the full structure).
  */
-export function CircuitSummary({ editor, simulation }: CircuitSummaryProps): ReactNode {
+export function CircuitSummary({ session }: CircuitSummaryProps): ReactNode {
+  const { editor, simulation, interaction } = session;
   const project = useStore(editor, (state) => state.history.present);
   const circuit = useStore(editor, openCircuit);
   const inputs = useStore(editor, (state) => state.inputs);
   const outputs = useStore(simulation, (state) => state.outputs);
+  const selected = useStore(interaction.store, (state) => state.selection.instances);
   const headingId = useId();
 
-  const renderEntry = (entry: Entry): ReactNode => {
-    if (entry.part === "input") {
-      const { pinId } = entry;
-      return (
-        <Switch
-          isSelected={inputs.get(pinId) === 1}
-          onChange={(isSelected) => {
-            editor.getState().setInput(pinId, isSelected ? 1 : 0);
-          }}
-        >
-          {inputLabel(entry.ordinal)}
-        </Switch>
-      );
-    }
-    if (entry.part === "output") {
-      return (
-        <output className={styles.output} aria-live="polite">
-          {outputText(entry.ordinal, outputs.get(entry.pinId))}
-        </output>
-      );
-    }
-    const { name, number, part } = entry;
-    return <span>{otherLabel(name, number, part === "nand")}</span>;
-  };
+  const renderItem = (entry: Entry): ReactNode => (
+    <li key={entry.instance.id} className={styles.item}>
+      <EntryControl entry={entry} editor={editor} inputs={inputs} outputs={outputs} />
+      {selected.has(entry.instance.id) ? (
+        <span className={styles.selected}>{m.summary_selected()}</span>
+      ) : undefined}
+    </li>
+  );
 
   return (
     <section className={styles.summary} aria-labelledby={headingId}>
@@ -118,11 +137,7 @@ export function CircuitSummary({ editor, simulation }: CircuitSummaryProps): Rea
         {m.summary_heading()}
       </h2>
       <ul className={styles.list}>
-        {toEntries(project, circuit).map((entry) => (
-          <li key={entry.instance.id} className={styles.item}>
-            {renderEntry(entry)}
-          </li>
-        ))}
+        {toEntries(project, circuit).map((entry) => renderItem(entry))}
       </ul>
     </section>
   );

@@ -56,6 +56,7 @@
   "back_to_projects": "All projects",
   "project_corrupt_title": "This project could not be opened",
   "editor_toolbar_label": "Editor tools",
+  "summary_selected": "selected",
   "summary_heading": "Circuit summary",
   "input_named": "Input {name}",
   "nand_numbered": "NAND gate {number}",
