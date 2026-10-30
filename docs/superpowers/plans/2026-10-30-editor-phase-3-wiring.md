@@ -2,6 +2,25 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Status
+
+Tasks 1-11 are done. Controller rulings that changed the plan:
+
+- The router routes a batch around settled wires only, so stale routes of pending batch members are not obstacles.
+- An edit re-routes only wires newly blocked, per instance, by an instance it placed, moved or resized; wires already blocked elsewhere stay until Re-route or Tidy wires.
+- A hand-bent wire whose ends move apart keeps its bends; exactly one end moving re-routes it; both ends moving by the same delta translates it.
+- In the Pan tool a drag on a wire pans; branching by drag needs the Select tool, or Branch in the wire menu.
+- Keyboard bend editing: `]`/`[` choose a segment and the arrow keys move it.
+- Keyboard wire selection: `n`/`N` step through the selected chip's wires.
+
+Known follow-ups:
+
+- Multi-select of wires on touch.
+- `n` does not pan the camera to the wire.
+- `canvas_hint` does not mention N.
+- Glow cost is not measured in CI.
+- Chips can be dropped overlapping (carried over from Phase 2).
+
 **Goal:** Let the owner draw, route, colour, branch and reshape wires on the canvas, with routes that go around chips and never lie on top of other wires.
 
 **Architecture:**
