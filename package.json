@@ -43,6 +43,7 @@
     "@cspell/dict-es-es": "catalog:",
     "@double-great/stylelint-a11y": "catalog:",
     "@inlang/paraglide-js": "catalog:",
+    "@inlang/plugin-message-format": "catalog:",
     "@playwright/test": "catalog:",
     "@rolldown/plugin-babel": "catalog:",
     "@types/node": "catalog:",

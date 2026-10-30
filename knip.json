@@ -9,5 +9,6 @@
     "scripts/*.ts",
     "tooling/lint-rules/*.js"
   ],
-  "project": ["src/**", "scripts/**", "tooling/lint-rules/**"]
+  "project": ["src/**", "scripts/**", "tooling/lint-rules/**"],
+  "ignoreDependencies": ["@inlang/plugin-message-format"]
 }
