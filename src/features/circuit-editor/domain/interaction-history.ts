@@ -48,6 +48,15 @@ const pickThere = (pick: BitPick | undefined, present: Present): boolean =>
   present.instances.has(pick.armed.instanceId) &&
   present.instances.has(pick.target.instanceId);
 
+/** A wire being drawn from a chip that is gone ends with it. */
+const dragAfter = (state: InteractionState, present: Present): Partial<InteractionState> => {
+  const { drag } = state;
+  return drag === undefined ||
+    (drag.kind === "wire" && !present.instances.has(drag.from.instanceId))
+    ? {}
+    : { drag };
+};
+
 /** The wiring overlays that outlive an edit, undo or redo. */
 const wiringAfter = (state: InteractionState, scene: Scene, present: Present) => {
   const { armed, bitPick, bends } = state;
@@ -76,6 +85,7 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
     armed: _armed,
     bitPick: _pick,
     bends: _bends,
+    drag: _drag,
     ...rest
   } = state;
   return {
@@ -85,5 +95,6 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
     ...(menuThere(menu, present) ? { menu } : {}),
     ...(stillThere(card, present.instances) === undefined ? {} : { card }),
     ...wiringAfter(state, scene, present),
+    ...dragAfter(state, present),
   };
 };

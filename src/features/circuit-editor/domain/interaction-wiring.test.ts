@@ -51,13 +51,13 @@ describe("arming by tap", () => {
 
 describe("a second tap while armed", () => {
   it("tapping an illegal pin re-arms it", () => {
-    const { context, state, nand } = wiring();
+    const { context, state, nand, pieceA } = wiring();
     // The NAND output cannot drive A's output: it becomes the armed pin instead.
     const result = gestures(state, context, [tap(NAND_OUT), tap(PIN_A_OUT)]);
     expect(dispatched(result.effects)).toEqual([]);
     const again = gestures(state, context, [tap(PIN_A_OUT), tap(NAND_OUT)]);
     expect(again.state.armed?.end).toEqual({ instanceId: nand.id, pin: 2 });
-    expect(result.state.armed?.end.pin).toBe(0);
+    expect(result.state.armed?.end).toEqual({ instanceId: pieceA.id, pin: 0 });
   });
 
   it("tapping empty canvas cancels", () => {
@@ -206,6 +206,7 @@ describe("what keeps the armed pin", () => {
       { type: "pinch", center: screen(0, 0), scale: 2, pan: { x: 0, y: 0 } },
       { type: "pinchEnd" },
     ]).state;
+    expect(picking.armed).toBeDefined();
     expect(pinched.armed).toEqual(picking.armed);
     expect(pinched.bitPick).toBeUndefined();
   });
