@@ -1,5 +1,6 @@
 import { CLOCK_BATCH_MS } from "../domain/clock";
 import type { FromEngine } from "../domain/protocol";
+import { nextTimerAction } from "../domain/run-loop";
 import { createEngineSession } from "../domain/session";
 
 /**
@@ -18,7 +19,7 @@ interface WorkerScope {
 /**
  * Moves messages between the owner and the session, and drives the clock run loop. The worker
  * supplies wall-clock time; the session decides how many steps that is. The interval exists
- * exactly while the last posted reply says the clock is running.
+ * from a `state` reply with `running: true` until one with `running: false`; `error` replies leave it alone.
  */
 const serve = (scope: WorkerScope): void => {
   const session = createEngineSession();
@@ -39,11 +40,11 @@ const serve = (scope: WorkerScope): void => {
   };
   const post = (reply: FromEngine): void => {
     send(reply);
-    const running = reply.type === "state" && reply.running;
-    if (running && timer === undefined) {
+    const action = nextTimerAction(reply, timer !== undefined);
+    if (action === "start") {
       last = performance.now();
       timer = setInterval(onBatch, CLOCK_BATCH_MS);
-    } else if (!running) {
+    } else if (action === "stop") {
       clearInterval(timer);
       timer = undefined;
     }

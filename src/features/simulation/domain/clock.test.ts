@@ -32,6 +32,11 @@ describe("stepsDue", () => {
     expect(stepsDue(0, 1000, 1000)).toEqual({ steps: 64, carrySteps: 0 });
   });
 
+  test("exactly 64 whole steps keep their fraction; one more drops it", () => {
+    expect(stepsDue(0.5, 64, 1000)).toEqual({ steps: 64, carrySteps: 0.5 });
+    expect(stepsDue(0.5, 64.5, 1000)).toEqual({ steps: 64, carrySteps: 0 });
+  });
+
   test("negative or NaN elapsed adds nothing", () => {
     expect(stepsDue(0.5, -5, 10)).toEqual({ steps: 0, carrySteps: 0.5 });
     expect(stepsDue(0.5, Number.NaN, 10)).toEqual({ steps: 0, carrySteps: 0.5 });
