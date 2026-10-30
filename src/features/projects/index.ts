@@ -10,6 +10,7 @@ export {
   wire,
 } from "./domain/builders";
 export { chipsUsing, findChip, replaceChip } from "./domain/chips";
+export { canPlace, containsChip, type PlaceError } from "./domain/containment";
 export { createDemoProject } from "./domain/demo";
 export { importErrorMessage, type ImportError } from "./domain/errors";
 export {
@@ -29,6 +30,13 @@ export {
 } from "./domain/migrations";
 export { isHexColor } from "./domain/model";
 export { endpointInfo, type EndpointInfo, type PinRole } from "./domain/pins";
+export {
+  applySavedVersion,
+  planSave,
+  type SaveEffect,
+  type SaveError,
+  type SavePlan,
+} from "./domain/save-cascade";
 export {
   checkConnection,
   findInvalidWire,
