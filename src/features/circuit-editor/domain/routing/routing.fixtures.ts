@@ -141,3 +141,36 @@ export const gridScene = (count: number): Scene => {
   ]);
   return sceneOf(instances, wires);
 };
+
+const LAST = -1;
+const BEFORE_LAST = -2;
+
+const sideOf = (scene: Scene, end: Wire["from"]) => {
+  const instance = scene.circuit.instances.find((item) => item.id === end.instanceId);
+  return instance && layoutIn(scene, instance).pins.find((pin) => pin.key === end.pin)?.side;
+};
+
+/** Which way the stub at `anchor` heads, towards `next`. */
+const headingOf = (anchor: Point | undefined, next: Point | undefined): string => {
+  if (anchor === undefined || next === undefined || anchor.y !== next.y) {
+    return "none";
+  }
+  return next.x > anchor.x ? "right" : "left";
+};
+
+/** The wire's drawn route is orthogonal, leaves each pin outward and enters no chip. */
+export const expectClean = (scene: Scene, wireId: Wire["id"]) => {
+  const found = scene.circuit.wires.find((item) => item.id === wireId);
+  const polyline = polylineOf(scene, wireId);
+  expect(found).toBeDefined();
+  expect(polyline.length).toBeGreaterThan(1);
+  const diagonal = polyline
+    .slice(1)
+    .filter((point, index) => point.x !== polyline[index]?.x && point.y !== polyline[index]?.y);
+  expect(diagonal).toEqual([]);
+  if (found !== undefined) {
+    expect(headingOf(polyline[0], polyline[1])).toBe(sideOf(scene, found.from));
+    expect(headingOf(polyline.at(LAST), polyline.at(BEFORE_LAST))).toBe(sideOf(scene, found.to));
+  }
+  expect(entersChips(scene, polyline)).toBe(false);
+};

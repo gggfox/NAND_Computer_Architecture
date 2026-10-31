@@ -6,7 +6,7 @@ import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
-import { blockedRerouted } from "./route-edits";
+import { blockedRerouted, reshaped } from "./route-edits";
 
 type Edit<Type extends EditorAction["type"]> = (
   project: Project,
@@ -105,7 +105,7 @@ export const setPinWidth: Edit<"setPinWidth"> = (project, action) =>
     const wires = circuit.wires.filter((stored) => fits(stored));
     // Only the pin's own pieces change shape in this draft.
     return ok(
-      blockedRerouted(
+      reshaped(
         { before: { project, circuit }, after: { project, circuit: { ...resized, wires } } },
         pieceIds,
       ),

@@ -11,6 +11,7 @@ import { applyAction } from "./reducer";
 import { routeWire } from "./routing/route";
 import {
   entersChips,
+  expectClean,
   link,
   NAND_A,
   NAND_OUT,
@@ -153,7 +154,7 @@ describe("moveChips carrying hand bends", () => {
 });
 
 describe("moveChips with ends moving apart", () => {
-  it("keeps the hand bends of a wire whose two ends move by different deltas", () => {
+  it("re-routes a hand-bent wire whose two ends move by different deltas, as automatic", () => {
     const { project, chipId } = projectOf([source, sink], [handBent]);
     const moved = apply(project, {
       type: "moveChips",
@@ -163,7 +164,8 @@ describe("moveChips with ends moving apart", () => {
         { instanceId: sink.id, position: { x: 440, y: 120 } },
       ],
     });
-    expect(wireIn(moved, chipId, handBent.id)).toBe(handBent);
+    expect(wireIn(moved, chipId, handBent.id).manualWaypoints).toBe(false);
+    expectClean({ ...sceneOf([], []), circuit: draft(moved, chipId) }, handBent.id);
   });
 });
 

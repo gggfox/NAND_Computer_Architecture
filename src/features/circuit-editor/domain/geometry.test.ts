@@ -167,7 +167,7 @@ describe("wireRoute during a drag", () => {
 });
 
 describe("wireRoute dragging hand bends", () => {
-  it("translates hand bends when both ends move by the same delta, and keeps them otherwise", () => {
+  it("translates hand bends when both ends move by the same delta, and draws the elbow otherwise", () => {
     const together = new Map([
       [source.id, { x: 40, y: 80 }],
       [sink.id, { x: 440, y: 200 }],
@@ -184,7 +184,8 @@ describe("wireRoute dragging hand bends", () => {
     ]);
     expect(wireRoute({ ...dragScene, positions: apart }, manual)).toEqual([
       { x: 160, y: 120 },
-      ...bends,
+      { x: 300, y: 120 },
+      { x: 300, y: 140 },
       { x: 440, y: 140 },
     ]);
     const sideways = new Map([
@@ -193,7 +194,8 @@ describe("wireRoute dragging hand bends", () => {
     ]);
     expect(wireRoute({ ...dragScene, positions: sideways }, manual)).toEqual([
       { x: 160, y: 120 },
-      ...bends,
+      { x: 280, y: 120 },
+      { x: 280, y: 220 },
       { x: 400, y: 220 },
     ]);
   });

@@ -90,17 +90,18 @@ const shift = (scene: Scene, end: Wire["from"], axis: "x" | "y"): number => {
 /** The drag preview of a wire: its stored route, the elbow, or its hand bends moved by a delta. */
 type Preview = "stored" | "elbow" | Point;
 
-/** Both ends' shared delta, or the stored route when the ends moved apart. */
+/** Both ends' shared delta, or the elbow when the ends moved apart (the drop re-routes it). */
 const sharedDelta = (scene: Scene, wire: Wire): Preview => {
   const delta = { x: shift(scene, wire.from, "x"), y: shift(scene, wire.from, "y") };
   return delta.x === shift(scene, wire.to, "x") && delta.y === shift(scene, wire.to, "y")
     ? delta
-    : "stored";
+    : "elbow";
 };
 
 /**
  * Routing never runs per frame. A wire with one dragged end, or an automatic wire with any, draws
- * the elbow; hand bends whose two ends are dragged by the same delta move by it.
+ * the elbow, as do hand bends whose ends are dragged apart; hand bends whose two ends are dragged
+ * by the same delta move by it.
  */
 const previewOf = (scene: Scene, wire: Wire): Preview => {
   const { positions } = scene;
