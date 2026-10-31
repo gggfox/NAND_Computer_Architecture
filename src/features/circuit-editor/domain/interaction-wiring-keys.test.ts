@@ -103,4 +103,14 @@ describe("escape with a menu open over an armed pin", () => {
     const cancelled = command(closed.state, context, { type: "escape" });
     expect(cancelled.state.armed).toBeUndefined();
   });
+
+  it("cancels the armed pin before it closes the pin card that aims it", () => {
+    const { context, state, nand } = wiring();
+    const card = { instanceId: nand.id, pin: 0, screen: NAND_A, pinned: true };
+    const armed = command({ ...state, card }, context, { type: "arm" }).state;
+    const cancelled = command(armed, context, { type: "escape" });
+    expect(cancelled.state.armed).toBeUndefined();
+    expect(cancelled.state.card).toEqual(card);
+    expect(command(cancelled.state, context, { type: "escape" }).state.card).toBeUndefined();
+  });
 });
