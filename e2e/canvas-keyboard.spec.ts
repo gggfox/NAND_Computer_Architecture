@@ -140,7 +140,8 @@ test("keys typed in the rename dialog stay in it, out of the canvas keymap", asy
 
   const file = await exportedProject(page);
   expect(file.project.chips.map((chip) => chip.name)).toEqual(["Main", "Half v[h]p?"]);
-  expect(file.project.chips[0]?.draft.instances).toEqual([
+  // The export schema now reads instance ids too; this spec pins only the kind and position.
+  expect(file.project.chips[0]?.draft.instances).toMatchObject([
     { kind: { type: "custom" }, position: { x: 0, y: 0 } },
   ]);
 });

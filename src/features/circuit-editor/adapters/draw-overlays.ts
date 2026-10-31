@@ -4,6 +4,8 @@ import type { Point } from "~/features/projects";
 import { layoutIn, wireRoute } from "../domain/geometry";
 import type { Hit } from "../domain/hit-test";
 import type { Selection } from "../domain/selection";
+import { drawWiring } from "./draw-wiring";
+import type { ArmedView, BendsView, WireDragView } from "./draw-wiring";
 import type { Frame } from "./frame";
 
 /** What the interaction layer adds to a frame; every field is optional. */
@@ -12,6 +14,12 @@ export interface OverlayView {
   readonly hover?: Hit;
   /** A box or lasso being drawn, world units. */
   readonly marquee?: { readonly shape: "box" | "lasso"; readonly points: readonly Point[] };
+  /** The armed pin; while set, pins outside `legal` are dimmed. */
+  readonly armed?: ArmedView;
+  /** A new wire being dragged out of a pin. */
+  readonly wireDrag?: WireDragView;
+  /** Bend mode's wire, focused segment and segment drag. */
+  readonly bends?: BendsView;
 }
 
 const SELECTION_GAP = 4;
@@ -106,9 +114,10 @@ const drawMarquee = (frame: Frame, marquee: OverlayView["marquee"], zoom: number
   ctx.setLineDash([]);
 };
 
-/** Selection outlines, the hovered pin's ring and the marquee, above everything else. */
+/** Selection outlines, wiring, the hovered pin's ring and the marquee, above everything else. */
 export const drawOverlays = (frame: Frame, overlay: OverlayView, zoom: number): void => {
   drawChipOutlines(frame, overlay);
+  drawWiring(frame, overlay);
   drawHoverRing(frame, overlay.hover, zoom);
   drawMarquee(frame, overlay.marquee, zoom);
 };

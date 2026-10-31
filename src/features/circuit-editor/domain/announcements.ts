@@ -1,3 +1,4 @@
+import type { PinRef } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import { assertNever } from "~/shared/assert-never";
 import type { InstanceId } from "~/shared/ids";
@@ -57,12 +58,86 @@ const pinText = (
       });
 };
 
+const armedText = (
+  scene: Scene,
+  known: KnownLevels,
+  announcement: Extract<Announcement, { type: "armed" }>,
+): string => {
+  const info = pinInfo(scene, known, [announcement.instanceId, announcement.pin]);
+  return info === undefined
+    ? ""
+    : m.canvas_armed({ pin: info.name, chip: chipLabel(scene, announcement.instanceId) });
+};
+
+/** A wire end as "{pin} of {chip}", or `undefined` when the pin is gone. */
+const endText = (scene: Scene, known: KnownLevels, end: PinRef): string | undefined => {
+  const info = pinInfo(scene, known, [end.instanceId, end.pin]);
+  return info && m.canvas_wire_end({ pin: info.name, chip: chipLabel(scene, end.instanceId) });
+};
+
+const wireText = (
+  scene: Scene,
+  known: KnownLevels,
+  announcement: Extract<Announcement, { type: "wireSelected" }>,
+): string => {
+  const wire = scene.circuit.wires.find((item) => item.id === announcement.wireId);
+  const from = wire && endText(scene, known, wire.from);
+  const to = wire && endText(scene, known, wire.to);
+  return from === undefined || to === undefined ? "" : m.canvas_wire_selected({ from, to });
+};
+
+type WiringAnnouncement = Extract<
+  Announcement,
+  { type: "armed" | "wired" | "disarmed" | "bends" | "wireSelected" }
+>;
+
+const WIRING_TYPES: ReadonlySet<Announcement["type"]> = new Set([
+  "armed",
+  "wired",
+  "disarmed",
+  "bends",
+  "wireSelected",
+]);
+
+const isWiring = (announcement: Announcement): announcement is WiringAnnouncement =>
+  WIRING_TYPES.has(announcement.type);
+
+/**
+ * The wiring announcements: a pin armed, a wire added, wiring cancelled, bend mode on or off, a
+ * wire selected from the keyboard.
+ */
+const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnouncement): string => {
+  switch (announcement.type) {
+    case "armed": {
+      return armedText(scene, known, announcement);
+    }
+    case "wired": {
+      return m.canvas_wired();
+    }
+    case "disarmed": {
+      return m.canvas_disarmed();
+    }
+    case "bends": {
+      return announcement.active ? m.canvas_bends() : m.canvas_bends_done();
+    }
+    case "wireSelected": {
+      return wireText(scene, known, announcement);
+    }
+    default: {
+      return assertNever(announcement);
+    }
+  }
+};
+
 /** The live region's words for an announcement (ADR 3, 17). */
 export const announcementText = (
   scene: Scene,
   known: KnownLevels,
   announcement: Announcement,
 ): string => {
+  if (isWiring(announcement)) {
+    return wiringText(scene, known, announcement);
+  }
   switch (announcement.type) {
     case "selected": {
       return selectedText(scene, announcement);

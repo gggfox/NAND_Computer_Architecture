@@ -5,15 +5,9 @@ import type { Result } from "~/shared/result";
 import type { EditorAction, EditorError } from "./actions";
 import { moveChips, removeItems } from "./batch-edits";
 import { createChip, discardDraft, recolorChip, renameChip, saveChip } from "./chip-edits";
-import {
-  connectWire,
-  moveChip,
-  moveWaypoint,
-  placeChip,
-  removeChip,
-  removeWire,
-} from "./circuit-edits";
+import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
+import { connectWire, recolorWires, rerouteWires } from "./wire-edits";
 
 type Outcome = Result<Project, EditorError>;
 
@@ -32,6 +26,8 @@ const HANDLERS: Handlers = {
   moveChips,
   removeItems,
   connectWire,
+  recolorWires,
+  rerouteWires,
   removeWire,
   moveWaypoint,
   addPin,

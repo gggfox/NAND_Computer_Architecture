@@ -167,14 +167,21 @@ const tabOf = (anchor: Point, width: BitWidth): Rect => {
   return { x: anchor.x - TAB_SIZE * HALF, y: anchor.y - height * HALF, width: TAB_SIZE, height };
 };
 
-/** Stacks one side's slots top to bottom, spreading the slack evenly around them. */
+/**
+ * Stacks one side's slots top to bottom, spreading the slack evenly around them, then snaps each
+ * slot centre to the nearest half-grid cell so the router can rely on a lattice. Centres stay
+ * strictly increasing: a pin that would land on or above the previous one moves down a cell.
+ */
 const placeSide = (rect: Rect, pins: readonly PinSpec[]): readonly PinLayout[] => {
   const gap = (rect.height / PIN_CELL - cellsOf(pins)) / (pins.length + 1);
   let cell = 0;
+  let previous = 0;
   return pins.map((pin) => {
     const slot = SLOT_CELLS[pin.width];
     cell += gap;
-    const centre = (cell + slot * HALF) * PIN_CELL;
+    const snapped = Math.max(Math.round(cell + slot * HALF), previous + 1);
+    previous = snapped;
+    const centre = snapped * PIN_CELL;
     cell += slot;
     const anchor = { x: pin.side === "left" ? rect.x : rect.x + rect.width, y: rect.y + centre };
     const { key, width, side } = pin;

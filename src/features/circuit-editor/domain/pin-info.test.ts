@@ -1,11 +1,11 @@
 import { assert, describe, expect, it } from "vitest";
 
-import { createDemoProject, EMPTY_CIRCUIT, pinDef, pinPiece } from "~/features/projects";
+import { createDemoProject, EMPTY_CIRCUIT, pinDef, pinPiece, wire } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
 import { newInstanceId } from "~/shared/ids";
 
 import type { Scene } from "./geometry";
-import { pinInfo } from "./pin-info";
+import { bitsText, pinInfo } from "./pin-info";
 import { pinLevelKey } from "./signals";
 import type { KnownLevels } from "./signals";
 
@@ -33,12 +33,14 @@ describe("pinInfo", () => {
       value: 1,
       valueText: "1",
       connections: [{ chip: "OUT", pin: "OUT" }],
+      usedBits: [],
     });
     expect(pinInfo(scene, nothingKnown, [nand.id, 0])).toEqual({
       name: "a",
       width: 1,
       valueText: "?",
       connections: [{ chip: "A", pin: "A" }],
+      usedBits: [],
     });
   });
 
@@ -58,6 +60,26 @@ describe("pinInfo", () => {
       valueText: "0101 = 5",
       connections: [],
     });
+  });
+});
+
+describe("bits used", () => {
+  it("lists the tapped bits of a bus pin as d0, d2", () => {
+    const { scene, pieceA } = demo();
+    const bus = pinDef("q", "output", 4);
+    const busPiece = pinPiece(bus);
+    const taps = [2, 0].map((bit) =>
+      wire({ instanceId: pieceA.id, pin: 0 }, { instanceId: busPiece.id, pin: 0, bit }),
+    );
+    const circuit = {
+      ...scene.circuit,
+      pins: [...scene.circuit.pins, bus],
+      instances: [...scene.circuit.instances, busPiece],
+      wires: [...scene.circuit.wires, ...taps],
+    };
+    const info = pinInfo({ ...scene, circuit }, nothingKnown, [busPiece.id, 0]);
+    expect(info?.usedBits).toEqual([0, 2]);
+    expect(bitsText(info?.usedBits ?? [])).toBe("d0, d2");
   });
 });
 

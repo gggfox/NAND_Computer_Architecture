@@ -6,6 +6,7 @@ import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
+import { blockedRerouted, reshaped } from "./route-edits";
 
 type Edit<Type extends EditorAction["type"]> = (
   project: Project,
@@ -43,7 +44,7 @@ export const addPin: Edit<"addPin"> = (project, action) =>
       return err({ type: "DuplicateInstance", instanceId: action.instanceId });
     }
     const at = insertionIndex(circuit.pins, action.pin);
-    return ok({
+    const added: Circuit = {
       ...circuit,
       pins: [...circuit.pins.slice(0, at), action.pin, ...circuit.pins.slice(at)],
       instances: [
@@ -54,7 +55,10 @@ export const addPin: Edit<"addPin"> = (project, action) =>
           position: action.position,
         },
       ],
-    });
+    };
+    return ok(
+      blockedRerouted({ after: { project, circuit: added } }, new Set([action.instanceId])),
+    );
   });
 
 export const removePin: Edit<"removePin"> = (project, action) =>
@@ -98,7 +102,14 @@ export const setPinWidth: Edit<"setPinWidth"> = (project, action) =>
     const fits = (stored: Circuit["wires"][number]): boolean =>
       !(pieceIds.has(stored.from.instanceId) || pieceIds.has(stored.to.instanceId)) ||
       checkConnection(project, resized, stored.from, stored.to, stored.id).ok;
-    return ok({ ...resized, wires: circuit.wires.filter((stored) => fits(stored)) });
+    const wires = circuit.wires.filter((stored) => fits(stored));
+    // Only the pin's own pieces change shape in this draft.
+    return ok(
+      reshaped(
+        { before: { project, circuit }, after: { project, circuit: { ...resized, wires } } },
+        pieceIds,
+      ),
+    );
   });
 
 export const reorderPin: Edit<"reorderPin"> = (project, action) =>

@@ -2,18 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { newWireId } from "~/shared/ids";
 
-import {
-  connectWire,
-  moveChip,
-  moveWaypoint,
-  placeChip,
-  removeChip,
-  removeWire,
-} from "./circuit-edits";
+import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { at, draftOf, nandPiece, twoChips, unwired } from "./circuit-edits.fixtures";
+import { connectWire } from "./wire-edits";
 
 describe("connectWire", () => {
-  it("stores source to sink, with the derived width, auto-routed", () => {
+  it("stores source to sink, with the derived width, and no bends when there is no route", () => {
+    // `unwired()` stacks its pin pieces at the origin, so the router finds no route.
     const { project, host, pieceA, nand } = unwired();
     const wireId = newWireId();
     const result = connectWire(project, {

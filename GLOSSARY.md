@@ -8,7 +8,7 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Circuit**: the wiring inside a chip that the user edits on the canvas. _Avoid_: board, schematic.
 - **Pin**: a connection point on a chip. Input pins receive signals; output pins drive them.
 - **Wire**: a connection from one output pin to one or more input pins.
-- **Signal**: the value on a pin or wire at a given tick (high/low).
+- **Signal**: the value on a pin or wire at a given tick (high/low). When routing, a signal is its source pin plus bit plus wire colour: wires of one signal may share a route, wires of different signals never overlap.
 - **Tick**: one step of the simulation. Every NAND takes one tick to update its output.
 - **Built-in part**: a non-logic primitive (input pin, output pin, clock, later displays).
 - **Bit width**: how many bits a pin or wire carries. Part of the file format from v1; the v1 UI only exposes 1-bit.
@@ -34,3 +34,10 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Camera**: the canvas's zoom and offset. Kept in the URL when at rest.
 - **Minimap**: the small overview in the canvas corner; a tap or drag centres the camera.
 - **Probe**: a signal whose level the engine reports to the main thread so pins and wires show live levels.
+- **Armed pin**: the pin picked as the start of a wire; the next tap on a legal pin connects to it. Not an edit.
+- **Bit picker**: the small menu of legal bits (`d0`...) shown when a 1-bit pin is wired to a bus and the bit is not yet chosen.
+- **Trunk**: the stretch of route that wires of the same signal share, drawn once.
+- **Junction**: the dot where a branch leaves a trunk.
+- **Tidy wires**: re-route every automatic wire in the open chip from scratch. The only time the router moves wires an edit did not touch.
+- **Wire colour**: one of eight named colours (blue, red, orange, yellow, green, teal, purple, pink) a wire can carry, or the default. On wires are full colour, off wires muted and dashed.
+- **Bend mode**: editing one wire's bends by dragging a handle on each segment, or with `]`/`[` and the arrow keys. Not an edit until a bend moves.

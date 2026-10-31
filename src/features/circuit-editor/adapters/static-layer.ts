@@ -12,6 +12,10 @@ interface StaticKey extends KnownLevels {
   readonly viewport: Viewport;
   readonly palette: Palette;
   readonly moved: ReadonlySet<InstanceId>;
+  /** Whether glows are drawn (`zoom >= 0.5`); the exact zoom is in `view` too. */
+  readonly zoomBand: boolean;
+  /** The armed pin: the still layer dims the pins it cannot reach. */
+  readonly armed?: { readonly key: string; readonly legal: ReadonlySet<string> } | undefined;
 }
 
 const sameSet = (first: ReadonlySet<InstanceId>, second: ReadonlySet<InstanceId>): boolean =>
@@ -33,8 +37,17 @@ const sameContent = (first: StaticKey, second: StaticKey): boolean =>
   first.levels === second.levels &&
   first.palette === second.palette;
 
+/** What the still layer draws differently while wiring or zoomed out. */
+const sameLook = (first: StaticKey, second: StaticKey): boolean =>
+  first.zoomBand === second.zoomBand &&
+  first.armed?.key === second.armed?.key &&
+  first.armed?.legal === second.armed?.legal;
+
 const sameKey = (first: StaticKey, second: StaticKey): boolean =>
-  sameView(first, second) && sameContent(first, second) && sameSet(first.moved, second.moved);
+  sameView(first, second) &&
+  sameContent(first, second) &&
+  sameLook(first, second) &&
+  sameSet(first.moved, second.moved);
 
 type Size = Readonly<Pick<HTMLCanvasElement, "width" | "height">>;
 type Paint = (ctx: CanvasRenderingContext2D) => void;

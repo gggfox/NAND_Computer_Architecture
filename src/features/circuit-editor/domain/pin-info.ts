@@ -5,6 +5,7 @@ import { layoutIn } from "./geometry";
 import type { Scene } from "./geometry";
 import { pinValue } from "./signals";
 import type { KnownLevels } from "./signals";
+import { usedBits } from "./wiring-targets";
 
 /** One wire end across from the pin: the part's title and its pin's label (`.n` for a bit tap). */
 interface PinConnection {
@@ -21,7 +22,13 @@ export interface PinInfo {
   /** `1`, or `0101 = 5` for a bus (most significant bit first); `?` until the engine reports. */
   readonly valueText: string;
   readonly connections: readonly PinConnection[];
+  /** Bits of a bus pin with a wire tapped on them, ascending; empty for a 1-bit pin. */
+  readonly usedBits: readonly number[];
 }
+
+/** `d0, d2`: the bits as the pin card lists them. */
+export const bitsText = (bits: readonly number[]): string =>
+  bits.map((bit) => `d${String(bit)}`).join(", ");
 
 const UNKNOWN = "?";
 const BINARY = 2;
@@ -79,5 +86,6 @@ export const pinInfo = (
     ...(value === undefined ? {} : { value }),
     valueText: valueText(value, layout.width),
     connections,
+    usedBits: usedBits(scene, instanceId, pin),
   };
 };

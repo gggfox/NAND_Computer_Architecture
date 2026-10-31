@@ -66,7 +66,7 @@ export const canvasHost = (page: Page) => page.getByRole("application");
 /** The canvas's polite live region, which speaks each selection, move, delete and pin. */
 export const spoken = (page: Page) => canvasHost(page).locator("[aria-live=polite]");
 
-interface Point {
+export interface Point {
   readonly x: number;
   readonly y: number;
 }
@@ -134,6 +134,31 @@ export const chipCenter = (page: Page, instanceIndex: number): Promise<Point> =>
 };
 
 /**
+ * Where wires attach to the demo's parts, by part (`DEMO_PART`) and pin key, in world units: an
+ * input piece's pin is on its right edge, the output's on its left, and the NAND has `a` and `b`
+ * on its left and `out` on its right (`placeSide` in `domain/chip-layout.ts`).
+ */
+export const DEMO_PINS: readonly (readonly Point[])[] = [
+  [{ x: 40, y: 20 }],
+  [{ x: 40, y: 100 }],
+  [
+    { x: 160, y: 60 },
+    { x: 160, y: 100 },
+    { x: 280, y: 80 },
+  ],
+  [{ x: 320, y: 60 }],
+];
+
+/** The viewport point of the demo part `instanceIndex`'s pin `pinIndex` (see `DEMO_PINS`). */
+export const pinPoint = (page: Page, instanceIndex: number, pinIndex: number): Promise<Point> => {
+  const anchor = DEMO_PINS[instanceIndex]?.[pinIndex];
+  if (anchor === undefined) {
+    throw new Error(`The demo has no pin ${String(pinIndex)} on part ${String(instanceIndex)}`);
+  }
+  return worldToPage(page, anchor);
+};
+
+/**
  * Touch pointer ids start here, clear of the mouse's id 1: WebKit's phone emulation sends a real
  * mouse move when the page scrolls, which must not be mistaken for the finger.
  */
@@ -188,7 +213,7 @@ export const touch = async (page: Page, steps: readonly TouchStep[]): Promise<vo
 };
 
 /** Enough moves for a drag to read as one, well past the 10 px touch slop. */
-const DRAG_MOVES = 8;
+export const DRAG_MOVES = 8;
 
 /** One finger from `from` to `to` in `DRAG_MOVES` even moves. */
 export const fingerDrag = (from: Point, to: Point): readonly TouchStep[] => [
@@ -205,17 +230,32 @@ export const fingerDrag = (from: Point, to: Point): readonly TouchStep[] => [
 ];
 
 /** Only what the specs read from an exported project file. */
+const PointSchema = z.object({ x: z.number(), y: z.number() });
 const InstanceSchema = z.object({
+  id: z.string(),
   kind: z.object({ type: z.string() }),
-  position: z.object({ x: z.number(), y: z.number() }),
+  position: PointSchema,
+});
+const PinRefSchema = z.object({
+  instanceId: z.string(),
+  pin: z.number(),
+  bit: z.number().optional(),
+});
+const WireSchema = z.object({
+  from: PinRefSchema,
+  to: PinRefSchema,
+  color: z.string().optional(),
+  waypoints: z.array(PointSchema),
+  manualWaypoints: z.boolean(),
 });
 const ChipSchema = z.object({
   name: z.string(),
-  draft: z.object({ instances: z.array(InstanceSchema) }),
+  draft: z.object({ instances: z.array(InstanceSchema), wires: z.array(WireSchema) }),
 });
 const ExportedFileSchema = z.object({ project: z.object({ chips: z.array(ChipSchema) }) });
 
-type ExportedFile = z.output<typeof ExportedFileSchema>;
+export type ExportedFile = z.output<typeof ExportedFileSchema>;
+export type ExportedWire = z.output<typeof WireSchema>;
 
 /** Exports the project through the toolbar and reads the downloaded JSON. */
 export const exportedProject = async (page: Page): Promise<ExportedFile> => {

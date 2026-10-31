@@ -87,6 +87,17 @@ test("a long-press on pin a shows its card", async ({ page }) => {
   await expect(spoken(page)).toHaveText(/Pin a of NAND gate 1/u);
 });
 
+test("a tap on pin a arms it for wiring instead of opening its card", async ({ page }) => {
+  await createProject(page);
+  const pin = await worldToPage(page, PIN_A);
+  await touch(page, [
+    { type: "down", id: 1, at: pin },
+    { type: "up", id: 1, at: pin },
+  ]);
+  await expect(spoken(page)).toHaveText(/a of NAND gate 1 ready to wire/u);
+  await expect(page.locator("[aria-hidden=true]").filter({ hasText: "1 bit" })).toHaveCount(0);
+});
+
 test("two fingers pinching apart zoom in, and the URL keeps the zoom", async ({ page }) => {
   await createProject(page);
   const before = urlCamera(page).zoom;

@@ -1,10 +1,12 @@
-import type { InstanceId } from "~/shared/ids";
+import { WIRE_COLORS } from "~/features/projects";
+import type { InstanceId, WireId } from "~/shared/ids";
 
 import type { LayoutCache, Rect, Size } from "../domain/chip-layout";
 import type { Scene } from "../domain/geometry";
 import type { KnownLevels, Level } from "../domain/signals";
+import type { WireToken } from "../domain/wire-style";
 
-const TOKENS = [
+const BASE_TOKENS = [
   "background",
   "surface",
   "text",
@@ -17,7 +19,12 @@ const TOKENS = [
   "chip-text-low",
   "focus-ring",
 ] as const;
-type Token = (typeof TOKENS)[number];
+type Token = (typeof BASE_TOKENS)[number] | WireToken;
+/** The base tokens, then each wire colour's full and muted token. */
+const TOKENS: readonly Token[] = [
+  ...BASE_TOKENS,
+  ...WIRE_COLORS.flatMap((color) => [`wire-${color}`, `wire-${color}-muted`] as const),
+];
 export type Palette = Readonly<Record<Token, string>>;
 
 /** Theme tokens are CSS custom properties on <html> (ADR 10); the canvas reads the same values. */
@@ -35,6 +42,12 @@ export interface Frame extends Scene {
   readonly known: KnownLevels;
   readonly layout: LayoutCache;
   readonly visible: Rect;
+  /** The camera zoom: glows are skipped when zoomed far out; handles keep their screen size. */
+  readonly zoom: number;
+  /** While a pin is armed: its `pinLevelKey` and those it may reach; other pins are dimmed. */
+  readonly armed?: { readonly key: string; readonly legal: ReadonlySet<string> };
+  /** Wires being revealed, by id: how much of each route is drawn, 0 to 1. */
+  readonly reveal?: ReadonlyMap<WireId, number>;
   /**
    * During a drag the scene is drawn in two parts: everything that stays put (cached once), then
    * the chips being moved and every wire touching them. Absent: draw everything.

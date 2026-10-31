@@ -1,5 +1,4 @@
-/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Circuit, Point, Wire } from "~/features/projects";
+import type { Circuit, Project } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
@@ -7,6 +6,7 @@ import type { Result } from "~/shared/result";
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
+import { reshaped } from "./route-edits";
 
 const missingInstance = (
   circuit: Circuit,
@@ -17,50 +17,25 @@ const missingInstance = (
   return missing === undefined ? undefined : { type: "InstanceNotFound", instanceId: missing };
 };
 
-type Deltas = ReadonlyMap<InstanceId, Point>;
-
-const deltasOf = (
-  circuit: Circuit,
-  moves: Extract<EditorAction, { type: "moveChips" }>["moves"],
-): Deltas => {
-  const targets = new Map(moves.map((move) => [move.instanceId, move.position]));
-  return new Map(
-    circuit.instances.flatMap((item) => {
-      const to = targets.get(item.id);
-      return to === undefined
-        ? []
-        : [[item.id, { x: to.x - item.position.x, y: to.y - item.position.y }]];
-    }),
-  );
-};
-
-/** A wire whose two ends move by the same delta keeps its shape: its bends move with it. */
-const carried = (wire: Wire, deltas: Deltas): Wire => {
-  const from = deltas.get(wire.from.instanceId);
-  const to = deltas.get(wire.to.instanceId);
-  if (from === undefined || to === undefined || from.x !== to.x || from.y !== to.y) {
-    return wire;
-  }
-  return {
-    ...wire,
-    waypoints: wire.waypoints.map((point) => ({ x: point.x + from.x, y: point.y + from.y })),
-  };
-};
-
+/**
+ * Moves the chips. Wires on moved chips are carried or routed again (`reshaped`), and every
+ * automatic wire a moved chip now covers is routed again, all in this one edit; wires blocked
+ * elsewhere stay put.
+ */
 const applyMoves = (
+  project: Project,
   circuit: Circuit,
   action: Extract<EditorAction, { type: "moveChips" }>,
 ): Circuit => {
   const targets = new Map(action.moves.map((move) => [move.instanceId, move.position]));
-  const deltas = deltasOf(circuit, action.moves);
-  return {
-    ...circuit,
-    instances: circuit.instances.map((item) => {
-      const position = targets.get(item.id);
-      return position === undefined ? item : { ...item, position };
-    }),
-    wires: circuit.wires.map((wire) => carried(wire, deltas)),
-  };
+  const instances = circuit.instances.map((item) => {
+    const position = targets.get(item.id);
+    return position === undefined ? item : { ...item, position };
+  });
+  return reshaped(
+    { before: { project, circuit }, after: { project, circuit: { ...circuit, instances } } },
+    new Set(targets.keys()),
+  );
 };
 
 /** All moves apply or none do. */
@@ -73,7 +48,7 @@ export const moveChips: Edit<"moveChips"> = (project, action) =>
       circuit,
       action.moves.map((move) => move.instanceId),
     );
-    return missing === undefined ? ok(applyMoves(circuit, action)) : err(missing);
+    return missing === undefined ? ok(applyMoves(project, circuit, action)) : err(missing);
   });
 
 const removeAll = (

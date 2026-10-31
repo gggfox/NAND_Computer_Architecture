@@ -13,6 +13,9 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
+import { bendKey } from "./interaction-bend-keys";
+import { MENU_COMMANDS, openMenuByKey } from "./interaction-menus";
+import { cancelWiring, WIRING_COMMANDS } from "./interaction-wiring";
 import {
   addInstances,
   EMPTY_SELECTION,
@@ -89,9 +92,21 @@ const selectAll = (state: InteractionState, context: InteractionContext): Interp
   return selected(state, withInnerWires(circuit, all));
 };
 
-/** Escape closes the topmost thing: an overlay, then an armed lasso, then the selection. */
+/**
+ * Escape closes the topmost thing: the bit picker, then a menu, then an armed pin, then a card,
+ * then (in `bendKey`) bend mode, then an armed lasso, then the selection. A menu opened while a
+ * pin is armed closes alone, so the pin stays armed for what the menu does; a pin card is how the
+ * keyboard aims a wire, so it stays while Escape cancels the wire.
+ */
 const escape = (state: InteractionState): Interpreted => {
-  if (state.menu !== undefined || state.card !== undefined) {
+  if (state.bitPick === undefined && state.menu !== undefined) {
+    return done(withoutOverlays(state));
+  }
+  const wiring = cancelWiring(state);
+  if (wiring !== undefined) {
+    return wiring;
+  }
+  if (state.card !== undefined) {
     return done(withoutOverlays(state));
   }
   if (state.lassoArmed) {
@@ -168,14 +183,18 @@ const target = (state: InteractionState): InstanceId | undefined => {
   return more.length === 0 ? only : undefined;
 };
 
+/** The chip menu for a chip selection; with no chip selected, the wire or canvas menu. */
 const openMenu = (state: InteractionState, context: InteractionContext): Interpreted => {
+  if (state.selection.instances.size === 0) {
+    return openMenuByKey(state, context);
+  }
   const instanceId = target(state);
   const rect = instanceId === undefined ? undefined : rectOfChip(context, instanceId);
   if (instanceId === undefined || rect === undefined) {
     return done(state);
   }
   const screen = worldToScreen(state.camera, { x: rect.x + rect.width, y: rect.y });
-  return done({ ...withoutOverlays(state), menu: { instanceId, screen } });
+  return done({ ...withoutOverlays(state), menu: { kind: "chip", instanceId, screen } });
 };
 
 /** `P` / `Shift`+`P`: step through the target chip's pins, showing and announcing each one. */
@@ -254,6 +273,8 @@ const HANDLERS: Handlers = {
     const { help: _help, ...rest } = state;
     return done(rest);
   },
+  ...WIRING_COMMANDS,
+  ...MENU_COMMANDS,
 };
 
 const run = <Type extends InteractionCommand["type"]>(
@@ -262,9 +283,9 @@ const run = <Type extends InteractionCommand["type"]>(
   context: InteractionContext,
 ): Interpreted => HANDLERS[command.type](state, command, context);
 
-/** A keyboard or toolbar command on the canvas. */
+/** A keyboard or toolbar command on the canvas; bend mode takes some keys first. */
 export const onCommand = (
   state: InteractionState,
   command: InteractionCommand,
   context: InteractionContext,
-): Interpreted => run(state, command, context);
+): Interpreted => bendKey(state, command, context) ?? run(state, command, context);

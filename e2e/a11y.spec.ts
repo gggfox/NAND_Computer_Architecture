@@ -1,7 +1,18 @@
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
-import { canvasHost, createProject, expect, pickTheme, spoken, test, THEMES } from "./support";
+import {
+  canvasHost,
+  createProject,
+  expect,
+  pickTheme,
+  spoken,
+  test,
+  THEMES,
+  worldToPage,
+} from "./support";
+import { BUS, pointerFor, usesTouch } from "./wiring-support";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
 
@@ -54,6 +65,61 @@ for (const theme of THEMES) {
 
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+}
+
+/** The middle of the demo's straight wire from Input B into the NAND's b, in world units. */
+const WIRE_INTO_B = { x: 100, y: 100 };
+/** In `bus.json`: the NAND's a and the 4-bit input D's pin. */
+const BUS_NAND_A = { x: 160, y: 60 };
+const BUS_PIN = { x: 40, y: 80 };
+
+for (const theme of THEMES) {
+  test(`the wire menu, wire colour dialog, canvas menu and bit picker have no WCAG violations in the ${theme} theme`, async ({
+    isMobile,
+    page,
+  }, testInfo) => {
+    const pointer = pointerFor(page, usesTouch(isMobile, testInfo));
+    await createProject(page);
+    await pickTheme(page, theme);
+    const host = canvasHost(page);
+
+    await pointer.tap(await worldToPage(page, WIRE_INTO_B));
+    await host.focus();
+    await page.keyboard.press("Enter");
+    const wireMenu = page.getByRole("menu", { name: "Wire actions" });
+    await expect(wireMenu.getByRole("menuitem").first()).toBeFocused();
+    expect(await violations(page)).toEqual([]);
+
+    await wireMenu.getByRole("menuitem", { name: "Colour…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Wire colour" });
+    await expect(dialog).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(host).toBeFocused();
+
+    // Escape clears the wire selection, so Enter opens the canvas menu.
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Enter");
+    const canvasMenu = page.getByRole("menu", { name: "Canvas actions" });
+    await expect(canvasMenu.getByRole("menuitem").first()).toBeFocused();
+    expect(await violations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(host).toBeFocused();
+
+    const chooserEvent = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Import" }).click();
+    const chooser = await chooserEvent;
+    await chooser.setFiles(BUS);
+    await expect(page.getByRole("heading", { level: 1, name: "Bus" })).toBeAttached();
+    await pointer.tap(await worldToPage(page, BUS_NAND_A));
+    await expect(spoken(page)).toHaveText(/ready to wire/u);
+    await pointer.tap(await worldToPage(page, BUS_PIN));
+    await expect(
+      page.getByRole("menu", { name: "Pick a bit" }).getByRole("menuitem").first(),
+    ).toBeFocused();
     expect(await violations(page)).toEqual([]);
   });
 }

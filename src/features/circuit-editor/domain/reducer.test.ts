@@ -113,6 +113,8 @@ describe("editorErrorMessage", () => {
       { type: "DuplicateChip", chipId },
       { type: "EmptyName" },
       { type: "InvalidColor", color: "red" },
+      { type: "NothingToRecolor" },
+      { type: "NothingToReroute" },
     ] as const;
     for (const error of errors) {
       expect(editorErrorMessage(error).length).toBeGreaterThan(0);

@@ -2,7 +2,7 @@
 import path from "node:path";
 
 import { devices } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 
 import {
   canvasHost,
@@ -17,7 +17,8 @@ import {
 /*
  * The drag budget (Phase 2 plan, Task 13): a 50-chip selection dragged for 2 s on a 300-chip,
  * 600-wire circuit, on an emulated Pixel 7 with the CPU slowed 4×, keeps the 95th-percentile
- * frame within 20 ms. Too noisy for shared CI runners: run it with `pnpm e2e:perf`.
+ * frame within 20 ms. A second case runs the same drag zoomed in to 0.5, where high wires glow,
+ * so the glow's cost is measured too. Too noisy for shared CI runners: run it with `pnpm e2e:perf`.
  */
 
 const FIXTURE = path.join(import.meta.dirname, "fixtures", "300-chips.json");
@@ -25,7 +26,11 @@ const CPU_SLOWDOWN = 4;
 const DRAG_MS = 2000;
 const BUDGET_MS = 20;
 const P95 = 0.95;
+/** Eight presses of `-` (1.25× each) zoom to 0.17; three to 0.51, just inside the glow band. */
 const ZOOM_OUT_PRESSES = 8;
+const GLOW_ZOOM_OUT_PRESSES = 3;
+/** How many chips past the selection have their output level read, to show wires are high. */
+const SURVEYED = 20;
 const SELECTED = 50;
 /** The fixture lays NANDs (120 × 80) out 20 to a row, 200 apart across and 120 down. */
 const COLUMNS = 20;
@@ -54,10 +59,10 @@ const importFixture = async (page: Page): Promise<void> => {
   await expect(page.getByText("NAND gate 300", { exact: true })).toBeAttached();
 };
 
-/** Zooms right out, then selects the first chips in canvas order: `]`, then Shift+`]` (`}`). */
-const selectFirstChips = async (page: Page): Promise<void> => {
+/** Zooms out, then selects the first chips in canvas order: `]`, then Shift+`]` (`}`). */
+const selectFirstChips = async (page: Page, zoomOutPresses: number): Promise<void> => {
   await canvasHost(page).focus();
-  for (let press = 0; press < ZOOM_OUT_PRESSES; press += 1) {
+  for (let press = 0; press < zoomOutPresses; press += 1) {
     await page.keyboard.press("-");
   }
   await page.keyboard.press("]");
@@ -65,6 +70,21 @@ const selectFirstChips = async (page: Page): Promise<void> => {
     await page.keyboard.press("}");
   }
   await expect(spoken(page)).toHaveText(new RegExp(`Items selected: ${String(SELECTED)}`, "u"));
+};
+
+/**
+ * Steps to each of the next chips with `]` and reads its output with Shift+`P` (its last pin),
+ * counting the outputs at 1. Each NAND output drives two wires, so they glow too.
+ */
+const highOutputs = async (page: Page): Promise<number> => {
+  let high = 0;
+  for (let chip = 0; chip < SURVEYED; chip += 1) {
+    await page.keyboard.press("]");
+    await page.keyboard.press("Shift+P");
+    await expect(spoken(page)).toHaveText(/^Pin out of .*: [01]\./u);
+    high += /: 1\./u.test((await spoken(page).textContent()) ?? "") ? 1 : 0;
+  }
+  return high;
 };
 
 interface DragPlan {
@@ -126,39 +146,67 @@ const dragAndSample = async (
   return samples.slice(1);
 };
 
+/** Selects the first chips zoomed out so far, then drags them for 2 s, slowed, sampling frames. */
+const dragFrames = async (page: Page, zoomOutPresses: number): Promise<readonly number[]> => {
+  await createProject(page);
+  await importFixture(page);
+  await selectFirstChips(page, zoomOutPresses);
+
+  // The last chip selected was brought into view; grab it by its centre.
+  const last = SELECTED - 1;
+  const grab = await worldToPage(page, {
+    x: (last % COLUMNS) * PITCH.x + NAND_CENTRE.x,
+    y: Math.floor(last / COLUMNS) * PITCH.y + NAND_CENTRE.y,
+  });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_SLOWDOWN });
+  const deltas = await canvasHost(page)
+    .locator("canvas")
+    .first()
+    .evaluate(dragAndSample, {
+      at: grab,
+      durationMs: DRAG_MS,
+      sweep: SWEEP_PX,
+      touchId: TOUCH_ID_BASE + 1,
+    });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  await expect(spoken(page)).toHaveText(new RegExp(`Chips moved: ${String(SELECTED)}`, "u"));
+  return deltas;
+};
+
+const report = (testInfo: TestInfo, label: string, deltas: readonly number[]): number => {
+  const p95 = percentile(deltas, P95);
+  const summary = `frames ${String(deltas.length)}, p95 ${p95.toFixed(1)} ms, max ${Math.max(...deltas).toFixed(1)} ms`;
+  testInfo.annotations.push({ type: `${label} frames`, description: summary });
+  console.log(`@perf ${label}: ${summary}`);
+  return p95;
+};
+
 test(
   "dragging 50 of 300 chips keeps p95 frames within 20 ms",
   { tag: "@perf" },
   async ({ page }, testInfo) => {
-    await createProject(page);
-    await importFixture(page);
-    await selectFirstChips(page);
+    const deltas = await dragFrames(page, ZOOM_OUT_PRESSES);
+    expect(report(testInfo, "drag", deltas)).toBeLessThanOrEqual(BUDGET_MS);
+  },
+);
 
-    // The last chip selected was brought into view; grab it by its centre.
-    const last = SELECTED - 1;
-    const grab = await worldToPage(page, {
-      x: (last % COLUMNS) * PITCH.x + NAND_CENTRE.x,
-      y: Math.floor(last / COLUMNS) * PITCH.y + NAND_CENTRE.y,
+test(
+  "dragging 50 of 300 chips with high wires glowing keeps p95 frames within 20 ms",
+  { tag: "@perf" },
+  async ({ page }, testInfo) => {
+    const label = "glow drag";
+    const deltas = await dragFrames(page, GLOW_ZOOM_OUT_PRESSES);
+    const p95 = report(testInfo, label, deltas);
+    // The fixture's NANDs settle with many outputs at 1, so many wires on screen glow.
+    const high = await highOutputs(page);
+    testInfo.annotations.push({
+      type: "high outputs",
+      description: `${String(high)} of ${String(SURVEYED)}`,
     });
-
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_SLOWDOWN });
-    const deltas = await canvasHost(page)
-      .locator("canvas")
-      .first()
-      .evaluate(dragAndSample, {
-        at: grab,
-        durationMs: DRAG_MS,
-        sweep: SWEEP_PX,
-        touchId: TOUCH_ID_BASE + 1,
-      });
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
-
-    await expect(spoken(page)).toHaveText(new RegExp(`Chips moved: ${String(SELECTED)}`, "u"));
-    const p95 = percentile(deltas, P95);
-    const summary = `frames ${String(deltas.length)}, p95 ${p95.toFixed(1)} ms, max ${Math.max(...deltas).toFixed(1)} ms`;
-    testInfo.annotations.push({ type: "drag frames", description: summary });
-    console.log(`@perf drag: ${summary}`);
+    console.log(`@perf ${label}: ${String(high)} of ${String(SURVEYED)} surveyed outputs high`);
+    expect(high).toBeGreaterThan(0);
     expect(p95).toBeLessThanOrEqual(BUDGET_MS);
   },
 );

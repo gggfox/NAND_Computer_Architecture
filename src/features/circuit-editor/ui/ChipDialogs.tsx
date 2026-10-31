@@ -30,7 +30,8 @@ const swatches = (): readonly Swatch[] => [
   { color: "#6b7280", label: m.color_gray() },
 ];
 
-function Actions({ onClose }: { readonly onClose: () => void }): ReactNode {
+/** Cancel and Save, for every editor dialog form. */
+export function DialogActions({ onClose }: { readonly onClose: () => void }): ReactNode {
   return (
     <div className={styles.actions}>
       <Button variant="quiet" onPress={onClose}>
@@ -38,6 +39,27 @@ function Actions({ onClose }: { readonly onClose: () => void }): ReactNode {
       </Button>
       <Button type="submit">{m.dialog_save()}</Button>
     </div>
+  );
+}
+
+/** A dialog's form: Enter or Save submits it. */
+export function DialogForm({
+  onSubmit,
+  children,
+}: {
+  readonly onSubmit: () => void;
+  readonly children: ReactNode;
+}): ReactNode {
+  return (
+    <form
+      className={styles.form}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      {children}
+    </form>
   );
 }
 
@@ -50,16 +72,14 @@ export function RenameChipDialog({
   const [name, setName] = useState(dialog.name);
   return (
     <ModalDialog title={m.rename_chip_title()} onClose={onClose}>
-      <form
-        className={styles.form}
-        onSubmit={(event) => {
-          event.preventDefault();
+      <DialogForm
+        onSubmit={() => {
           onSave(name);
         }}
       >
         <TextInput label={m.chip_name_label()} value={name} onChange={setName} />
-        <Actions onClose={onClose} />
-      </form>
+        <DialogActions onClose={onClose} />
+      </DialogForm>
     </ModalDialog>
   );
 }
@@ -73,10 +93,8 @@ export function RecolorChipDialog({
   const [color, setColor] = useState(dialog.color);
   return (
     <ModalDialog title={m.recolor_chip_title()} onClose={onClose}>
-      <form
-        className={styles.form}
-        onSubmit={(event) => {
-          event.preventDefault();
+      <DialogForm
+        onSubmit={() => {
           onSave(color);
         }}
       >
@@ -86,8 +104,8 @@ export function RecolorChipDialog({
           value={color}
           onChange={setColor}
         />
-        <Actions onClose={onClose} />
-      </form>
+        <DialogActions onClose={onClose} />
+      </DialogForm>
     </ModalDialog>
   );
 }

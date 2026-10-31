@@ -12,6 +12,22 @@
   --color-chip-text: #ffffff;
   --color-chip-text-low: #14172a;
   --color-grid: #d8dbe8;
+  --color-wire-blue: #2354c7;
+  --color-wire-blue-muted: #6487d8;
+  --color-wire-red: #b21f1f;
+  --color-wire-red-muted: #d86464;
+  --color-wire-orange: #8b4a18;
+  --color-wire-orange-muted: #c87332;
+  --color-wire-yellow: #6c5b13;
+  --color-wire-yellow-muted: #9f8728;
+  --color-wire-green: #126828;
+  --color-wire-green-muted: #279b44;
+  --color-wire-teal: #126461;
+  --color-wire-teal-muted: #269793;
+  --color-wire-purple: #8624cc;
+  --color-wire-purple-muted: #ac6cda;
+  --color-wire-pink: #a91e6f;
+  --color-wire-pink-muted: #d65ca3;
 }
 
 :root[data-theme="dark"] {
@@ -28,6 +44,22 @@
   --color-chip-text: #0d1017;
   --color-chip-text-low: #ffffff;
   --color-grid: #1e2331;
+  --color-wire-blue: #94b4ff;
+  --color-wire-blue-muted: #2d5ed2;
+  --color-wire-red: #ff9999;
+  --color-wire-red-muted: #c22929;
+  --color-wire-orange: #ff9a4d;
+  --color-wire-orange-muted: #9c5621;
+  --color-wire-yellow: #dbaf00;
+  --color-wire-yellow-muted: #7a671a;
+  --color-wire-green: #00d134;
+  --color-wire-green-muted: #197630;
+  --color-wire-teal: #00ccc5;
+  --color-wire-teal-muted: #18726f;
+  --color-wire-purple: #d79eff;
+  --color-wire-purple-muted: #9235d4;
+  --color-wire-pink: #ff8fd0;
+  --color-wire-pink-muted: #b9277c;
 }
 
 :root[data-theme="high-contrast"] {
@@ -44,4 +76,20 @@
   --color-chip-text: #000000;
   --color-chip-text-low: #ffffff;
   --color-grid: #3a3a3a;
+  --color-wire-blue: #759fff;
+  --color-wire-blue-muted: #1f62ff;
+  --color-wire-red: #ff7575;
+  --color-wire-red-muted: #e60000;
+  --color-wire-orange: #ff7a14;
+  --color-wire-orange-muted: #bd5200;
+  --color-wire-yellow: #c79f00;
+  --color-wire-yellow-muted: #8a6e00;
+  --color-wire-green: #00bd2f;
+  --color-wire-green-muted: #008521;
+  --color-wire-teal: #00b3ad;
+  --color-wire-teal-muted: #00807b;
+  --color-wire-purple: #ca80ff;
+  --color-wire-purple-muted: #a424ff;
+  --color-wire-pink: #ff6bc1;
+  --color-wire-pink-muted: #db0080;
 }

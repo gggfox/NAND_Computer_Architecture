@@ -1,27 +1,28 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Point } from "~/features/projects";
 import { assertNever } from "~/shared/assert-never";
 
 import { panBy } from "./camera";
-import type { Rect } from "./chip-layout";
 import type { Gesture } from "./gesture-types";
-import { chipsIn } from "./hit-test";
-import type { Hit } from "./hit-test";
 import { done, previewOf, selected, withoutOverlays } from "./interaction";
 import type { Drag, InteractionContext, InteractionState, Interpreted } from "./interaction";
+import { endSegmentDrag, segmentMoved, startSegmentDrag } from "./interaction-bends";
 import { chipOf, hitAt, toWorld } from "./interaction-hits";
+import { endMarquee, marqueePoints } from "./interaction-marquee";
+import { disarmed, endWireDrag, startWireDrag } from "./interaction-wiring";
 import { movesFor } from "./move";
-import { addInstances, inBox, inLasso, selectInstances, withInnerWires } from "./selection";
+import { selectInstances } from "./selection";
 
 type Of<Type extends Gesture["type"]> = Extract<Gesture, { type: Type }>;
+type Point = Of<"dragMove">["point"];
 
 /**
- * A drag from a chip (or its pin) moves the selection; elsewhere it pans or draws a marquee. The
- * lasso needs Alt, or a drag that continues the long-press that armed it: a fresh press draws a box.
+ * A drag from a chip body moves the selection (from a pin or a wire it draws a wire instead, see
+ * `startWireDrag`); elsewhere it pans or draws a marquee. The lasso needs Alt, or a drag that
+ * continues the long-press that armed it: a fresh press draws a box.
  */
-const dragFor = (state: InteractionState, gesture: Of<"dragStart">, hit: Hit): Drag => {
+const dragFor = (state: InteractionState, gesture: Of<"dragStart">, onChip: boolean): Drag => {
   const { space, alt, shift } = gesture.modifiers;
-  if (chipOf(hit) !== undefined && !space) {
+  if (onChip && !space) {
     return { kind: "move", origin: toWorld(state, gesture.origin), delta: { x: 0, y: 0 } };
   }
   if (state.tool === "pan" || space) {
@@ -37,8 +38,14 @@ export const onDragStart = (
   context: InteractionContext,
 ): Interpreted => {
   const hit = hitAt(state, context, gesture.origin);
-  const drag = dragFor(state, gesture, hit);
+  // A bend handle beats the wire under it; a pin or a wire (in the Select tool) draws a wire.
+  const special =
+    startSegmentDrag(state, gesture, context) ?? startWireDrag(state, { gesture, hit }, context);
+  if (special !== undefined) {
+    return onDragMove(special.state, { type: "dragMove", point: gesture.point }, special.effects);
+  }
   const instanceId = chipOf(hit);
+  const drag = dragFor(state, gesture, instanceId !== undefined);
   const keep =
     drag.kind !== "move" || instanceId === undefined || state.selection.instances.has(instanceId);
   const base = keep
@@ -53,9 +60,6 @@ export const onDragStart = (
   );
 };
 
-const marqueePoints = (drag: Drag & { kind: "marquee" }, world: Point): readonly Point[] =>
-  drag.shape === "lasso" ? [...drag.points, world] : [drag.points[0] ?? world, world];
-
 const moved = (drag: Drag, state: InteractionState, point: Point): Drag => {
   switch (drag.kind) {
     case "move": {
@@ -67,6 +71,12 @@ const moved = (drag: Drag, state: InteractionState, point: Point): Drag => {
     }
     case "marquee": {
       return { ...drag, points: marqueePoints(drag, toWorld(state, point)) };
+    }
+    case "wire": {
+      return { ...drag, point: toWorld(state, point) };
+    }
+    case "segment": {
+      return segmentMoved(drag, toWorld(state, point));
     }
     default: {
       return assertNever(drag);
@@ -88,25 +98,6 @@ export const onDragMove = (
       ? panBy(state.camera, { x: gesture.point.x - drag.last.x, y: gesture.point.y - drag.last.y })
       : state.camera;
   return done({ ...state, camera, drag: moved(drag, state, gesture.point) }, ...effects);
-};
-
-const boundsOfPoints = (points: readonly Point[]): Rect => {
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const [x, y] = [Math.min(...xs), Math.min(...ys)];
-  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
-};
-
-const endMarquee = (
-  state: InteractionState,
-  drag: Drag & { kind: "marquee" },
-  context: InteractionContext,
-): Interpreted => {
-  const bounds = boundsOfPoints(drag.points);
-  const chips = chipsIn(context.index(), bounds);
-  const ids = drag.shape === "box" ? inBox(chips, bounds) : inLasso(chips, drag.points);
-  const base = drag.additive ? addInstances(state.selection, ids) : selectInstances(ids);
-  return selected(state, withInnerWires(context.scene.circuit, base));
 };
 
 /** The moves of the drag in `state` as one action; its returned state is the caller's to replace. */
@@ -139,6 +130,12 @@ export const onDragEnd = (
     case "pan": {
       return done(rest, { type: "cameraSettled" });
     }
+    case "wire": {
+      return endWireDrag(rest, drag, context);
+    }
+    case "segment": {
+      return endSegmentDrag(rest, drag, context);
+    }
     case undefined: {
       return done(rest);
     }
@@ -150,5 +147,8 @@ export const onDragEnd = (
 
 export const onDragCancel = (state: InteractionState): Interpreted => {
   const { drag, ...rest } = state;
+  if (drag?.kind === "wire") {
+    return disarmed(rest);
+  }
   return drag?.kind === "pan" ? done(rest, { type: "cameraSettled" }) : done(rest);
 };

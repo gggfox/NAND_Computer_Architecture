@@ -75,6 +75,50 @@ const endOf = (scene: Scene, end: Wire["from"]): Point | undefined => {
   return instance && pinPosition(scene, instance, end.pin);
 };
 
+const elbow = (start: Point, end: Point): readonly Point[] => {
+  const midX = start.x + (end.x - start.x) * HALF;
+  return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+};
+
+/** How far a wire end's instance is drawn from its stored position (0 when it is not dragged). */
+const shift = (scene: Scene, end: Wire["from"], axis: "x" | "y"): number => {
+  const instance = instanceById(scene.circuit, end.instanceId);
+  const moved = scene.positions?.get(end.instanceId);
+  return instance === undefined || moved === undefined ? 0 : moved[axis] - instance.position[axis];
+};
+
+/** The drag preview of a wire: its stored route, the elbow, or its hand bends moved by a delta. */
+type Preview = "stored" | "elbow" | Point;
+
+/** Both ends' shared delta, or the elbow when the ends moved apart (the drop re-routes it). */
+const sharedDelta = (scene: Scene, wire: Wire): Preview => {
+  const delta = { x: shift(scene, wire.from, "x"), y: shift(scene, wire.from, "y") };
+  return delta.x === shift(scene, wire.to, "x") && delta.y === shift(scene, wire.to, "y")
+    ? delta
+    : "elbow";
+};
+
+/**
+ * Routing never runs per frame. A wire with one dragged end, or an automatic wire with any, draws
+ * the elbow, as do hand bends whose ends are dragged apart; hand bends whose two ends are dragged
+ * by the same delta move by it.
+ */
+const previewOf = (scene: Scene, wire: Wire): Preview => {
+  const { positions } = scene;
+  if (positions === undefined || positions.size === 0) {
+    return "stored";
+  }
+  const fromMoved = positions.has(wire.from.instanceId);
+  const toMoved = positions.has(wire.to.instanceId);
+  if (!fromMoved && !toMoved) {
+    return "stored";
+  }
+  return fromMoved && toMoved && wire.manualWaypoints ? sharedDelta(scene, wire) : "elbow";
+};
+
+const shiftedBy = (points: readonly Point[], delta: Point): readonly Point[] =>
+  points.map((point) => ({ x: point.x + delta.x, y: point.y + delta.y }));
+
 /** The polyline a wire is drawn along: stored waypoints, or an orthogonal elbow between its pins. */
 export const wireRoute = (scene: Scene, wire: Wire): readonly Point[] => {
   const start = endOf(scene, wire.from);
@@ -82,11 +126,12 @@ export const wireRoute = (scene: Scene, wire: Wire): readonly Point[] => {
   if (start === undefined || end === undefined) {
     return [];
   }
-  if (wire.waypoints.length > 0) {
-    return [start, ...wire.waypoints, end];
+  const preview = previewOf(scene, wire);
+  if (preview === "elbow" || wire.waypoints.length === 0) {
+    return elbow(start, end);
   }
-  const midX = start.x + (end.x - start.x) * HALF;
-  return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+  const waypoints = preview === "stored" ? wire.waypoints : shiftedBy(wire.waypoints, preview);
+  return [start, ...waypoints, end];
 };
 
 const overlaps = (first: Rect, second: Rect): boolean =>

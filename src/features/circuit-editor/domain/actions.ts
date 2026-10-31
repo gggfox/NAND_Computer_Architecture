@@ -8,6 +8,7 @@ import type {
   PlaceError,
   Point,
   SaveError,
+  WireColor,
 } from "~/features/projects";
 import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
 
@@ -42,7 +43,18 @@ export type EditorAction =
       readonly wireId: WireId;
       readonly from: PinRef;
       readonly to: PinRef;
+      /** Missing means the default colour. */
+      readonly color?: WireColor;
     }
+  /** Recolours wires as one undo step; no colour clears it. Routes stay as they are. */
+  | {
+      readonly type: "recolorWires";
+      readonly chipId: ChipId;
+      readonly wireIds: readonly WireId[];
+      readonly color?: WireColor;
+    }
+  /** Hands wires back to the router (dropping hand bends) and routes them again. */
+  | { readonly type: "rerouteWires"; readonly chipId: ChipId; readonly wireIds: readonly WireId[] }
   | { readonly type: "removeWire"; readonly chipId: ChipId; readonly wireId: WireId }
   | {
       readonly type: "moveWaypoint";
@@ -100,6 +112,8 @@ export type EditorError =
   | { readonly type: "InvalidColor"; readonly color: string }
   | { readonly type: "NothingToMove" }
   | { readonly type: "NothingToRemove" }
+  | { readonly type: "NothingToRecolor" }
+  | { readonly type: "NothingToReroute" }
   | PlaceError
   | SaveError
   | ConnectionError;

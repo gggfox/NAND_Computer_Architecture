@@ -16,6 +16,7 @@ import {
   wireRoute,
 } from "./geometry";
 import type { Scene } from "./geometry";
+import { link, NAND_A, NAND_B, NAND_OUT, nandAt, sceneOf } from "./routing/routing.fixtures";
 
 const demo = (): Scene => {
   const project = createDemoProject("x");
@@ -123,6 +124,89 @@ describe("wireRoute", () => {
     expect(wireRoute(scene, { ...dangling, from: dangling.to, to: dangling.from })).toEqual([]);
     const noPin = { ...dangling, from: { instanceId: at(scene, 0).id, pin: 7 } };
     expect(wireRoute(scene, noPin)).toEqual([]);
+  });
+});
+
+const [source, sink, third] = [nandAt(0, 0), nandAt(400, 120), nandAt(0, 400)];
+const bends = [
+  { x: 200, y: 40 },
+  { x: 200, y: 140 },
+];
+const manual = {
+  ...link([source, NAND_OUT], [sink, NAND_A]),
+  waypoints: bends,
+  manualWaypoints: true,
+};
+const automatic = { ...manual, manualWaypoints: false };
+const untouched = { ...link([third, NAND_OUT], [sink, NAND_B]), waypoints: [{ x: 200, y: 440 }] };
+const dragScene = sceneOf([source, sink, third], [manual, untouched]);
+
+describe("wireRoute during a drag", () => {
+  it("wireRoute previews the elbow for a wire with one moved end", () => {
+    const positions = new Map([[sink.id, { x: 400, y: 240 }]]);
+    expect(wireRoute({ ...dragScene, positions }, manual)).toEqual([
+      { x: 120, y: 40 },
+      { x: 260, y: 40 },
+      { x: 260, y: 260 },
+      { x: 400, y: 260 },
+    ]);
+  });
+
+  it("previews the elbow for an automatic wire with both ends moved", () => {
+    const positions = new Map([
+      [source.id, { x: 40, y: 80 }],
+      [sink.id, { x: 440, y: 200 }],
+    ]);
+    expect(wireRoute({ ...dragScene, positions }, automatic)).toEqual([
+      { x: 160, y: 120 },
+      { x: 300, y: 120 },
+      { x: 300, y: 220 },
+      { x: 440, y: 220 },
+    ]);
+  });
+});
+
+describe("wireRoute dragging hand bends", () => {
+  it("translates hand bends when both ends move by the same delta, and draws the elbow otherwise", () => {
+    const together = new Map([
+      [source.id, { x: 40, y: 80 }],
+      [sink.id, { x: 440, y: 200 }],
+    ]);
+    expect(wireRoute({ ...dragScene, positions: together }, manual)).toEqual([
+      { x: 160, y: 120 },
+      { x: 240, y: 120 },
+      { x: 240, y: 220 },
+      { x: 440, y: 220 },
+    ]);
+    const apart = new Map([
+      [source.id, { x: 40, y: 80 }],
+      [sink.id, { x: 440, y: 120 }],
+    ]);
+    expect(wireRoute({ ...dragScene, positions: apart }, manual)).toEqual([
+      { x: 160, y: 120 },
+      { x: 300, y: 120 },
+      { x: 300, y: 140 },
+      { x: 440, y: 140 },
+    ]);
+    const sideways = new Map([
+      [source.id, { x: 40, y: 80 }],
+      [sink.id, { x: 400, y: 200 }],
+    ]);
+    expect(wireRoute({ ...dragScene, positions: sideways }, manual)).toEqual([
+      { x: 160, y: 120 },
+      { x: 280, y: 120 },
+      { x: 280, y: 220 },
+      { x: 400, y: 220 },
+    ]);
+  });
+
+  it("leaves a wire with no moved end as stored", () => {
+    const positions = new Map([[source.id, { x: 40, y: 80 }]]);
+    expect(wireRoute({ ...dragScene, positions }, untouched)).toEqual([
+      { x: 120, y: 440 },
+      { x: 200, y: 440 },
+      { x: 400, y: 180 },
+    ]);
   });
 });
 

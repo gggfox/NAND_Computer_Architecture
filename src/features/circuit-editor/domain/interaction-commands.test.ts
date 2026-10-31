@@ -2,10 +2,15 @@
 import { describe, expect, it } from "vitest";
 
 import { EMPTY_CIRCUIT } from "~/features/projects";
+import type { InstanceId } from "~/shared/ids";
 
 import { interact } from "./interact";
-import { command, gesture, screen, setup, tap } from "./interaction.fixtures";
+import { command, gesture, screen, setup } from "./interaction.fixtures";
 import { selectInstances } from "./selection";
+
+/** The chip menu of `instanceId`, open at the screen origin. */
+const chipMenu = (instanceId: InstanceId) =>
+  ({ kind: "chip", instanceId, screen: screen(0, 0) }) as const;
 
 describe("tool and stepping", () => {
   it("setTool switches, disarms the lasso and announces", () => {
@@ -141,11 +146,17 @@ describe("camera commands", () => {
       10,
     );
   });
+});
 
+describe("camera commands and overlays", () => {
   it("wheel zoom and pan close a pinned card and the menu, which would point at the old spot", () => {
     const { context, state, nand } = setup();
     const card = { instanceId: nand.id, pin: 0, screen: screen(0, 20), pinned: true };
-    const open = { ...state, card, menu: { instanceId: nand.id, screen: screen(0, 0) } };
+    const open = {
+      ...state,
+      card,
+      menu: chipMenu(nand.id),
+    };
     const zoomed = command(open, context, { type: "zoomBy", screen: screen(0, 0), factor: 2 });
     expect(zoomed.state.card).toBeUndefined();
     expect(zoomed.state.menu).toBeUndefined();
@@ -156,7 +167,10 @@ describe("camera commands", () => {
 
   it("jumps the camera, closing overlays, and settles only when asked", () => {
     const { context, state, nand } = setup();
-    const open = { ...state, menu: { instanceId: nand.id, screen: screen(0, 0) } };
+    const open = {
+      ...state,
+      menu: chipMenu(nand.id),
+    };
     const camera = { zoom: 1, x: 500, y: -40 };
     expect(command(open, context, { type: "jumpTo", camera, settle: false })).toEqual({
       state: { ...state, camera },
@@ -173,6 +187,7 @@ describe("menu and pin keys", () => {
     const { context, state, nand, pieceA } = setup();
     const lone = { ...state, selection: selectInstances([nand.id]) };
     expect(command(lone, context, { type: "openMenu" }).state.menu).toEqual({
+      kind: "chip",
       instanceId: nand.id,
       screen: screen(280, 40),
     });
@@ -181,7 +196,9 @@ describe("menu and pin keys", () => {
       focus: pieceA.id,
       selection: selectInstances([nand.id, pieceA.id]),
     };
-    expect(command(focused, context, { type: "openMenu" }).state.menu?.instanceId).toBe(pieceA.id);
+    expect(command(focused, context, { type: "openMenu" }).state.menu).toMatchObject({
+      instanceId: pieceA.id,
+    });
     const many = { ...state, selection: selectInstances([nand.id, pieceA.id]) };
     expect(command(many, context, { type: "openMenu" }).state.menu).toBeUndefined();
   });
@@ -208,26 +225,30 @@ describe("menu and pin keys", () => {
 describe("history changes", () => {
   it("keep chips that still exist", () => {
     const { context, state, nand, pieceA } = setup();
-    const opened = gesture(state, context, tap(screen(160, 60), "touch")).state;
+    const press = { type: "longPress", point: screen(160, 60), kind: "touch" } as const;
+    const opened = gesture(state, context, press).state;
     const withMenu = {
       ...opened,
-      menu: { instanceId: nand.id, screen: screen(0, 0) },
+      focus: nand.id,
+      menu: chipMenu(nand.id),
       selection: selectInstances([nand.id, pieceA.id]),
     };
     const kept = interact(withMenu, { type: "historyChanged" }, context).state;
     expect(kept).toMatchObject({
       focus: nand.id,
-      menu: { instanceId: nand.id },
+      menu: { kind: "chip", instanceId: nand.id },
       card: { instanceId: nand.id },
     });
   });
 
   it("forget chips that no longer exist", () => {
     const { context, state, nand, pieceA } = setup();
-    const opened = gesture(state, context, tap(screen(160, 60), "touch")).state;
+    const press = { type: "longPress", point: screen(160, 60), kind: "touch" } as const;
+    const opened = gesture(state, context, press).state;
     const withMenu = {
       ...opened,
-      menu: { instanceId: nand.id, screen: screen(0, 0) },
+      focus: nand.id,
+      menu: chipMenu(nand.id),
       selection: selectInstances([nand.id, pieceA.id]),
     };
     const without = {

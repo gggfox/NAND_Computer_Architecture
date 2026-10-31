@@ -4,7 +4,7 @@ import { Label, RadioButton, RadioField, RadioGroup } from "react-aria-component
 import styles from "./SwatchPicker.module.css";
 
 export interface Swatch {
-  /** A `#rrggbb` colour. */
+  /** A CSS colour: `#rrggbb`, or a `var()` of a theme token. It is also the radio value. */
   readonly color: string;
   /** Its spoken name: colour is never the only cue (WCAG 1.4.1). */
   readonly label: string;

@@ -1,10 +1,11 @@
-import { canPlace, checkConnection, findChip, replaceChip } from "~/features/projects";
+import { canPlace, findChip, replaceChip } from "~/features/projects";
 import type { Circuit, Project } from "~/features/projects";
 import type { ChipId, InstanceId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
+import { blockedRerouted } from "./route-edits";
 
 export type Edit<Type extends EditorAction["type"]> = (
   project: Project,
@@ -22,9 +23,16 @@ export const editDraft = (
     return err({ type: "ChipNotFound", chipId });
   }
   const edited = edit(chip.draft);
-  return edited.ok ? ok(replaceChip(project, { ...chip, draft: edited.value })) : edited;
+  if (!edited.ok) {
+    return edited;
+  }
+  // An edit that changes nothing keeps the project, so it makes no undo step.
+  return ok(
+    edited.value === chip.draft ? project : replaceChip(project, { ...chip, draft: edited.value }),
+  );
 };
 
+/** Places a chip, then re-routes the automatic wires it now covers. */
 export const placeChip: Edit<"placeChip"> = (project, action) => {
   const { instance } = action;
   if (instance.kind.type === "custom") {
@@ -36,7 +44,17 @@ export const placeChip: Edit<"placeChip"> = (project, action) => {
   return editDraft(project, action.chipId, (circuit) =>
     circuit.instances.some((item) => item.id === instance.id)
       ? err({ type: "DuplicateInstance", instanceId: instance.id })
-      : ok({ ...circuit, instances: [...circuit.instances, instance] }),
+      : ok(
+          blockedRerouted(
+            {
+              after: {
+                project,
+                circuit: { ...circuit, instances: [...circuit.instances, instance] },
+              },
+            },
+            new Set([instance.id]),
+          ),
+        ),
   );
 };
 
@@ -71,24 +89,6 @@ export const removeChip: Edit<"removeChip"> = (project, action) =>
       ? ok(withoutInstance(circuit, action.instanceId))
       : err({ type: "InstanceNotFound", instanceId: action.instanceId }),
   );
-
-export const connectWire: Edit<"connectWire"> = (project, action) =>
-  editDraft(project, action.chipId, (circuit) => {
-    if (circuit.wires.some((item) => item.id === action.wireId)) {
-      return err({ type: "DuplicateWire", wireId: action.wireId });
-    }
-    const connection = checkConnection(project, circuit, action.from, action.to);
-    if (!connection.ok) {
-      return connection;
-    }
-    const stored = {
-      id: action.wireId,
-      ...connection.value,
-      waypoints: [],
-      manualWaypoints: false,
-    };
-    return ok({ ...circuit, wires: [...circuit.wires, stored] });
-  });
 
 export const removeWire: Edit<"removeWire"> = (project, action) =>
   editDraft(project, action.chipId, (circuit) =>

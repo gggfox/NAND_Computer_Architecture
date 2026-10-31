@@ -43,7 +43,20 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
   ["v", () => ({ type: "setTool", tool: "select" })],
   ["h", () => ({ type: "setTool", tool: "pan" })],
   ["?", () => ({ type: "showHelp" })],
+  ["w", () => ({ type: "arm" })],
+  ["n", (backwards) => ({ type: "nextWire", backwards })],
+  ["N", () => ({ type: "nextWire", backwards: true })],
 ]);
+
+/** What the map reads from the canvas: `Enter` wires an armed pin instead of opening a menu. */
+interface KeyContext {
+  readonly armed: boolean;
+}
+
+const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined =>
+  press.key === "Enter" && context?.armed === true
+    ? { type: "connect" }
+    : PLAIN.get(press.key)?.(press.shift);
 
 /** With Ctrl or ⌘: only the editing shortcuts; everything else stays the browser's. */
 const withCtrl = ({ key, shift }: KeyPress): InteractionCommand | undefined => {
@@ -71,7 +84,10 @@ const shiftF10 = (press: KeyPress): InteractionCommand | undefined =>
  * The canvas keyboard map (Phase 2 plan, "Keyboard map"). `undefined` means the key is not the
  * canvas's: it is left to the browser, so Tab always moves focus on and nothing traps it.
  */
-export const commandForKey = (press: KeyPress): InteractionCommand | undefined => {
+export const commandForKey = (
+  press: KeyPress,
+  context?: KeyContext,
+): InteractionCommand | undefined => {
   if (press.ctrlOrMeta) {
     return withCtrl(press);
   }
@@ -83,5 +99,5 @@ export const commandForKey = (press: KeyPress): InteractionCommand | undefined =
     const step = press.shift ? BIG_STEP : 1;
     return { type: "nudge", columns: arrow[0] * step, rows: arrow[1] * step };
   }
-  return press.key === "F10" ? shiftF10(press) : PLAIN.get(press.key)?.(press.shift);
+  return press.key === "F10" ? shiftF10(press) : plainKey(press, context);
 };

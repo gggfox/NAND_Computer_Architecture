@@ -12,6 +12,7 @@ import type { EditorAction, EditorError } from "../domain/actions";
 import { createHistory, mapHistory, pushHistory, redo, undo } from "../domain/history";
 import type { History } from "../domain/history";
 import { applyAction } from "../domain/reducer";
+import { createRerouteAfterSave, createRouteUnrouted } from "../domain/route-edits";
 
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -125,7 +126,10 @@ const withInput = (state: EditorState, pinId: PinId, value: number): Partial<Edi
  */
 const savedEverywhere = (history: History<Project>, chipId: ChipId): History<Project> => {
   const saved = draftOf(history.present, chipId);
-  return mapHistory(history, (snapshot) => applySavedVersion(snapshot, chipId, saved));
+  const reroute = createRerouteAfterSave(chipId);
+  return mapHistory(history, (snapshot) =>
+    reroute(snapshot, applySavedVersion(snapshot, chipId, saved)),
+  );
 };
 
 /**
@@ -164,7 +168,8 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       }
     };
     return {
-      history: createHistory(project),
+      // Routing wires that have none (files from before the router) is not an edit.
+      history: createHistory(createRouteUnrouted()(project)),
       chipId: project.lastOpenedChipId,
       lastError: NO_ERROR,
       inputs: new Map(),
@@ -175,7 +180,10 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
           return err(result.error);
         }
         set({ lastError: NO_ERROR });
-        commit(nextHistory(get().history, action, result.value));
+        // An edit that changed nothing (Tidy on tidy wires, the same colour) is no undo step.
+        if (result.value !== get().history.present) {
+          commit(nextHistory(get().history, action, result.value));
+        }
         // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
         return ok(undefined);
       },
@@ -183,7 +191,7 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
         if (findChip(get().history.present, chipId) === undefined) {
           return err({ type: "ChipNotFound", chipId });
         }
-        set({ chipId });
+        set({ chipId, history: mapHistory(get().history, createRouteUnrouted()) });
         touch();
         // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
         return ok(undefined);

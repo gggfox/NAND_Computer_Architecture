@@ -3,7 +3,7 @@ import { assert, describe, expect, it } from "vitest";
 
 import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
-import { newInstanceId } from "~/shared/ids";
+import { newInstanceId, newWireId } from "~/shared/ids";
 
 import { announcementText, chipLabel } from "./announcements";
 import type { Scene } from "./geometry";
@@ -59,10 +59,43 @@ describe("announcementText", () => {
     expect(announcementText(scene, known, { type: "pin", instanceId: nand.id, pin: 9 })).toBe("");
   });
 
+  it("says when a pin is armed, a wire added and wiring cancelled", () => {
+    const { scene, nand } = demo();
+    const say = (announcement: Parameters<typeof announcementText>[2]) =>
+      announcementText(scene, known, announcement);
+    expect(say({ type: "armed", instanceId: nand.id, pin: 2 })).toBe(
+      "out of NAND gate 1 ready to wire",
+    );
+    expect(say({ type: "armed", instanceId: nand.id, pin: 9 })).toBe("");
+    expect(say({ type: "wired" })).toBe("Wire added");
+    expect(say({ type: "disarmed" })).toBe("Wiring cancelled");
+    expect(say({ type: "bends", active: true })).toBe(
+      "Moving bends. ] and [ choose a segment, arrows move it, Escape finishes.",
+    );
+    expect(say({ type: "bends", active: false })).toBe("Bends done");
+  });
+
   it("rejects unknown announcements", () => {
     const { scene } = demo();
     /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
     const bogus = JSON.parse('{"type":"bogus"}') as never;
     expect(() => announcementText(scene, known, bogus)).toThrow("Unexpected value");
+  });
+});
+
+describe("the wire selected announcement", () => {
+  it("names a keyboard-selected wire by its ends, or says nothing for a missing wire", () => {
+    const { scene } = demo();
+    const [intoA] = scene.circuit.wires;
+    assert(intoA !== undefined);
+    const say = (announcement: Parameters<typeof announcementText>[2]) =>
+      announcementText(scene, known, announcement);
+    expect(say({ type: "wireSelected", wireId: intoA.id })).toBe(
+      "Wire from A of A to a of NAND gate 1",
+    );
+    expect(say({ type: "wireSelected", wireId: newWireId() })).toBe("");
+    const dangling = { ...intoA, to: { ...intoA.to, pin: 9 } };
+    const broken: Scene = { ...scene, circuit: { ...scene.circuit, wires: [dangling] } };
+    expect(announcementText(broken, known, { type: "wireSelected", wireId: intoA.id })).toBe("");
   });
 });

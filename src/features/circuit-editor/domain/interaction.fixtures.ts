@@ -3,6 +3,7 @@ import { assert } from "vitest";
 
 import { createDemoProject } from "~/features/projects";
 import type { Point } from "~/features/projects";
+import { WireIdSchema } from "~/shared/ids";
 
 import { SCREEN_PAD } from "./camera";
 import { createLayoutCache } from "./chip-layout";
@@ -17,6 +18,9 @@ import type {
   Interpreted,
   Tool,
 } from "./interaction";
+
+/** The id every wire drawn in these tests gets. */
+export const WIRE_ID = WireIdSchema.parse("00000000-0000-4000-8000-0000000000aa");
 
 export const NONE: Modifiers = { shift: false, alt: false, ctrlOrMeta: false, space: false };
 
@@ -38,6 +42,7 @@ export const setup = (tool: Tool = "select") => {
     chipId: chip.id,
     viewport: { width: 800, height: 600 },
     index: () => buildIndex(scene),
+    newWireId: () => WIRE_ID,
   };
   const [pieceA, pieceB, nand, pieceOut] = circuit.instances;
   assert(pieceA && pieceB && nand && pieceOut);

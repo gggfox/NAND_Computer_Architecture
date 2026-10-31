@@ -43,23 +43,19 @@ describe("tap on empty canvas and pins", () => {
     expect(cleared.effects).toEqual([{ type: "announce", announcement: { type: "cleared" } }]);
   });
 
-  it("a touch on a pin selects its chip and pins its card open; a mouse only selects", () => {
+  it("a tap on a pin arms it instead of selecting its chip or opening its card", () => {
     const { context, state, nand } = setup();
-    const touched = gesture(state, context, tap(screen(160, 60), "touch"));
-    expect(touched.state.card).toEqual({
-      instanceId: nand.id,
-      pin: 0,
-      screen: screen(160, 60),
-      pinned: true,
-    });
-    expect(touched.effects.at(-1)).toEqual({
-      type: "announce",
-      announcement: { type: "pin", instanceId: nand.id, pin: 0 },
-    });
-    const clicked = gesture(state, context, tap(screen(160, 60)));
-    expect(clicked.state.card).toBeUndefined();
+    for (const kind of ["touch", "mouse"] as const) {
+      const tapped = gesture(state, context, tap(screen(160, 60), kind));
+      expect(tapped.state.armed?.end).toEqual({ instanceId: nand.id, pin: 0 });
+      expect(tapped.state.card).toBeUndefined();
+      expect(tapped.state.selection.instances.size).toBe(0);
+    }
   });
 });
+
+/** A long-press on the NAND's pin `a`: it pins the card open. */
+const pressPin = { type: "longPress", point: screen(160, 60), kind: "touch" } as const;
 
 describe("hover", () => {
   it("a mouse over a pin shows its card; moving away hides it", () => {
@@ -73,7 +69,7 @@ describe("hover", () => {
 
   it("a pinned card stays while the mouse moves", () => {
     const { context, state } = setup();
-    const pinned = gesture(state, context, tap(screen(160, 60), "touch")).state;
+    const pinned = gesture(state, context, pressPin).state;
     const moved = gesture(pinned, context, { type: "hover", point: screen(160, 100) }).state;
     expect(moved.card).toMatchObject({ pin: 0, pinned: true });
   });
@@ -84,7 +80,7 @@ describe("hover", () => {
     const left = gesture(over, context, { type: "hoverEnd" }).state;
     expect(left.hover).toBeUndefined();
     expect(left.card).toBeUndefined();
-    const pinned = gesture(state, context, tap(screen(160, 60), "touch")).state;
+    const pinned = gesture(state, context, pressPin).state;
     const hovered = gesture(pinned, context, { type: "hover", point: screen(160, 100) }).state;
     const kept = gesture(hovered, context, { type: "hoverEnd" }).state;
     expect(kept.hover).toBeUndefined();
@@ -97,10 +93,14 @@ describe("long-press and context menu", () => {
     const { context, state, nand } = setup();
     const point = screen(220, 80);
     const result = gesture(state, context, { type: "longPress", point, kind: "touch" });
-    expect(result.state.menu).toEqual({ instanceId: nand.id, screen: point });
+    expect(result.state.menu).toEqual({ kind: "chip", instanceId: nand.id, screen: point });
     expect([...result.state.selection.instances]).toEqual([nand.id]);
     const right = gesture(state, context, { type: "contextMenu", point: screen(160, 60) });
-    expect(right.state.menu).toEqual({ instanceId: nand.id, screen: screen(160, 60) });
+    expect(right.state.menu).toEqual({
+      kind: "chip",
+      instanceId: nand.id,
+      screen: screen(160, 60),
+    });
   });
 
   it("on a pin pins its card; on a wire selects it", () => {
@@ -127,11 +127,11 @@ describe("long-press and context menu", () => {
     expect(gesture(pan.state, pan.context, empty).state.lassoArmed).toBe(false);
   });
 
-  it("a context menu off any chip just closes overlays", () => {
+  it("a context menu off any chip closes the chip menu for the canvas menu", () => {
     const { context, state } = setup();
     const opened = gesture(state, context, { type: "contextMenu", point: screen(220, 80) }).state;
     const closed = gesture(opened, context, { type: "contextMenu", point: screen(600, 400) });
-    expect(closed.state.menu).toBeUndefined();
+    expect(closed.state.menu).toEqual({ kind: "canvas", screen: screen(600, 400) });
     expect(closed.effects).toEqual([]);
   });
 });

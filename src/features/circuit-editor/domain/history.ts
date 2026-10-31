@@ -39,8 +39,19 @@ export const redo = <S>(history: History<S>): History<S> => {
   return { past: [...history.past, history.present], present: next, future: rest };
 };
 
-export const mapHistory = <S>(history: History<S>, fn: (snapshot: S) => S): History<S> => ({
-  past: history.past.map((snapshot) => fn(snapshot)),
-  present: fn(history.present),
-  future: history.future.map((snapshot) => fn(snapshot)),
-});
+const same = <S>(first: readonly S[], second: readonly S[]): boolean =>
+  first.every((snapshot, index) => snapshot === second[index]);
+
+/** Maps every snapshot; when `fn` returns each one unchanged, the history itself is unchanged. */
+export const mapHistory = <S>(history: History<S>, fn: (snapshot: S) => S): History<S> => {
+  const mapped = {
+    past: history.past.map((snapshot) => fn(snapshot)),
+    present: fn(history.present),
+    future: history.future.map((snapshot) => fn(snapshot)),
+  };
+  return mapped.present === history.present &&
+    same(mapped.past, history.past) &&
+    same(mapped.future, history.future)
+    ? history
+    : mapped;
+};

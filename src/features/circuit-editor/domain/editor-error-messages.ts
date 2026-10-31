@@ -33,6 +33,8 @@ const MESSAGES: Messages = {
   WouldContainItself: () => m.editor_error_would_contain_itself(),
   NothingToMove: () => m.editor_error_nothing_to_move(),
   NothingToRemove: () => m.editor_error_nothing_to_remove(),
+  NothingToRecolor: () => m.editor_error_nothing_to_recolor(),
+  NothingToReroute: () => m.editor_error_nothing_to_reroute(),
 };
 
 // The false branch narrows to `never`, so an unknown error at runtime reaches `assertNever`.
