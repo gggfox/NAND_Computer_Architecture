@@ -84,10 +84,7 @@ describe("recolorWires", () => {
     const wireIds = [first.id, second.id];
     const red = applied(project, { type: "recolorWires", chipId, wireIds, color: "red" });
     const recolored = draftIn(red, chipId).wires;
-    expect(recolored.map((item) => [item.color, item.waypoints])).toEqual([
-      ["red", []],
-      ["red", []],
-    ]);
+    expect(recolored.map((item) => item.color)).toEqual(["red", "red"]);
     const cleared = applied(red, { type: "recolorWires", chipId, wireIds: [first.id] });
     expect(Object.hasOwn(wireIn(cleared, chipId, first.id), "color")).toBe(false);
     expect(wireIn(cleared, chipId, second.id)).toBe(recolored[1]);

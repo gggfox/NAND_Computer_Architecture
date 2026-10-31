@@ -7,6 +7,7 @@ import type { Result } from "~/shared/result";
 import type { EditorError } from "./actions";
 import { editDraft } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
+import type { Scene } from "./geometry";
 import { settled } from "./route-edits";
 
 /** Connects two pins and routes only the new wire; with no legal route it keeps the elbow. */
@@ -50,23 +51,38 @@ const editWires = (
   return missing === undefined ? ok(edit(new Set(request.wireIds))) : err(missing);
 };
 
+/** The wire in `color`; the same object when it already is. */
 const recolored = (wire: Wire, color: WireColor | undefined): Wire => {
+  if (wire.color === color) {
+    return wire;
+  }
   const { color: _old, ...rest } = wire;
   return color === undefined ? rest : { ...rest, color };
 };
 
-/** Sets (or, with no colour, clears) the colour of every listed wire; routes stay as they are. */
+/**
+ * The colour is part of a wire's signal, so a recoloured automatic wire no longer shares edges
+ * with its old trunk: it is routed again around it, while the trunk keeps its route. Wires
+ * recoloured alike from one source and bit still share a trunk. Hand bends stay as they are.
+ */
+const recoloredIn = (scene: Scene, wireIds: ReadonlySet<WireId>, color: WireColor | undefined) => {
+  const { circuit } = scene;
+  const wires = circuit.wires.map((wire) => (wireIds.has(wire.id) ? recolored(wire, color) : wire));
+  const changed = wires.filter((wire, index) => wire !== circuit.wires[index]);
+  if (changed.length === 0) {
+    return circuit;
+  }
+  const automatic = changed.filter((wire) => !wire.manualWaypoints).map((wire) => wire.id);
+  return settled({ ...scene, circuit: { ...circuit, wires } }, new Set(automatic));
+};
+
+/** Sets (or, with no colour, clears) the colour of every listed wire, re-routing automatic ones. */
 export const recolorWires: Edit<"recolorWires"> = (project, action) =>
   editDraft(project, action.chipId, (circuit) =>
     editWires(
       circuit,
       { wireIds: action.wireIds, empty: { type: "NothingToRecolor" } },
-      (wireIds) => ({
-        ...circuit,
-        wires: circuit.wires.map((wire) =>
-          wireIds.has(wire.id) ? recolored(wire, action.color) : wire,
-        ),
-      }),
+      (wireIds) => recoloredIn({ project, circuit }, wireIds, action.color),
     ),
   );
 
