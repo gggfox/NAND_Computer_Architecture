@@ -90,6 +90,16 @@ describe("createEditorStore errors", () => {
     expect(store.getState().history.past).toHaveLength(0);
   });
 
+  it("an edit that changes nothing is no undo step", () => {
+    const { repo } = fakeRepo(SAVED);
+    const store = createEditorStore(createDemoProject("x"), repo);
+    const { chipId } = store.getState();
+    const wireIds = openCircuit(store.getState()).wires.map((item) => item.id);
+    const before = store.getState().history;
+    expect(store.getState().dispatch({ type: "recolorWires", chipId, wireIds }).ok).toBe(true);
+    expect(store.getState().history).toBe(before);
+  });
+
   it("clears a stale error on the next successful dispatch", () => {
     const { repo } = fakeRepo(SAVED);
     const store = createEditorStore(createDemoProject("x"), repo);

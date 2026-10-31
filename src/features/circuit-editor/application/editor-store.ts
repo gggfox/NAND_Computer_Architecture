@@ -180,7 +180,10 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
           return err(result.error);
         }
         set({ lastError: NO_ERROR });
-        commit(nextHistory(get().history, action, result.value));
+        // An edit that changed nothing (Tidy on tidy wires, the same colour) is no undo step.
+        if (result.value !== get().history.present) {
+          commit(nextHistory(get().history, action, result.value));
+        }
         // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
         return ok(undefined);
       },

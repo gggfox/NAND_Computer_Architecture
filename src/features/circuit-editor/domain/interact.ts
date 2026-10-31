@@ -29,7 +29,11 @@ export const interact = (
       return onCommand(state, input.command, context);
     }
     case "historyChanged": {
-      return done(afterHistory(state, context.scene));
+      const after = afterHistory(state, context.scene);
+      // Bend mode ended with its wire (deleted, or undone away), so say so, as Escape does.
+      return state.bends !== undefined && after.bends === undefined
+        ? done(after, { type: "announce", announcement: { type: "bends", active: false } })
+        : done(after);
     }
     default: {
       return assertNever(input);

@@ -169,13 +169,22 @@ export const startWireDrag = (
   return { ...armed, state: { ...rest, drag } };
 };
 
+const sameEnd = (first: PinRef, second: PinRef): boolean =>
+  first.instanceId === second.instanceId && first.pin === second.pin && first.bit === second.bit;
+
 /** A wire drag ended: it connects to the nearest legal pin within reach, else nothing is wired. */
 export const endWireDrag = (
   state: InteractionState,
   drag: WireDrag,
   context: InteractionContext,
 ): Interpreted => {
-  const legal = state.armed?.legal ?? new Set<string>();
+  // `w` may have armed another pin mid-drag; the drop is legal for the pin the drag started at.
+  // With nothing armed (wiring was cancelled), nothing is.
+  const { armed: current } = state;
+  const legal =
+    current === undefined || sameEnd(current.end, drag.from)
+      ? (current?.legal ?? new Set<string>())
+      : legalTargets(context.scene, drag.from);
   const target = nearestPin(context.index(), drag.point, {
     reach: REACH_PX / state.camera.zoom,
     accept: (hit) => legal.has(pinLevelKey(hit.instanceId, hit.pin)),

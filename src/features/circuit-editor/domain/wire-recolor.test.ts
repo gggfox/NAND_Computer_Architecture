@@ -99,3 +99,16 @@ describe("recolorWires and hand bends", () => {
     expect(stored.waypoints).toBe(wireIn(bent, chipId, wireIds[0]).waypoints);
   });
 });
+
+describe("edits that change nothing", () => {
+  it("recolouring to the colour a wire has keeps the project", () => {
+    const { project, chipId, wireIds } = trunk();
+    expect(applied(project, { type: "recolorWires", chipId, wireIds: [...wireIds] })).toBe(project);
+  });
+
+  it("re-routing wires onto the routes they have keeps the project", () => {
+    const { project, chipId, wireIds } = trunk();
+    const tidy = applied(project, { type: "rerouteWires", chipId, wireIds: [...wireIds] });
+    expect(applied(tidy, { type: "rerouteWires", chipId, wireIds: [...wireIds] })).toBe(tidy);
+  });
+});

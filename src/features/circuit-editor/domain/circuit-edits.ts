@@ -23,7 +23,13 @@ export const editDraft = (
     return err({ type: "ChipNotFound", chipId });
   }
   const edited = edit(chip.draft);
-  return edited.ok ? ok(replaceChip(project, { ...chip, draft: edited.value })) : edited;
+  if (!edited.ok) {
+    return edited;
+  }
+  // An edit that changes nothing keeps the project, so it makes no undo step.
+  return ok(
+    edited.value === chip.draft ? project : replaceChip(project, { ...chip, draft: edited.value }),
+  );
 };
 
 /** Places a chip, then re-routes the automatic wires it now covers. */

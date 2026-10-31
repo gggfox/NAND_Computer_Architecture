@@ -158,11 +158,21 @@ describe("bend mode drags that edit nothing", () => {
     const wires = circuit.wires.slice(1);
     const gone = { ...context, scene: { ...context.scene, circuit: { ...circuit, wires } } };
     const started = gesture(state, context, drag(HANDLE, screen(147, 40))[0]!).state;
-    const after = interact(started, { type: "historyChanged" }, gone).state;
-    expect(after.drag).toBeUndefined();
-    expect(after.bends).toBeUndefined();
+    const after = interact(started, { type: "historyChanged" }, gone);
+    expect(after.state.drag).toBeUndefined();
+    expect(after.state.bends).toBeUndefined();
     const ended = gesture(started, gone, { type: "dragEnd", point: screen(147, 40) });
     expect(ended.effects).toEqual([]);
+  });
+
+  it("says bend mode is done when an edit removes its wire, as Escape does", () => {
+    const { context, state, circuit } = bending();
+    const wires = circuit.wires.slice(1);
+    const gone = { ...context, scene: { ...context.scene, circuit: { ...circuit, wires } } };
+    expect(interact(state, { type: "historyChanged" }, gone).effects).toEqual([
+      { type: "announce", announcement: { type: "bends", active: false } },
+    ]);
+    expect(interact(state, { type: "historyChanged" }, context).effects).toEqual([]);
   });
 
   it("a wire that is gone has no handles", () => {

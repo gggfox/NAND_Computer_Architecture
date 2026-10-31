@@ -93,16 +93,17 @@ const selectAll = (state: InteractionState, context: InteractionContext): Interp
 };
 
 /**
- * Escape closes the topmost thing: the bit picker, then an armed pin, then an overlay, then (in
- * `bendKey`) bend mode, then an armed lasso, then the selection.
+ * Escape closes the topmost thing: the bit picker, then a menu or card, then an armed pin, then
+ * (in `bendKey`) bend mode, then an armed lasso, then the selection. A menu opened while a pin is
+ * armed closes alone, so the pin stays armed for what the menu does.
  */
 const escape = (state: InteractionState): Interpreted => {
+  if (state.bitPick === undefined && (state.menu !== undefined || state.card !== undefined)) {
+    return done(withoutOverlays(state));
+  }
   const wiring = cancelWiring(state);
   if (wiring !== undefined) {
     return wiring;
-  }
-  if (state.menu !== undefined || state.card !== undefined) {
-    return done(withoutOverlays(state));
   }
   if (state.lassoArmed) {
     return done({ ...state, lassoArmed: false });

@@ -1,8 +1,15 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { describe, expect, it } from "vitest";
 
-import { dispatched, NAND_A, NAND_OUT, PIN_A_OUT, wiring } from "./interaction-wiring.fixtures";
-import { command, gesture, gestures, tap, WIRE_ID } from "./interaction.fixtures";
+import {
+  dispatched,
+  EMPTY,
+  NAND_A,
+  NAND_OUT,
+  PIN_A_OUT,
+  wiring,
+} from "./interaction-wiring.fixtures";
+import { command, drag, gesture, gestures, tap, WIRE_ID } from "./interaction.fixtures";
 
 describe("wiring keys", () => {
   it("arm arms the pin in the card, else the focused chip's first pin", () => {
@@ -63,5 +70,37 @@ describe("drags without their armed pin", () => {
     } as const;
     const released = gesture(drawing, context, { type: "dragEnd", point: NAND_A });
     expect(dispatched(released.effects)).toEqual([]);
+  });
+});
+
+describe("a wire drag after w armed another pin", () => {
+  it("drops onto the pins legal for where the drag started", () => {
+    const { context, state, nand, pieceA } = wiring();
+    const [start, ...rest] = drag(PIN_A_OUT, NAND_A);
+    const dragging = gesture(state, context, start!).state;
+    const card = { instanceId: nand.id, pin: 0, screen: NAND_A, pinned: true };
+    // `w` arms the NAND's input `a`, from which `a` itself is no target.
+    const rearmed = command({ ...dragging, card }, context, { type: "arm" }).state;
+    expect(rearmed.armed?.end).toEqual({ instanceId: nand.id, pin: 0 });
+    const dropped = gestures(rearmed, context, rest);
+    expect(dispatched(dropped.effects)).toEqual([
+      expect.objectContaining({
+        from: { instanceId: pieceA.id, pin: 0 },
+        to: { instanceId: nand.id, pin: 0 },
+      }),
+    ]);
+  });
+});
+
+describe("escape with a menu open over an armed pin", () => {
+  it("closes the menu first and keeps the pin armed, then disarms", () => {
+    const { context, state, pieceA } = wiring();
+    const armed = gesture(state, context, tap(PIN_A_OUT)).state;
+    const menu = { kind: "canvas", screen: EMPTY } as const;
+    const closed = command({ ...armed, menu }, context, { type: "escape" });
+    expect(closed.state.menu).toBeUndefined();
+    expect(closed.state.armed?.end).toEqual({ instanceId: pieceA.id, pin: 0 });
+    const cancelled = command(closed.state, context, { type: "escape" });
+    expect(cancelled.state.armed).toBeUndefined();
   });
 });
