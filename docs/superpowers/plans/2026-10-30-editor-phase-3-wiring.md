@@ -8,7 +8,8 @@ Tasks 1-11 are done. Controller rulings that changed the plan:
 
 - The router routes a batch around settled wires only, so stale routes of pending batch members are not obstacles.
 - An edit re-routes only wires newly blocked, per instance, by an instance it placed, moved or resized; wires already blocked elsewhere stay until Re-route or Tidy wires.
-- A hand-bent wire whose ends move apart keeps its bends; exactly one end moving re-routes it; both ends moving by the same delta translates it.
+- A hand-bent wire whose two end anchors move by the same delta is translated; one anchor moving, or both by different deltas, re-routes it as automatic (this supersedes "ends moving apart keep their bends", which resizes made reachable).
+- Wires whose end anchor moved re-route after a pin width change, a save and a chip rename too; a recoloured automatic wire re-routes off its old trunk.
 - In the Pan tool a drag on a wire pans; branching by drag needs the Select tool, or Branch in the wire menu.
 - Keyboard bend editing: `]`/`[` choose a segment and the arrow keys move it.
 - Keyboard wire selection: `n`/`N` step through the selected chip's wires.
@@ -18,7 +19,8 @@ Known follow-ups:
 - Multi-select of wires on touch.
 - `n` does not pan the camera to the wire.
 - `canvas_hint` does not mention N.
-- Glow cost is not measured in CI.
+- Glow cost is measured only by `pnpm e2e:perf` (zoom 0.51 case), not in CI.
+- The relaxed-route marker in the pin card is deferred: the owner can use Re-route or Tidy wires when a route had to overlap another signal.
 - Chips can be dropped overlapping (carried over from Phase 2).
 
 **Goal:** Let the owner draw, route, colour, branch and reshape wires on the canvas, with routes that go around chips and never lie on top of other wires.
