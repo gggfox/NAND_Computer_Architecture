@@ -128,8 +128,13 @@ export const filteredTree = (
   return { nodes: kept, expanded: new Set(expandedKeys(kept)) };
 };
 
-/** Distinct tags across all chips, sorted. */
-export const allTags = (nodes: readonly LibraryNode[]): readonly string[] =>
-  [...new Set(leaves(nodes).flatMap((node) => (node.type === "chip" ? node.tags : [])))].toSorted(
-    compareNames,
-  );
+/** Distinct tags across all chips, sorted; tags equal under `normalize` keep the first spelling (D13). */
+export const allTags = (nodes: readonly LibraryNode[]): readonly string[] => {
+  const byKey = new Map<string, string>();
+  for (const tag of leaves(nodes).flatMap((node) => (node.type === "chip" ? node.tags : []))) {
+    if (!byKey.has(normalize(tag))) {
+      byKey.set(normalize(tag), tag);
+    }
+  }
+  return [...byKey.values()].toSorted(compareNames);
+};

@@ -147,4 +147,11 @@ describe("isFiltering and allTags", () => {
   it("lists distinct tags sorted", () => {
     expect(allTags(tree)).toEqual(["adder", "gate", "half"]);
   });
+
+  it("keeps the first spelling of tags that differ only in case or accents", () => {
+    const first = chip("A", { tags: ["Gate", "Sumadór"] });
+    const second = chip("B", { tags: ["gate", "sumador"] });
+    const spelled = libraryTree(projectWith("p", [first, second]), first.id);
+    expect(allTags(spelled)).toEqual(["Gate", "Sumadór"]);
+  });
 });
