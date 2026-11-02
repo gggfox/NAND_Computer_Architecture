@@ -234,3 +234,15 @@ describe("createEditorStore library actions", () => {
     ).toBe("Used in Full adder");
   });
 });
+
+describe("createEditorStore library edits that change nothing", () => {
+  it("a library edit that changes nothing is no undo step", () => {
+    const store = createEditorStore(twoChips(), fakeRepo(SAVED).repo);
+    const [first] = store.getState().history.present.chips;
+    assert(first !== undefined);
+    const { past } = store.getState().history;
+    store.getState().dispatch({ type: "starChip", chipId: first.id, starred: false });
+    store.getState().dispatch({ type: "fileChip", chipId: first.id });
+    expect(store.getState().history.past).toBe(past);
+  });
+});

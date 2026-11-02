@@ -171,3 +171,14 @@ describe("deleteFolder", () => {
     expect(result.folders[1]).toEqual(adders);
   });
 });
+
+describe("folder edits that change nothing return the same project", () => {
+  test("renameFolder to the same trimmed name", () => {
+    expect(value(renameFolder(base, logic.id, " Logic "))).toBe(base);
+  });
+
+  test("moveFolder to the current parent", () => {
+    expect(value(moveFolder(base, adders.id, arithmetic.id))).toBe(base);
+    expect(value(moveFolder(base, logic.id, top))).toBe(base);
+  });
+});

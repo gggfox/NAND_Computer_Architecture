@@ -115,3 +115,25 @@ describe("deleteChip", () => {
     expect(afterOther.lastOpenedChipId).toBe(first.id);
   });
 });
+
+describe("edits that change nothing return the same project", () => {
+  const filed = { ...newChip("A"), folderId: folder.id, starred: true, tags: ["gate", "adder"] };
+  const loose = newChip("B");
+  const project = { ...projectWith("p", [filed, loose]), folders: [folder] };
+
+  test("fileChip to the current folder, or the top level for a top-level chip", () => {
+    expect(value(fileChip(project, filed.id, folder.id))).toBe(project);
+    expect(value(fileChip(project, loose.id, top))).toBe(project);
+  });
+
+  test("setStarred to the current value", () => {
+    expect(value(setStarred(project, filed.id, true))).toBe(project);
+    expect(value(setStarred(project, loose.id, false))).toBe(project);
+  });
+
+  test("setTags whose normalized result equals the current tags", () => {
+    expect(value(setTags(project, filed.id, [" gate", "Gate", "adder "]))).toBe(project);
+    expect(value(setTags(project, loose.id, [" "]))).toBe(project);
+    expect(value(setTags(project, filed.id, ["adder", "gate"]))).not.toBe(project);
+  });
+});

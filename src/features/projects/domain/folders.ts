@@ -78,10 +78,30 @@ export const renameFolder = (
   if (trimmed === "") {
     return err({ type: "EmptyName" });
   }
-  if (findFolder(project, folderId) === undefined) {
+  const target = findFolder(project, folderId);
+  if (target === undefined) {
     return err(notFound(folderId));
   }
-  return ok(updateFolder(project, folderId, (folder) => ({ ...folder, name: trimmed })));
+  return target.name === trimmed
+    ? ok(project)
+    : ok(updateFolder(project, folderId, (folder) => ({ ...folder, name: trimmed })));
+};
+
+const moveUnder = (folder: Folder, parentId: FolderId | undefined): Folder => {
+  const { parentId: _dropped, ...rest } = folder;
+  return parentId === undefined ? rest : { ...rest, parentId };
+};
+
+/** Why `folderId` can't move under `parentId`, if it can't. */
+const parentRefusal = (
+  project: Project,
+  folderId: FolderId,
+  parentId: FolderId,
+): FolderError | undefined => {
+  if (findFolder(project, parentId) === undefined) {
+    return notFound(parentId);
+  }
+  return isWithin(project, parentId, folderId) ? { type: "FolderIntoItself", folderId } : undefined;
 };
 
 /** `parentId` undefined moves the folder to the top level. */
@@ -90,19 +110,17 @@ export const moveFolder = (
   folderId: FolderId,
   parentId: FolderId | undefined,
 ): Result<Project, FolderError> => {
-  if (findFolder(project, folderId) === undefined) {
+  const target = findFolder(project, folderId);
+  if (target === undefined) {
     return err(notFound(folderId));
   }
-  if (parentId === undefined) {
-    return ok(updateFolder(project, folderId, ({ parentId: _dropped, ...rest }) => rest));
+  if (target.parentId === parentId) {
+    return ok(project);
   }
-  if (findFolder(project, parentId) === undefined) {
-    return err(notFound(parentId));
-  }
-  if (isWithin(project, parentId, folderId)) {
-    return err({ type: "FolderIntoItself", folderId });
-  }
-  return ok(updateFolder(project, folderId, (folder) => ({ ...folder, parentId })));
+  const refusal = parentId === undefined ? undefined : parentRefusal(project, folderId, parentId);
+  return refusal === undefined
+    ? ok(updateFolder(project, folderId, (folder) => moveUnder(folder, parentId)))
+    : err(refusal);
 };
 
 const liftChip = (chip: Chip, from: FolderId, to: FolderId | undefined): Chip => {
@@ -111,11 +129,6 @@ const liftChip = (chip: Chip, from: FolderId, to: FolderId | undefined): Chip =>
   }
   const { folderId: _dropped, ...rest } = chip;
   return to === undefined ? rest : { ...rest, folderId: to };
-};
-
-const moveUnder = (folder: Folder, parentId: FolderId | undefined): Folder => {
-  const { parentId: _dropped, ...rest } = folder;
-  return parentId === undefined ? rest : { ...rest, parentId };
 };
 
 /** Subfolders and chips move up to the deleted folder's parent; no chip is removed. */
