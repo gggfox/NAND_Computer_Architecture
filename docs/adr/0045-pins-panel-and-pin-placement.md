@@ -10,6 +10,6 @@ Tapping a 1-bit input piece toggles it. A multi-bit input is not toggled by a ta
 
 Rename in place goes through the label hit on a pin piece, or `F2` on the selected pin, and opens a popover. Closing it ends the rename with `endRename` and keeps the selection. A refused rename shows its reason inline only.
 
-A refused connection shows a translated reason on the canvas and announces it in the live region. The notice survives mouse hover and is cleared by every other gesture and command, since clearing on hover would hide it on the first mouse move after a click.
+A refused connection shows a translated reason on the canvas and announces it in the live region. This amends ADR 44: an illegal tap still re-arms on the tapped pin, but no longer silently; it now also shows and announces why the connection was refused. The notice survives mouse hover and is cleared by every other gesture and command, since clearing on hover would hide it on the first mouse move after a click.
 
-Known limit: at the phone's fit zoom a pin's 24 px target covers its piece, so a tap arms the pin instead of toggling the input. Fixing it changes the pin-over-body hit priority and is left to the owner (see the plan's Status section).
+Known limit: at the phone's fit zoom a pin's 24 px target covers its piece, so a tap arms the pin instead of toggling the input. Fixing it changes the pin-over-body hit priority and is left to the owner (see the Status section of `docs/superpowers/plans/2026-11-02-editor-phase-4a-pins.md`).

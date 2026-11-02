@@ -21,7 +21,8 @@ Tasks 1-10 are done. Controller rulings that changed the plan:
 
 Known follow-ups:
 
-- Phones: at fit zoom (0.25) a pin's 24 px target covers its 10 px piece, so a tap arms the pin instead of toggling the input (Ruling 11); zoom in to toggle. A canvas tap near the right edge did not select OUT.
+- Phones: at fit zoom (0.25) a pin's 24 px target covers its 10 px piece, so a tap arms the pin instead of toggling the input (Ruling 11); zoom in to toggle.
+- Phones: a canvas tap near the right edge did not select OUT. The cause is unknown and not tied to the fit zoom above; to investigate.
 - Focus: typing within about 2 frames after the Add dialog closes can lose a name (double-rAF race). Deleting the last pin drops focus to the body; focus "Add inputs..." instead.
 - Panel selection follows focus, which may re-announce noisily. With several pieces selected, extra rows have no `aria-selected`, and Ctrl/Shift no longer extend the selection there.
 - Tests: 6 Linux-WebKit `createProject` flakes (retry-green); harden it. The phone spec reads results through Export.
