@@ -97,26 +97,31 @@ const outcomeText = (flow: SaveFlow): string => {
   return flow.outcome === "discarded" ? m.chip_discarded({ name: flow.name }) : "";
 };
 
+interface ChipHeaderProps {
+  readonly session: EditorSession;
+  readonly firstSave?: FirstSaveSlot | undefined;
+  /** Before the breadcrumbs: the way out of the project. */
+  readonly start?: ReactNode;
+  /** Just before Save: page-wide preferences, so they need no row of their own. */
+  readonly end?: ReactNode;
+}
+
 /**
  * The open chip's header (D9): its breadcrumbs, a dot while it has unsaved changes, Save and the
  * ⋯ menu, and a polite status that says what a save or discard did (D11).
  */
-export function ChipHeader({
-  session,
-  firstSave,
-}: {
-  readonly session: EditorSession;
-  readonly firstSave?: FirstSaveSlot | undefined;
-}): ReactNode {
+export function ChipHeader({ session, firstSave, start, end }: ChipHeaderProps): ReactNode {
   const flow = useSaveFlow(session, firstSave !== undefined);
   return (
     <div className={styles.header}>
+      {start === undefined ? undefined : <span className={styles.start}>{start}</span>}
       <Breadcrumbs session={session} />
       {flow.state === "saved" ? undefined : (
         <span className={styles.dot}>
           <span className="visually-hidden">{m.chip_unsaved()}</span>
         </span>
       )}
+      {end === undefined ? undefined : <span className={styles.end}>{end}</span>}
       <HeaderActions flow={flow} />
       <output className={styles.outcome}>{outcomeText(flow)}</output>
       <SaveDialogs flow={flow} firstSave={firstSave} />

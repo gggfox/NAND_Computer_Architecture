@@ -74,11 +74,24 @@ const wheelCommand = (element: HTMLElement, event: WheelEvent): InteractionComma
       factor: Math.exp(-dy / PIXELS_PER_E),
     };
   }
-  return { type: "panBy", delta: event.shiftKey ? { x: -dy, y: 0 } : { x: -dx, y: -dy } };
+  if (event.shiftKey) {
+    // Some browsers (macOS, recent Chrome) already turn a Shift scroll into deltaX; others don't.
+    return { type: "panBy", delta: { x: -(dx === 0 ? dy : dx), y: 0 } };
+  }
+  return { type: "panBy", delta: { x: -dx, y: -dy } };
 };
 
-const preventContextMenu = (event: Event): void => {
+const preventDefault = (event: Event): void => {
   event.preventDefault();
+};
+
+const MIDDLE_BUTTON = 1;
+
+/** A middle press pans the canvas, so the browser's own auto-scrolling must not start. */
+const preventAutoScroll = (event: Event): void => {
+  if (event instanceof MouseEvent && event.button === MIDDLE_BUTTON) {
+    event.preventDefault();
+  }
 };
 
 /** Runs the recognizer, emits its gestures and keeps the one long-press timer it asks for. */
@@ -150,7 +163,8 @@ const listenersFor = (
     lostpointercapture: pointer("cancel"),
     // A mouse leaving clears its hover; the recognizer ignores it mid-press and for touch.
     pointerleave: pointer("leave"),
-    contextmenu: preventContextMenu,
+    contextmenu: preventDefault,
+    mousedown: preventAutoScroll,
     wheel: (event) => {
       if (event instanceof WheelEvent) {
         event.preventDefault();

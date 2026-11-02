@@ -4,7 +4,7 @@ import styles from "./EditorLayout.module.css";
 
 interface EditorLayoutProps {
   readonly toolbar: ReactNode;
-  /** The open chip's header (breadcrumbs, Save): a full-width row under the toolbar (D9). */
+  /** The open chip's header (breadcrumbs, Save): a full-width row above the toolbar (D9). */
   readonly header?: ReactNode;
   readonly status: ReactNode;
   readonly canvas: ReactNode;
@@ -30,8 +30,8 @@ export function EditorLayout({
 }: EditorLayoutProps): ReactNode {
   return (
     <div className={styles.layout}>
-      <div className={styles.toolbar}>{toolbar}</div>
       <div className={styles.header}>{header}</div>
+      <div className={styles.toolbar}>{toolbar}</div>
       <div className={styles.status}>{status}</div>
       <div className={styles.library}>{library}</div>
       <div className={styles.canvas}>{canvas}</div>

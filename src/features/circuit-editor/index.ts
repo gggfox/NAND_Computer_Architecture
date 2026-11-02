@@ -43,6 +43,7 @@ export { cameraForUrl, type Camera } from "./domain/camera";
 export { CircuitCanvas } from "./ui/CircuitCanvas";
 export { EditorLayout } from "./ui/EditorLayout";
 export { ChipHeader, type FirstSaveContext, type FirstSaveSlot } from "./ui/ChipHeader";
+export { EditorPreferences } from "./ui/EditorPreferences";
 export { EditorToolbar } from "./ui/EditorToolbar";
 export { PinsPanel } from "./ui/PinsPanel";
 export type { EditorSession } from "./application/editor-session";

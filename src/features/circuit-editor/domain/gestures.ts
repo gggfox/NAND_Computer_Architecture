@@ -3,11 +3,14 @@ import type { Point } from "~/features/projects";
 import { assertNever } from "~/shared/assert-never";
 
 import type {
+  Finger,
   Gesture,
-  Modifiers,
+  GestureState,
+  Pinch,
   PointerEventInput,
   PointerInput,
   PointerKind,
+  Press,
 } from "./gesture-types";
 
 /** Movement (CSS px) before a press becomes a drag. A finger wobbles more than a mouse. */
@@ -16,40 +19,9 @@ const TOUCH_SLOP = 10;
 /** A press held this long within slop is a long-press (touch and pen). */
 export const LONG_PRESS_MS = 500;
 const PRIMARY_BUTTON = 0;
+const MIDDLE_BUTTON = 1;
 const SECONDARY_BUTTON = 2;
 const HALF = 0.5;
-
-/** The one pointer of a one-finger (or mouse) gesture. */
-interface Press {
-  readonly id: number;
-  readonly kind: PointerKind;
-  readonly origin: Point;
-  /** Where the pointer is now. */
-  readonly point: Point;
-  readonly start: number;
-  readonly modifiers: Modifiers;
-}
-
-/** The two fingers of a pinch, by pointer id. */
-interface Finger {
-  readonly id: number;
-  readonly point: Point;
-}
-
-interface Pinch {
-  readonly fingers: readonly [Finger, Finger];
-  readonly center: Point;
-  readonly spread: number;
-}
-
-/** Opaque to callers: start from `INITIAL_GESTURES` and feed `recognize`. */
-export type GestureState =
-  | { readonly phase: "idle" }
-  | { readonly phase: "pressed" | "longPressed" | "dragging"; readonly press: Press }
-  | { readonly phase: "secondary"; readonly id: number }
-  | { readonly phase: "pinching"; readonly pinch: Pinch }
-  /** Fingers left over from a pinch: ignored until all are lifted, so no stray tap follows. */
-  | { readonly phase: "draining"; readonly ids: ReadonlySet<number> };
 
 export const INITIAL_GESTURES: GestureState = { phase: "idle" };
 
@@ -82,11 +54,12 @@ const pinchOf = (fingers: readonly [Finger, Finger]): Pinch => {
 };
 
 /**
- * A first pointer: a secondary mouse button is an immediate context menu; any button other than
- * the primary and secondary (middle, back, forward) starts nothing.
+ * A first pointer: a secondary mouse button is an immediate context menu; a middle one pans; any
+ * other button than these (back, forward) starts nothing.
  */
 const startPress = (input: PointerEventInput): Recognized => {
-  if (input.button !== PRIMARY_BUTTON && input.button !== SECONDARY_BUTTON) {
+  const middle = input.kind === "mouse" && input.button === MIDDLE_BUTTON;
+  if (!middle && input.button !== PRIMARY_BUTTON && input.button !== SECONDARY_BUTTON) {
     return result(IDLE);
   }
   if (input.kind === "mouse" && input.button === SECONDARY_BUTTON) {
@@ -95,8 +68,9 @@ const startPress = (input: PointerEventInput): Recognized => {
       { type: "contextMenu", point: input.point },
     );
   }
-  const { id, kind, point, time: start, modifiers } = input;
-  const press = { id, kind, origin: point, point, start, modifiers };
+  const { id, kind, point, time: start } = input;
+  const modifiers = middle ? { ...input.modifiers, space: true } : input.modifiers;
+  const press = { id, kind, origin: point, point, start, modifiers, panOnly: middle };
   const recognized = result({ phase: "pressed", press });
   return kind === "mouse" ? recognized : { ...recognized, timerAt: start + LONG_PRESS_MS };
 };
@@ -197,7 +171,7 @@ const endPress = (state: Pressing, input: PointerEventInput): Recognized => {
       cancelled ? { type: "dragCancel" } : { type: "dragEnd", point: input.point },
     );
   }
-  if (state.phase === "pressed" && !cancelled) {
+  if (state.phase === "pressed" && !cancelled && !state.press.panOnly) {
     const { kind, modifiers } = state.press;
     return result(IDLE, { type: "tap", point: input.point, kind, modifiers });
   }
@@ -265,6 +239,7 @@ const onTimer = (state: GestureState, time: number): Recognized => {
  * - Touch or pen held still for `LONG_PRESS_MS`: `longPress`; a later move gives a drag marked
  *   `afterLongPress`, and the release gives nothing more.
  * - A mouse's secondary button: `contextMenu` at once, and nothing else from that press.
+ * - A mouse's middle button: a drag as if Space were held (so it pans); a click gives nothing.
  * - A second finger: `pinchStart` (after `dragEnd` if a drag was running), then `pinch`, then
  *   `pinchEnd` when either finger lifts; leftover fingers are ignored until lifted. A third is ignored.
  * - A mouse moving with no button down: `hover`; leaving the canvas then: `hoverEnd`. Touch never

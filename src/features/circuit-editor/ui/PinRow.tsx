@@ -163,7 +163,9 @@ export function PinRow({
       <span className={styles.name}>
         <NameField row={row} direction={direction} actions={actions} />
       </span>
-      <WidthSelect row={row} actions={actions} />
+      <span className={styles.width}>
+        <WidthSelect row={row} actions={actions} />
+      </span>
       <span className={styles.controls}>
         <PinValue row={row} direction={direction} value={value} onSetInput={onSetInput} />
         <RowMenu row={row} count={count} actions={actions} />

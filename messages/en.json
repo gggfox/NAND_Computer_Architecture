@@ -149,7 +149,7 @@
   "help_pins": "Read the selected chip's pins one by one",
   "help_keys_tools": "V and H",
   "help_tools": "Select tool, Pan tool",
-  "help_keys_space": "Space + drag",
+  "help_keys_space": "Space + drag, or middle-button drag",
   "help_space": "Pan with any tool",
   "help_keys_escape": "Escape",
   "help_escape": "Close a menu or card, then clear the selection",

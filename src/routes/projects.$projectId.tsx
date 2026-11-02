@@ -9,6 +9,7 @@ import {
   ChipHeader,
   CircuitCanvas,
   EditorLayout,
+  EditorPreferences,
   EditorSearchSchema,
   EditorToolbar,
   PinsPanel,
@@ -230,11 +231,13 @@ function Editor({ project }: EditorProps): ReactNode {
   const notices = useNotices(session, failure);
   const library = useLibrary(session);
 
-  const toolbar = (
-    <>
-      <BackLink />
-      <EditorToolbar session={session} onImport={onImport} leading={library.toggle} />
-    </>
+  const header = (
+    <ChipHeader
+      session={session}
+      firstSave={library.firstSave}
+      start={<BackLink />}
+      end={<EditorPreferences />}
+    />
   );
   const panel = (
     <>
@@ -246,8 +249,8 @@ function Editor({ project }: EditorProps): ReactNode {
     <main>
       <h1 className="visually-hidden">{project.name}</h1>
       <EditorLayout
-        toolbar={toolbar}
-        header={<ChipHeader session={session} firstSave={library.firstSave} />}
+        toolbar={<EditorToolbar session={session} onImport={onImport} leading={library.toggle} />}
+        header={header}
         status={<StatusMessages messages={notices} />}
         canvas={<CircuitCanvas session={session} view={view} canvasMenu={library.quickAdd} />}
         panel={panel}

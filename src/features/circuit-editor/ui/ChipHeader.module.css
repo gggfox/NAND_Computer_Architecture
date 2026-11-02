@@ -1,18 +1,52 @@
 /*
- * One row that never scrolls sideways: the breadcrumbs shrink and truncate, the dot sits right
- * after the open chip's name, and the actions keep the far end. The outcome takes its own row.
+ * One row that never scrolls sideways: the way out, then the breadcrumbs, which shrink and
+ * truncate, the dot right after the open chip's name, and the preferences and actions at the far
+ * end. On phones the preferences take a row of their own; the outcome always does.
  */
 .header {
   display: grid;
-  grid-template-columns: minmax(0, max-content) auto 1fr auto;
+  grid-template:
+    "start path dot . actions" auto
+    "end end end end end" auto
+    "outcome outcome outcome outcome outcome" auto
+    / auto minmax(0, max-content) auto 1fr auto;
   column-gap: 0.5rem;
   align-items: center;
   min-inline-size: 0;
 }
 
+@media (width >= 640px) {
+  .header {
+    grid-template:
+      "start path dot . end actions" auto
+      "outcome outcome outcome outcome outcome outcome" auto
+      / auto minmax(0, max-content) auto 1fr auto auto;
+  }
+}
+
+.start {
+  display: flex;
+  grid-area: start;
+  gap: 0.5rem;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.start::after {
+  color: var(--color-text-muted);
+  content: "›" / "";
+}
+
 .path {
-  grid-column: 1;
+  grid-area: path;
   min-inline-size: 0;
+}
+
+.end {
+  display: flex;
+  grid-area: end;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .crumbs {
@@ -57,7 +91,7 @@
 
 .dot {
   position: relative;
-  grid-column: 2;
+  grid-area: dot;
   inline-size: 0.625rem;
   block-size: 0.625rem;
   background-color: var(--color-accent);
@@ -66,13 +100,13 @@
 
 .actions {
   display: flex;
-  grid-column: 4;
+  grid-area: actions;
   gap: 0.25rem;
   align-items: center;
 }
 
 .outcome {
-  grid-column: 1 / -1;
+  grid-area: outcome;
   font-size: var(--font-size-small);
   color: var(--color-text-muted);
 }
