@@ -12,9 +12,7 @@ describe("moving chips", () => {
     const [start, move, end] = drag(screen(220, 80), screen(305, 83));
     const moving = gestures(state, context, [start!, move!]);
     expect(moving.effects.filter((effect) => effect.type === "dispatch")).toEqual([]);
-    expect(previewOf(moving.state, context.scene.circuit)).toEqual(
-      new Map([[nand.id, { x: 240, y: 40 }]]),
-    );
+    expect(previewOf(moving.state, context.scene)).toEqual(new Map([[nand.id, { x: 240, y: 40 }]]));
     const ended = gesture(moving.state, context, end!);
     expect(ended.state.drag).toBeUndefined();
     expect(ended.effects).toEqual([
@@ -42,6 +40,42 @@ describe("moving chips", () => {
       action: { moves: [{ instanceId: pieceA.id }, { instanceId: nand.id }] },
     });
   });
+});
+
+describe("moving pin pieces", () => {
+  it("snaps a lone pin piece into line, and the preview matches the commit", () => {
+    const { context, state, pieceB } = setup();
+    const [start, move, end] = drag(screen(20, 100), screen(60, 220));
+    const moving = gestures(state, context, [start!, move!]);
+    expect(previewOf(moving.state, context.scene)).toEqual(
+      new Map([[pieceB.id, { x: 0, y: 200 }]]),
+    );
+    expect(gesture(moving.state, context, end!).effects[0]).toEqual({
+      type: "dispatch",
+      action: {
+        type: "moveChips",
+        chipId: context.chipId,
+        moves: [{ instanceId: pieceB.id, position: { x: 0, y: 200 } }],
+      },
+    });
+  });
+
+  it("does not snap a drag of two pin pieces", () => {
+    const { context, state, pieceA, pieceB } = setup();
+    const both = { ...state, selection: selectInstances([pieceA.id, pieceB.id]) };
+    const result = gestures(both, context, drag(screen(20, 20), screen(50, 20)));
+    expect(result.effects.find((effect) => effect.type === "dispatch")).toMatchObject({
+      action: {
+        moves: [
+          { instanceId: pieceA.id, position: { x: 40, y: 0 } },
+          { instanceId: pieceB.id, position: { x: 40, y: 80 } },
+        ],
+      },
+    });
+  });
+});
+
+describe("hover while moving", () => {
   it("drops the pin hover when a drag starts, so its ring does not stay behind", () => {
     const { context, state } = setup();
     const hovering = gesture(state, context, { type: "hover", point: screen(220, 80) });

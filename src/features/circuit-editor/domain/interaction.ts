@@ -1,4 +1,4 @@
-import type { Circuit, PinKey, PinRef, Point, WireColor } from "~/features/projects";
+import type { PinKey, PinRef, Point, WireColor } from "~/features/projects";
 import type { ChipId, InstanceId, WireId } from "~/shared/ids";
 
 import type { EditorAction } from "./actions";
@@ -7,7 +7,8 @@ import type { Size } from "./chip-layout";
 import type { Scene } from "./geometry";
 import type { Gesture } from "./gesture-types";
 import type { Hit, SpatialIndex } from "./hit-test";
-import { previewPositions } from "./move";
+import { dragPreview } from "./pin-snap";
+import type { DragPreview } from "./pin-snap";
 import { EMPTY_SELECTION, isEmpty } from "./selection";
 import type { Selection } from "./selection";
 
@@ -203,14 +204,18 @@ export const done = (state: InteractionState, ...effects: readonly Effect[]): In
   effects,
 });
 
-/** The chips being dragged and where they are drawn; empty when no move is in progress. */
-export const previewOf = (
-  state: InteractionState,
-  circuit: Circuit,
-): ReadonlyMap<InstanceId, Point> =>
+/**
+ * The chips being dragged, where they are drawn (and will drop), and a lone pin piece's guide;
+ * empty when no move is in progress.
+ */
+export const movePreviewOf = (state: InteractionState, scene: Scene): DragPreview =>
   state.drag?.kind === "move"
-    ? previewPositions(circuit, state.selection.instances, state.drag.delta)
-    : new Map();
+    ? dragPreview(scene, state.selection.instances, state.drag.delta)
+    : { positions: new Map() };
+
+/** Just the positions of `movePreviewOf`. */
+export const previewOf = (state: InteractionState, scene: Scene): ReadonlyMap<InstanceId, Point> =>
+  movePreviewOf(state, scene).positions;
 
 /** The state with the menu, pin card and bit picker closed; an armed pin stays armed. */
 export const withoutOverlays = (state: InteractionState): InteractionState => {

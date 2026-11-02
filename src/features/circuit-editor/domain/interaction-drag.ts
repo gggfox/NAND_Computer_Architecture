@@ -102,8 +102,8 @@ export const onDragMove = (
 
 /** The moves of the drag in `state` as one action; its returned state is the caller's to replace. */
 const endMove = (state: InteractionState, context: InteractionContext): Interpreted => {
-  const { circuit } = context.scene;
-  const moves = movesFor(circuit, previewOf(state, circuit));
+  const { scene } = context;
+  const moves = movesFor(scene.circuit, previewOf(state, scene));
   return moves.length === 0
     ? done(state)
     : done(

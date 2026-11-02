@@ -95,7 +95,7 @@ describe("wire drags", () => {
       point: { x: 150, y: 64 },
     });
     expect(dispatched(drawing.effects)).toEqual([]);
-    expect(previewOf(drawing.state, context.scene.circuit).size).toBe(0);
+    expect(previewOf(drawing.state, context.scene).size).toBe(0);
     const released = gesture(drawing.state, context, end!);
     expect(released.state.drag).toBeUndefined();
     expect(dispatched(released.effects)).toEqual([
