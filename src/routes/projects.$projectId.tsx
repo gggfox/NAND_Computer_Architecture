@@ -49,6 +49,12 @@ export const Route = createFileRoute("/projects/$projectId")({
    * route keep the mounted editor, its undo history and input levels. Search is not a loader dep.
    */
   staleTime: Number.POSITIVE_INFINITY,
+  /*
+   * Keep nothing once the route is left. A cached match would mount the previous project while the
+   * reload runs; the editor's mount-time `?chip=` correction would then navigate, cancel that
+   * reload, and leave the stale project (without the latest edits) open.
+   */
+  gcTime: 0,
   shouldReload: ({ cause }) => cause === "enter",
   pendingComponent: Pending,
   component: ProjectRoute,
@@ -128,9 +134,17 @@ function useImport(
 
   const open = async (project: Project): Promise<void> => {
     setFailure(undefined);
-    await (project.id === currentId
-      ? router.invalidate()
-      : navigate({ to: "/projects/$projectId", params: { projectId: project.id } }));
+    if (project.id !== currentId) {
+      await navigate({ to: "/projects/$projectId", params: { projectId: project.id } });
+      return;
+    }
+    // The file replaces this project, so its own last-opened chip wins over the URL's (D8).
+    await navigate({
+      to: ".",
+      search: (search) => ({ ...search, chip: undefined }),
+      replace: true,
+    });
+    await router.invalidate();
   };
 
   const importFile = async (file: File): Promise<void> => {
