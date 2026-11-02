@@ -2,7 +2,7 @@
 
 ## Status
 
-Tasks 1-12 are done. The decisions, and the calls made while building, are recorded in [ADR 46](../../adr/0046-chip-library-and-placement.md).
+Tasks 1-12 and the fixes from the final review are done, pending the two before-merge checks below: the manual iOS long-press check and the rebase after PR #23. The decisions, and the calls made while building, are recorded in [ADR 46](../../adr/0046-chip-library-and-placement.md).
 
 What shipped:
 
@@ -11,10 +11,12 @@ What shipped:
 - The `chip-library` feature: tree view model, search tiers and filters, the panel (a column from 640 px) and the phone sheet, row menus, the New chip, New folder, Rename, Colour, Tags, Move to… and Delete dialogs.
 - Placing: armed placement with the placing banner, keyboard placing at the centre of the view, long-press and mouse drag to the canvas and between folders, and the quick-add menu through the `canvasMenu` slot.
 - E2E for the phone tap path, the keyboard path and D6; axe on every new surface in every theme; `library-panel` and `quick-add` visual baselines.
+- Final review fixes: library edits that change nothing (same folder, star, tags, folder name or parent) are no undo step; deleting the open chip commits the next open chip with the history in one update; on phones a drag files chips and moves folders onto folder rows in the open sheet; Escape anywhere in the library stops a placement; `allTags` lists tags that differ only in case once; Move to… shows a refusal.
 
 Rulings made while building:
 
 - Drops hit-test the canvas by its rectangle (`clientToCanvas`), not `elementFromPoint`, because an open sheet makes the rest of the page inert.
+- On phones the sheet stays in view while a drag is over it, so its folder rows take drops; once the finger leaves the sheet it tucks away for the rest of the drag. A part is placed by dragging it up out of the sheet first. The "Top level" row keeps its space while idle, so the sheet doesn't grow under the finger when a drag begins.
 - The WebKit touch drag test is skipped: Playwright's WebKit can't inject real touches. The tap path is tested there.
 - The drag sends a clock tick before every release, so a held press is never read as a tap.
 - Tasks 5 and 6 were built and reviewed as one dispatch.
@@ -28,16 +30,16 @@ Rulings made while building:
 
 Known follow-ups:
 
-- **Before merge:** check long-press drag by hand on iOS Safari (a device or the simulator). If iOS cancels the drag, add the grip handle from the Task 1 brief.
+- **Before merge:** check long-press drag by hand on iOS Safari (a device or the simulator): out of the sheet onto the canvas, and onto a folder row inside the open sheet. If iOS cancels the drag, add the grip handle from the Task 1 brief.
 - **Before merge:** PR #23 merges first; then rebase this branch onto `main` and re-run `pnpm check`, `pnpm e2e` and the visual baselines.
-- Drag: a no-op drop (same folder, or Top level for a top-level item) adds an empty undo step; focus goes to the body after a folder drop on wide screens; the "Top level" row may be out of reach in a long library (no auto-scroll); `track-press.ts` and `row-drag.ts` have no unit tests; the 500 ms press suppression after a menu or drop can swallow a keyboard Enter.
-- Search: `allTags` is case-sensitive while the filter is not ("Gate" and "gate" show twice); empty folders vanish while searching; `prunedKeys` scans every top-level key per key.
-- Dialogs: Move to… swallows a refusal error; Rename and Colour close on a refusal (the reason shows only in the status line); the delete error is plain text.
+- Drag: focus goes to the body after a folder drop on wide screens; the "Top level" row may be out of reach in a long library (no auto-scroll); on phones a drag that has left the sheet can't come back to a folder row (the sheet stays tucked until the drag ends); `track-press.ts` and `row-drag.ts` have no unit tests; the 500 ms press suppression after a menu or drop can swallow a keyboard Enter.
+- Search: empty folders vanish while searching; `prunedKeys` scans every top-level key per key.
+- Dialogs: Rename and Colour close on a refusal (the reason shows only in the status line); the delete error is plain text.
 - Quick-add: no "no results" message; the search field is controlled twice; the section label is read twice (`aria-label` and header).
-- Interaction: `armPlacement` leaves bend mode on; adding a pin from the quick-add announces nothing; rename `WIRING_COMMANDS`, which now carries placement commands.
+- Interaction: `armPlacement` leaves bend mode on; rename `WIRING_COMMANDS`, which now carries placement commands.
 - A draft-only open chip shows `ChipNotSaved`, not `WouldContainItself`; the UI doesn't assume the latter.
 - Tests to add: folder-issue paths below a cycle, `deleteFolder` re-parenting through three levels, `tagChip` with an unknown chip, `runRowCommand`, library-view expansion state, tag filter chips in e2e, `isTucked`.
-- Small cleanups: `reopenAfterDelete` sets `chipId` directly (check it matches `openChip`); define `CanvasMenuSlot` in `library-bridge`; drop the `PlaceableKind` re-export kept only for a test; detach the CDP session in the drag spec; hover style on unavailable rows.
+- Small cleanups: define `CanvasMenuSlot` in `library-bridge`; drop the `PlaceableKind` re-export kept only for a test; detach the CDP session in the drag spec; hover style on unavailable rows.
 - Keyboard modality: `useFocusVisible` stands in for React Aria's interaction modality, so a screen reader's click on a part may arm it rather than place it at the centre; document or fix.
 - Test hygiene: a garbled test name at `placement.test.ts:697`, a duplicated quick-add test name, `Parameters<typeof isArmed>[1]` where `PlaceableKind` is meant, file-wide lint disables in the drag-intent test, quick-add styles living in `shared` rather than a `QuickAdd.module.css`.
 - Firefox did not launch on the Task 12 machine ("Could not find profile folder"), so the new specs ran on Chromium, WebKit, mobile Chrome, mobile Safari and tablet Safari only; CI runs Firefox.
