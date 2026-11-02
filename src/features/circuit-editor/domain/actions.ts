@@ -21,6 +21,9 @@ export type PlaceableInstance = ChipInstance & {
   readonly kind: Exclude<InstanceKind, { readonly type: "pin" }>;
 };
 
+/** What the library places: a built-in part or a saved chip, never a pin piece. */
+export type PlaceableKind = PlaceableInstance["kind"];
+
 export type EditorAction =
   | { readonly type: "placeChip"; readonly chipId: ChipId; readonly instance: PlaceableInstance }
   | {

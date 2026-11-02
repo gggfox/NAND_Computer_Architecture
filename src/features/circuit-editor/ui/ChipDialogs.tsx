@@ -19,7 +19,8 @@ interface ChipDialogProps<Kind extends ChipDialog["kind"]> {
   readonly onClose: () => void;
 }
 
-const swatches = (): readonly Swatch[] => [
+/** The chip colours, each with a translated name; the library also matches searches on them. */
+export const chipSwatches = (): readonly Swatch[] => [
   { color: "#3b82f6", label: m.color_blue() },
   { color: "#ef4444", label: m.color_red() },
   { color: "#f59e0b", label: m.color_orange() },
@@ -100,7 +101,7 @@ export function RecolorChipDialog({
       >
         <SwatchPicker
           label={m.chip_color_label()}
-          swatches={swatches()}
+          swatches={chipSwatches()}
           value={color}
           onChange={setColor}
         />

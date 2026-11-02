@@ -209,5 +209,10 @@
   "pins_width_label": "Ancho de {name}",
   "pins_value_label": "Valor de {name}",
   "pins_value_unknown": "Desconocido",
-  "pins_empty": "Aún no hay pines. Añade entradas y salidas aquí."
+  "pins_empty": "Aún no hay pines. Añade entradas y salidas aquí.",
+  "placing_banner": "Toca el lienzo para colocar {name}",
+  "placing_done": "Listo",
+  "announce_placing": "Colocando {name}. Toca el lienzo o pulsa Escape para terminar.",
+  "announce_placing_stopped": "Colocación terminada.",
+  "announce_placed": "{name} colocado."
 }

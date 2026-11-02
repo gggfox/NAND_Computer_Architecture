@@ -209,5 +209,10 @@
   "pins_width_label": "Width of {name}",
   "pins_value_label": "Value of {name}",
   "pins_value_unknown": "Unknown",
-  "pins_empty": "No pins yet. Add inputs and outputs here."
+  "pins_empty": "No pins yet. Add inputs and outputs here.",
+  "placing_banner": "Tap the canvas to place {name}",
+  "placing_done": "Done",
+  "announce_placing": "Placing {name}. Tap or press Escape to stop.",
+  "announce_placing_stopped": "Stopped placing.",
+  "announce_placed": "Placed {name}."
 }

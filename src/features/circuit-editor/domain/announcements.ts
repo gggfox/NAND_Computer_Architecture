@@ -7,6 +7,7 @@ import { editorErrorMessage } from "./editor-error-messages";
 import { layoutIn } from "./geometry";
 import type { Scene } from "./geometry";
 import type { Announcement } from "./interaction";
+import { partName } from "./messages";
 import { pinInfo } from "./pin-info";
 import type { KnownLevels } from "./signals";
 
@@ -134,6 +135,23 @@ const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnoun
   }
 };
 
+type PlacementAnnouncement = Extract<Announcement, { type: "placing" | "placed" }>;
+
+const isPlacement = (announcement: Announcement): announcement is PlacementAnnouncement =>
+  announcement.type === "placing" || announcement.type === "placed";
+
+/** Placement armed, stopped, or a part placed, named as the library names it. */
+const placementText = (scene: Scene, announcement: PlacementAnnouncement): string => {
+  const { kind } = announcement;
+  if (kind === undefined) {
+    return m.announce_placing_stopped();
+  }
+  const name = partName(scene.project, scene.circuit, kind);
+  return announcement.type === "placing"
+    ? m.announce_placing({ name })
+    : m.announce_placed({ name });
+};
+
 /** The live region's words for an announcement (ADR 3, 17). */
 export const announcementText = (
   scene: Scene,
@@ -143,6 +161,17 @@ export const announcementText = (
   if (isWiring(announcement)) {
     return wiringText(scene, known, announcement);
   }
+  return isPlacement(announcement)
+    ? placementText(scene, announcement)
+    : plainText(scene, known, announcement);
+};
+
+/** The selection, move, delete, tool and pin announcements. */
+const plainText = (
+  scene: Scene,
+  known: KnownLevels,
+  announcement: Exclude<Announcement, WiringAnnouncement | PlacementAnnouncement>,
+): string => {
   switch (announcement.type) {
     case "selected": {
       return selectedText(scene, announcement);

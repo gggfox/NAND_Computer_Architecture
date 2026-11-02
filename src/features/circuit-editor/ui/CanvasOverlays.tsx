@@ -5,13 +5,15 @@ import { useStore } from "zustand";
 import type { EditorSession } from "../application/editor-session";
 import { editorErrorMessage } from "../domain/editor-error-messages";
 import { CanvasMenus } from "./CanvasMenus";
-import type { OverlayDialog } from "./CanvasMenus";
+import type { CanvasMenuSlot, OverlayDialog } from "./CanvasMenus";
 import { KeyboardHelp } from "./KeyboardHelp";
 import { OverlayDialogView } from "./OverlayDialogView";
 import { PinCard } from "./PinCard";
 import { PinRenamePopover } from "./PinRenamePopover";
 
 import styles from "./CircuitCanvas.module.css";
+
+export type { CanvasMenuSlot } from "./CanvasMenus";
 
 /**
  * A dialog opened from a menu has no trigger left to give focus back to once it closes (the menu
@@ -63,16 +65,18 @@ function RenameOverlay({
 }
 
 /**
- * The refusal notice, menus, bit picker, pin card, rename popover, dialogs and keyboard help, over
- * the canvas.
+ * The refusal notice, menus, bit picker, pin card, rename popover, dialogs and
+ * keyboard help, over the canvas.
  */
 export function CanvasOverlays({
   session,
   hostRef,
+  canvasMenu,
 }: {
   readonly session: EditorSession;
   /** The canvas host, which takes focus back when a dialog closes. */
   readonly hostRef: RefObject<HTMLElement | null>;
+  readonly canvasMenu?: CanvasMenuSlot | undefined;
 }): ReactNode {
   const card = useStore(session.interaction.store, (state) => state.card);
   const help = useStore(session.interaction.store, (state) => state.help);
@@ -84,7 +88,7 @@ export function CanvasOverlays({
   return (
     <>
       <RefusalNotice session={session} />
-      <CanvasMenus session={session} onDialog={setDialog} />
+      <CanvasMenus session={session} onDialog={setDialog} canvasMenu={canvasMenu} />
       {card === undefined ? undefined : <PinCard session={session} card={card} />}
       <RenameOverlay session={session} hostRef={hostRef} />
       {dialog === undefined ? undefined : (

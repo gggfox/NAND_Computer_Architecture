@@ -1,13 +1,13 @@
 /* oxlint-disable typescript/prefer-readonly-parameter-types -- projects and nodes carry branded ids (mutable object types); none is mutated */
 import { partName } from "~/features/circuit-editor";
+import type { PlaceableKind } from "~/features/circuit-editor";
 import { EMPTY_CIRCUIT, canPlace } from "~/features/projects";
-import type { Folder, InstanceKind, PlaceError, Project } from "~/features/projects";
+import type { Folder, PlaceError, Project } from "~/features/projects";
 import { groupBy } from "~/shared/group-by";
 import type { ChipId, FolderId } from "~/shared/ids";
 import type { Result } from "~/shared/result";
 
-/** Task 7 replaces this with circuit-editor's export. */
-export type PlaceableKind = Exclude<InstanceKind, { type: "pin" }>;
+export type { PlaceableKind } from "~/features/circuit-editor";
 
 export const BUILTIN_KEY = "builtin";
 export const ROOT_KEY = "root";

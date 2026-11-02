@@ -8,6 +8,7 @@ import { PointMenu } from "~/shared/ui";
 import type { MenuEntry } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
+import type { CanvasMenuContext } from "../application/library-bridge";
 import type { Menu } from "../domain/interaction";
 import type { ChipDialog } from "./ChipDialogs";
 import { BitPickerOverlay, CanvasMenuOverlay, WireMenuOverlay } from "./WireMenus";
@@ -81,13 +82,18 @@ function ChipMenuOverlay({
   );
 }
 
+/** The canvas menu's content in place of the default; see `CircuitCanvas`. */
+export type CanvasMenuSlot = (context: CanvasMenuContext) => ReactNode;
+
 /** The open menu (a chip's, a wire's or the canvas's) and the bit picker. */
 export function CanvasMenus({
   session,
   onDialog,
+  canvasMenu,
 }: {
   readonly session: EditorSession;
   readonly onDialog: (dialog: OverlayDialog) => void;
+  readonly canvasMenu?: CanvasMenuSlot | undefined;
 }): ReactNode {
   const menu = useStore(session.interaction.store, (state) => state.menu);
   return (
@@ -104,7 +110,9 @@ export function CanvasMenus({
           }}
         />
       ) : undefined}
-      {menu?.kind === "canvas" ? <CanvasMenuOverlay session={session} menu={menu} /> : undefined}
+      {menu?.kind === "canvas" ? (
+        <CanvasMenuOverlay session={session} menu={menu} slot={canvasMenu} />
+      ) : undefined}
       <BitPickerOverlay session={session} />
     </>
   );

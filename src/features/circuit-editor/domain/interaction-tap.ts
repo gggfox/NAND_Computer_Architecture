@@ -7,6 +7,7 @@ import type { InteractionContext, InteractionState, Interpreted } from "./intera
 import { tappedInBends } from "./interaction-bends";
 import { hitAt } from "./interaction-hits";
 import { startRename, withToggle } from "./interaction-pins";
+import { placingTap } from "./interaction-place";
 import { disarmed, onPinTap } from "./interaction-wiring";
 import { selectInstances, selectWire, toggleInstance, toggleWire } from "./selection";
 
@@ -69,12 +70,19 @@ const tapAt = (state: InteractionState, gesture: Tap, context: InteractionContex
   return { ...tapped, effects: [...cancelled.effects, ...tapped.effects] };
 };
 
-/** A tap. In bend mode, one on a handle does nothing; any other leaves bend mode first. */
+/**
+ * A tap. While placing it places, wherever it lands. In bend mode, one on a handle does nothing;
+ * any other leaves bend mode first.
+ */
 export const onTap = (
   state: InteractionState,
   gesture: Tap,
   context: InteractionContext,
 ): Interpreted => {
+  const placed = placingTap(state, gesture.point, context);
+  if (placed !== undefined) {
+    return placed;
+  }
   const left = tappedInBends(state, gesture.point, context);
   if (left === undefined) {
     return done(state);

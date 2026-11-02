@@ -63,10 +63,10 @@ const attachInput = (
   isSpaceDown: () => boolean,
 ): (() => void) => {
   const { send } = session.interaction.store.getState();
-  const detachViewport = session.attachViewport(() => ({
-    width: canvas.clientWidth,
-    height: canvas.clientHeight,
-  }));
+  const detachViewport = session.attachViewport(() => {
+    const { left, top } = canvas.getBoundingClientRect();
+    return { width: canvas.clientWidth, height: canvas.clientHeight, left, top };
+  });
   const detachPointer = attachPointerInput(canvas, {
     onGesture: (gesture) => {
       send({ type: "gesture", gesture });

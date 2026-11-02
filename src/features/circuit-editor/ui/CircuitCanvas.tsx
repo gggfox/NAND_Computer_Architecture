@@ -8,6 +8,8 @@ import { m } from "~/i18n/paraglide/messages";
 import type { EditorSession } from "../application/editor-session";
 import type { EditorSearch } from "../domain/view-search";
 import { CanvasOverlays } from "./CanvasOverlays";
+import type { CanvasMenuSlot } from "./CanvasOverlays";
+import { PlacingBanner } from "./PlacingBanner";
 import { useCanvas, useSpoken, useUrlCamera } from "./use-canvas";
 
 import styles from "./CircuitCanvas.module.css";
@@ -16,6 +18,8 @@ interface CircuitCanvasProps {
   readonly session: EditorSession;
   /** The URL's camera: followed when it changes from outside (back/forward, a pasted link). */
   readonly view: EditorSearch;
+  /** The canvas menu's content (the library's quick-add); without it, the menu offers Tidy wires. */
+  readonly canvasMenu?: CanvasMenuSlot;
 }
 
 /**
@@ -24,7 +28,7 @@ interface CircuitCanvasProps {
  * speaks each selection, move, delete and pin through a polite live region. Tab always leaves.
  * The minimap in the corner is a pointer shortcut only, so it is hidden from assistive technology.
  */
-export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode {
+export function CircuitCanvas({ session, view, canvasMenu }: CircuitCanvasProps): ReactNode {
   const { canvasRef, minimapRef, onKeyDown, onKeyUp, onBlur } = useCanvas(session);
   useUrlCamera(session, view);
   const spoken = useSpoken(session);
@@ -58,7 +62,8 @@ export function CircuitCanvas({ session, view }: CircuitCanvasProps): ReactNode 
       <p className="visually-hidden" aria-live="polite">
         {spoken}
       </p>
-      <CanvasOverlays session={session} hostRef={hostRef} />
+      <PlacingBanner session={session} hostRef={hostRef} />
+      <CanvasOverlays session={session} hostRef={hostRef} canvasMenu={canvasMenu} />
     </div>
   );
 }

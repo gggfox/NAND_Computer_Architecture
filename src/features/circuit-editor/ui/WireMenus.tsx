@@ -7,6 +7,7 @@ import { PointMenu } from "~/shared/ui";
 import type { MenuEntry } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
+import type { CanvasMenuContext } from "../application/library-bridge";
 import type { BitPick, InteractionCommand, Menu } from "../domain/interaction";
 
 type WireMenu = Extract<Menu, { kind: "wire" }>;
@@ -93,26 +94,57 @@ export function WireMenuOverlay({
   );
 }
 
-/** The canvas menu: Tidy wires (also on the toolbar, so the menu is never the only path). */
+/** What the canvas menu can do at its point; each action closes the menu first. */
+const canvasMenuContext = (session: EditorSession, menu: CanvasMenu): CanvasMenuContext => {
+  const send = sender(session);
+  const close = closer(session, () => session.interaction.store.getState().menu !== undefined);
+  const { screen } = menu;
+  return {
+    screen,
+    close,
+    tidyWires: () => {
+      close();
+      send({ type: "tidyWires" });
+    },
+    place: (kind) => {
+      close();
+      send({ type: "placeAt", kind, screen });
+    },
+    addPin: (direction) => {
+      close();
+      send({ type: "addPinAt", direction, screen });
+    },
+  };
+};
+
+/**
+ * The canvas menu: the `slot` when given (the library's quick-add), else Tidy wires alone (also
+ * on the toolbar, so the menu is never the only path).
+ */
 export function CanvasMenuOverlay({
   session,
   menu,
+  slot,
 }: {
   readonly session: EditorSession;
   readonly menu: CanvasMenu;
+  readonly slot?: ((context: CanvasMenuContext) => ReactNode) | undefined;
 }): ReactNode {
-  const close = closer(session, () => session.interaction.store.getState().menu !== undefined);
-  return (
+  const context = canvasMenuContext(session, menu);
+  return slot === undefined ? (
     <PointMenu
       label={m.canvas_menu_label()}
       point={menu.screen}
       entries={[{ id: "tidy", label: m.canvas_menu_tidy() }]}
       onAction={() => {
-        close();
-        sender(session)({ type: "tidyWires" });
+        context.tidyWires();
       }}
-      onClose={close}
+      onClose={() => {
+        context.close();
+      }}
     />
+  ) : (
+    slot(context)
   );
 }
 
