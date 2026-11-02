@@ -225,3 +225,39 @@ test("a touch drag dropped off the canvas brings the sheet back", async ({
   await expect(sheet).toHaveCount(0);
   expect(mainParts(await exportedProject(page))).toHaveLength(0);
 });
+
+test("a drag cut short when the tree goes away leaves the sheet untucked", async ({
+  page,
+  browserName,
+  isMobile,
+}) => {
+  phoneTouch({ browserName, isMobile });
+  const phone = page.viewportSize() ?? { width: WIDE - 1, height: WIDE };
+  await importLibrary(page);
+  const to = await centreOf(canvasHost(page));
+  const tree = await openLibrary(page);
+  await libraryRow(tree, "Built-in").click();
+  const from = await centreOf(libraryRow(tree, "NAND"));
+  const finger = await cdpTouch(page);
+  await finger.press(from);
+  await page.waitForTimeout(LONG_PRESS);
+  for (let step = 1; step <= MOVES; step += 1) {
+    await finger.move(between(from, to, step / MOVES));
+  }
+  const sheet = page.getByRole("dialog", { name: "Chip library" });
+  await expect(sheet).toBeHidden();
+  // Crossing 640 px swaps the sheet for the column, which unmounts the dragged row's tree.
+  await page.setViewportSize({ width: WIDE + WIDE, height: phone.height });
+  await expect(sheet).toHaveCount(0);
+  await finger.release();
+  await page.setViewportSize(phone);
+
+  await expect(page.getByRole("button", { name: "Library", exact: true })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(sheet).toBeVisible();
+  await expect(libraryRow(tree, "NAND")).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toHaveCount(0);
+});

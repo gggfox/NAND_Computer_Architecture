@@ -114,10 +114,22 @@ const endDrag = (press: Press, client: Point, isDrop: boolean): void => {
   }
 };
 
+interface DragHandlers extends PressHandlers {
+  /** The press was cut short (the tree unmounted, or a new press began): undo the drag's tuck. */
+  readonly onAbort: () => void;
+}
+
 /** `onSettled` hears when the press ends, and whether the row's own press must be ignored. */
-const handlersFor = (press: Press, onSettled: (isSwallowed: boolean) => void): PressHandlers => {
+const handlersFor = (press: Press, onSettled: (isSwallowed: boolean) => void): DragHandlers => {
   let isDragging = false;
   return {
+    onAbort: () => {
+      press.ghost.setState({}, true);
+      if (isDragging) {
+        isDragging = false;
+        press.options.onTuck(false);
+      }
+    },
     onDragStart: (client) => {
       isDragging = true;
       press.options.onTuck(true);
@@ -148,7 +160,7 @@ export interface RowDrag {
   readonly takesAction: () => boolean;
   /** Whether a press on a row is being followed. */
   readonly isPressing: () => boolean;
-  /** Stops following the press, with no outcome. */
+  /** Stops following the press, with no outcome; a drag on is undone (ghost gone, sheet back). */
   readonly stop: () => void;
 }
 
@@ -190,7 +202,12 @@ export const createRowDrag = (): RowDrag => {
     stop();
     swallowUntil = 0;
     const row = rowOf(event.target);
-    stopPress = trackPress(event, handlersFor({ options, item, drag, row, ghost }, onSettled));
+    const handlers = handlersFor({ options, item, drag, row, ghost }, onSettled);
+    const untrack = trackPress(event, handlers);
+    stopPress = (): void => {
+      untrack();
+      handlers.onAbort();
+    };
   };
   return {
     ghost,
