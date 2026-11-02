@@ -1,13 +1,26 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Circuit, Point } from "~/features/projects";
+import type { Circuit, Point, Wire } from "~/features/projects";
 import type { InstanceId, WireId } from "~/shared/ids";
 
+import type { PlaceableInstance } from "./actions";
 import type { Rect } from "./chip-layout";
 
 /** What is selected on the open chip. Not an edit: it lives outside undo history. */
 export interface Selection {
   readonly instances: ReadonlySet<InstanceId>;
   readonly wires: ReadonlySet<WireId>;
+}
+
+/**
+ * What Ctrl+C or Ctrl+X took: the selected parts and the wires between them, as they were. Pin
+ * pieces are the chip's own interface, so they are never copied. Not an edit: it lives outside
+ * undo history, and survives moving between chips.
+ */
+export interface Clipboard {
+  readonly instances: readonly PlaceableInstance[];
+  readonly wires: readonly Wire[];
+  /** How many grid steps the next paste lands from the originals: 0 after a cut, so it returns. */
+  readonly offset: number;
 }
 
 export const EMPTY_SELECTION: Selection = { instances: new Set(), wires: new Set() };

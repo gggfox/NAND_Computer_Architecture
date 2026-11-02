@@ -170,6 +170,14 @@ export const announcementText = (
 const pinAddedText = ({ direction, name }: Extract<Announcement, { type: "pinAdded" }>): string =>
   direction === "input" ? m.announce_input_added({ name }) : m.announce_output_added({ name });
 
+/** Parts copied, cut or pasted. */
+const clipboardText = ({ did, count }: Extract<Announcement, { type: "clipboard" }>): string => {
+  if (did === "copy") {
+    return m.canvas_copied({ count });
+  }
+  return did === "cut" ? m.canvas_cut({ count }) : m.canvas_pasted({ count });
+};
+
 /** The selection, move, delete, tool and pin announcements. */
 const plainText = (
   scene: Scene,
@@ -188,6 +196,9 @@ const plainText = (
     }
     case "deleted": {
       return m.canvas_deleted({ count: announcement.count });
+    }
+    case "clipboard": {
+      return clipboardText(announcement);
     }
     case "tool": {
       return announcement.tool === "pan" ? m.canvas_tool_pan() : m.canvas_tool_select();

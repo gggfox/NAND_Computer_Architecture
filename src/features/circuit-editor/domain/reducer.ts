@@ -3,7 +3,7 @@ import { assertNever } from "~/shared/assert-never";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
-import { moveChips, removeItems } from "./batch-edits";
+import { moveChips, pasteItems, removeItems } from "./batch-edits";
 import { CHIP_HANDLERS } from "./chip-edits";
 import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { addPins } from "./pin-batch-edits";
@@ -26,6 +26,7 @@ const HANDLERS: Handlers = {
   removeChip,
   moveChips,
   removeItems,
+  pasteItems,
   connectWire,
   recolorWires,
   rerouteWires,

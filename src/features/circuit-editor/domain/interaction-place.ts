@@ -11,6 +11,7 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
+import { CLIPBOARD_COMMANDS } from "./interaction-clipboard";
 import { pinAt, placementPosition } from "./placement";
 
 /** How many recently placed kinds the quick-add menu offers (D9). */
@@ -114,8 +115,9 @@ type PlaceHandlers = {
   ) => Interpreted;
 };
 
-/** The placement commands, for the command table. */
-export const PLACE_COMMANDS: PlaceHandlers = {
+/** The placement commands, and the clipboard's (a paste places parts too), for the command table. */
+export const PLACE_COMMANDS: PlaceHandlers & typeof CLIPBOARD_COMMANDS = {
+  ...CLIPBOARD_COMMANDS,
   armPlacement: (state, command) => armPlacement(state, command.kind),
   cancelPlacement: (state) => stopPlacing(state) ?? done(state),
   placeAt: (state, command, context) =>

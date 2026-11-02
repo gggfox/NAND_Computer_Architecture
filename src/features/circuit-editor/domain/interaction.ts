@@ -17,7 +17,7 @@ import type { Hit, SpatialIndex } from "./hit-test";
 import { dragPreview } from "./pin-snap";
 import type { DragPreview } from "./pin-snap";
 import { EMPTY_SELECTION, isEmpty } from "./selection";
-import type { Selection } from "./selection";
+import type { Clipboard, Selection } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
 export type Tool = "pan" | "select";
@@ -126,6 +126,8 @@ export interface InteractionState {
   readonly placing?: PlaceableKind;
   /** The last kinds placed this session, newest first, without repeats (D9). */
   readonly recent: readonly PlaceableKind[];
+  /** What Ctrl+C or Ctrl+X took, for Ctrl+V. */
+  readonly clipboard?: Clipboard;
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -144,6 +146,8 @@ export type InteractionCommand =
   /** Moves the selection, or pans when nothing is selected, by whole grid steps. */
   | { readonly type: "nudge"; readonly columns: number; readonly rows: number }
   | { readonly type: "deleteSelection" }
+  /** Copies (or cuts) the selected parts and the wires between them; paste adds a fresh copy. */
+  | { readonly type: "copy" | "cut" | "paste" }
   | { readonly type: "undo" | "redo" }
   | { readonly type: "zoomIn" | "zoomOut" | "fit" }
   /** Wheel input: zoom about a screen point, or pan by a screen delta. */
@@ -200,6 +204,7 @@ export type Announcement =
   | { readonly type: "cleared" }
   | { readonly type: "moved"; readonly count: number }
   | { readonly type: "deleted"; readonly count: number }
+  | { readonly type: "clipboard"; readonly did: "copy" | "cut" | "paste"; readonly count: number }
   | { readonly type: "tool"; readonly tool: Tool }
   | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }

@@ -13,6 +13,17 @@ const press = (key: string, more: Partial<KeyPress> = {}): KeyPress => ({
   ...more,
 });
 
+describe("clipboard keys", () => {
+  it.each([
+    [press("c", { ctrlOrMeta: true }), { type: "copy" }],
+    [press("x", { ctrlOrMeta: true }), { type: "cut" }],
+    [press("v", { ctrlOrMeta: true }), { type: "paste" }],
+    [press("V", { ctrlOrMeta: true, shift: true }), { type: "paste" }],
+  ])("maps %o to %o", (key, command) => {
+    expect(commandForKey(key)).toEqual(command);
+  });
+});
+
 describe("commandForKey", () => {
   it.each([
     [press("]"), { type: "selectNext", additive: false }],
@@ -54,7 +65,7 @@ describe("commandForKey", () => {
     press("Tab", { shift: true }),
     press("F10"),
     press("0", { ctrlOrMeta: true }),
-    press("c", { ctrlOrMeta: true }),
+    press("f", { ctrlOrMeta: true }),
     press("ArrowLeft", { alt: true }),
     press("x"),
   ])("leaves %o to the browser", (key) => {

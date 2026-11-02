@@ -1,12 +1,13 @@
+import { canPlace } from "~/features/projects";
 import type { Circuit, Project } from "~/features/projects";
-import type { InstanceId } from "~/shared/ids";
+import type { ChipId, InstanceId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
-import { reshaped } from "./route-edits";
+import { blockedRerouted, reshaped } from "./route-edits";
 
 const missingInstance = (
   circuit: Circuit,
@@ -80,3 +81,70 @@ export const removeItems: Edit<"removeItems"> = (project, action) =>
     const missing = missingInstance(circuit, action.instanceIds);
     return missing === undefined ? ok(removeAll(circuit, action)) : err(missing);
   });
+
+/** The first custom part that would make the chip contain itself; `undefined` when all may go in. */
+const refusedPart = (
+  project: Project,
+  action: Extract<EditorAction, { type: "pasteItems" }>,
+): EditorError | undefined => {
+  const custom = new Set<ChipId>();
+  for (const item of action.instances) {
+    if (item.kind.type === "custom") {
+      custom.add(item.kind.chipId);
+    }
+  }
+  for (const chipId of custom) {
+    const allowed = canPlace(project, action.chipId, chipId);
+    if (!allowed.ok) {
+      return allowed.error;
+    }
+  }
+  return undefined;
+};
+
+const duplicateOf = (
+  circuit: Circuit,
+  action: Extract<EditorAction, { type: "pasteItems" }>,
+): EditorError | undefined => {
+  const instanceIds = new Set(circuit.instances.map((item) => item.id));
+  const instance = action.instances.find((item) => instanceIds.has(item.id));
+  if (instance !== undefined) {
+    return { type: "DuplicateInstance", instanceId: instance.id };
+  }
+  const wireIds = new Set(circuit.wires.map((item) => item.id));
+  const wire = action.wires.find((item) => wireIds.has(item.id));
+  return wire === undefined ? undefined : { type: "DuplicateWire", wireId: wire.id };
+};
+
+/**
+ * Adds the parts and their wires, then re-routes the automatic wires the new parts now cover. A
+ * wire must join two of the pasted parts, so nothing pasted can drive a pin already driven.
+ */
+export const pasteItems: Edit<"pasteItems"> = (project, action) => {
+  if (action.instances.length === 0) {
+    return err({ type: "NothingToAdd" });
+  }
+  const refused = refusedPart(project, action);
+  if (refused !== undefined) {
+    return err(refused);
+  }
+  return editDraft(project, action.chipId, (circuit): Result<Circuit, EditorError> => {
+    const duplicate = duplicateOf(circuit, action);
+    if (duplicate !== undefined) {
+      return err(duplicate);
+    }
+    const added = new Set(action.instances.map((item) => item.id));
+    const stray = action.wires.find(
+      (wire) => !added.has(wire.from.instanceId) || !added.has(wire.to.instanceId),
+    );
+    if (stray !== undefined) {
+      return err({ type: "WireNotFound", wireId: stray.id });
+    }
+    const after: Circuit = {
+      ...circuit,
+      instances: [...circuit.instances, ...action.instances],
+      wires: [...circuit.wires, ...action.wires],
+    };
+    return ok(blockedRerouted({ after: { project, circuit: after } }, added));
+  });
+};
