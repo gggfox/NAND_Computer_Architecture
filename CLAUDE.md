@@ -27,6 +27,17 @@ Single-context: one root `GLOSSARY.md` plus `docs/adr/`. See `docs/agents/domain
 
 Notes: the React Compiler runs via `@rolldown/plugin-babel` + `reactCompilerPreset()` in `vite.config.ts`. `verbatimModuleSyntax` stays off per TanStack Start guidance. Dependency versions live only in `pnpm-workspace.yaml` catalogs. Deploy examples are in `deploy/`.
 
+## Subagents
+
+Usage limits are tight, so this overrides skill defaults (including subagent-driven-development's "Model Selection"). Always pass `model` explicitly; an omitted model inherits Opus.
+
+- Implementers and fix agents: `sonnet`. Escalate to `opus` only after a Sonnet agent fails the same task twice.
+- Reviews: one review per PR on `sonnet`, not one per task. The final whole-branch review may use `opus`.
+- Exploration, search, digests: `haiku` or `sonnet`.
+- `opus` subagents only for architecture or design questions, and say why in the dispatch.
+- Keep each agent's task small (1-3 files). Agents run focused checks (`pnpm vitest run <files>`, one e2e spec) and pipe long output through `tail`; only the last step runs `pnpm check`.
+- At most 2-3 agents at once. Start a fresh session (or `/compact`) per phase instead of one long orchestrator session.
+
 ## Rules
 
 - Features expose only `index.ts`; no cross-feature internals; `simulation` imports no React/DOM; `shared` imports no feature; no cycles ([ADR 23](docs/adr/0023-feature-folders.md)).
