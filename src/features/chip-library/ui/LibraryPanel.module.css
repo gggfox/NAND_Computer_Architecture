@@ -1,0 +1,29 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-self: start;
+  inline-size: clamp(12rem, 25vw, 18rem);
+  padding: 0.75rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-grid);
+  border-radius: 0.5rem;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--font-size-title);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

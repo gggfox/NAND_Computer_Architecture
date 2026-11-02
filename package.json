@@ -30,6 +30,7 @@
     "@tanstack/react-start": "catalog:",
     "idb": "catalog:",
     "react": "catalog:",
+    "react-aria": "catalog:",
     "react-aria-components": "catalog:",
     "react-dom": "catalog:",
     "zod": "catalog:",

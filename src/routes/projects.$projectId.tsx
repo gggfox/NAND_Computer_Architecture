@@ -1,19 +1,18 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { useStore } from "zustand";
 
 import { CircuitSummary } from "~/features/accessibility";
+import { useLibrary } from "~/features/chip-library";
 import {
   cameraForUrl,
   CircuitCanvas,
   EditorLayout,
   EditorSearchSchema,
   EditorToolbar,
-  editorStoreErrorMessage,
   PinsPanel,
-  simulationErrorMessage,
   useEditorSession,
+  useSessionErrors,
 } from "~/features/circuit-editor";
 import type { Camera, EditorSession } from "~/features/circuit-editor";
 import {
@@ -158,12 +157,10 @@ function useImport(
 
 function useNotices(session: EditorSession, failure: ImportFailure | undefined): readonly string[] {
   const degradedNotice = useDegradedNotice();
-  const lastError = useStore(session.editor, (state) => state.lastError);
-  const simulationError = useStore(session.simulation, (state) => state.error);
+  const sessionErrors = useSessionErrors(session);
   return [
     ...degradedNotice,
-    ...(lastError === null ? [] : [editorStoreErrorMessage(lastError)]),
-    ...(simulationError === null ? [] : [simulationErrorMessage(simulationError)]),
+    ...sessionErrors,
     ...(failure === undefined ? [] : [importFailureMessage(failure)]),
   ];
 }
@@ -184,11 +181,12 @@ function Editor({ project }: EditorProps): ReactNode {
   const session = useEditorSession(project, getAppProjectRepository(), { camera: view, write });
   const { failure, onImport } = useImport(project.id, session.editor);
   const notices = useNotices(session, failure);
+  const library = useLibrary(session);
 
   const toolbar = (
     <>
       <BackLink />
-      <EditorToolbar session={session} onImport={onImport} />
+      <EditorToolbar session={session} onImport={onImport} leading={library.toggle} />
     </>
   );
   const panel = (
@@ -205,6 +203,7 @@ function Editor({ project }: EditorProps): ReactNode {
         status={<StatusMessages messages={notices} />}
         canvas={<CircuitCanvas session={session} view={view} />}
         panel={panel}
+        library={library.panel}
       />
     </main>
   );

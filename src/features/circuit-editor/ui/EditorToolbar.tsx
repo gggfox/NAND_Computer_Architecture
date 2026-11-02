@@ -23,10 +23,12 @@ const themeLabels = (): Readonly<Record<ThemeId, string>> => ({
 interface EditorToolbarProps {
   readonly session: EditorSession;
   readonly onImport: (file: File) => void;
+  /** Controls placed first in the toolbar, before Undo (the library's toggle). */
+  readonly leading?: ReactNode;
 }
 
 /** Every edit goes through `dispatch` / `undo` / `redo` (ADR 8). */
-export function EditorToolbar({ session, onImport }: EditorToolbarProps): ReactNode {
+export function EditorToolbar({ session, onImport, leading }: EditorToolbarProps): ReactNode {
   const { editor } = session;
   const canUndo = useStore(editor, (state) => state.history.past.length > 0);
   const canRedo = useStore(editor, (state) => state.history.future.length > 0);
@@ -55,6 +57,7 @@ export function EditorToolbar({ session, onImport }: EditorToolbarProps): ReactN
 
   return (
     <Toolbar aria-label={m.editor_toolbar_label()}>
+      {leading}
       <Button isDisabled={!canUndo} onPress={handleUndo} variant="quiet">
         {m.undo()}
       </Button>

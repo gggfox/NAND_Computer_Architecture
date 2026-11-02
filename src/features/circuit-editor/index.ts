@@ -44,6 +44,7 @@ export { EditorToolbar } from "./ui/EditorToolbar";
 export { PinsPanel } from "./ui/PinsPanel";
 export type { EditorSession } from "./application/editor-session";
 export { useEditorSession } from "./ui/use-editor-session";
+export { useSessionErrors } from "./ui/use-session-errors";
 export {
   armPlacement,
   cancelPlacement,

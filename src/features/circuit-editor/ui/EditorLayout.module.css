@@ -23,6 +23,10 @@
   grid-area: status;
 }
 
+.library {
+  display: contents;
+}
+
 .canvas {
   grid-area: canvas;
   min-inline-size: 0;
@@ -39,10 +43,29 @@
 @media (width >= 640px) {
   .layout {
     grid-template:
+      "toolbar toolbar toolbar" auto
+      "status status status" auto
+      "library canvas panel" minmax(24rem, 1fr)
+      / auto minmax(0, 1fr) minmax(16rem, 22rem);
+    min-block-size: 100dvh;
+  }
+
+  /* A closed library takes no column, so the canvas and its gaps are as they were without it. */
+  .layout:has(> .library:empty) {
+    grid-template:
       "toolbar toolbar" auto
       "status status" auto
       "canvas panel" minmax(24rem, 1fr)
       / minmax(0, 1fr) minmax(16rem, 22rem);
-    min-block-size: 100dvh;
+  }
+
+  .library {
+    display: block;
+    grid-area: library;
+    min-inline-size: 0;
+  }
+
+  .library:empty {
+    display: none;
   }
 }

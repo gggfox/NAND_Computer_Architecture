@@ -214,5 +214,15 @@
   "placing_done": "Done",
   "announce_placing": "Placing {name}. Tap or press Escape to stop.",
   "announce_placing_stopped": "Stopped placing.",
-  "announce_placed": "Placed {name}."
+  "announce_placed": "Placed {name}.",
+  "library_button": "Library",
+  "library_heading": "Chip library",
+  "library_tree_label": "Chips",
+  "library_search": "Search chips",
+  "library_filter_starred": "Starred",
+  "library_builtin": "Built-in",
+  "library_draft_only": "draft only",
+  "library_armed": "Armed",
+  "library_row_actions": "Actions for {name}",
+  "library_no_results": "No chips match."
 }

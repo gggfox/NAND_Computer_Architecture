@@ -214,5 +214,15 @@
   "placing_done": "Listo",
   "announce_placing": "Colocando {name}. Toca el lienzo o pulsa Escape para terminar.",
   "announce_placing_stopped": "Colocación terminada.",
-  "announce_placed": "{name} colocado."
+  "announce_placed": "{name} colocado.",
+  "library_button": "Biblioteca",
+  "library_heading": "Biblioteca de chips",
+  "library_tree_label": "Chips",
+  "library_search": "Buscar chips",
+  "library_filter_starred": "Favoritos",
+  "library_builtin": "Integrados",
+  "library_draft_only": "solo borrador",
+  "library_armed": "Listo para colocar",
+  "library_row_actions": "Acciones de {name}",
+  "library_no_results": "Ningún chip coincide."
 }

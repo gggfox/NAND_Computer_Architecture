@@ -1,0 +1,26 @@
+import type { ReactNode } from "react";
+import { Button, Input, Label, SearchField as AriaSearchField } from "react-aria-components";
+
+import styles from "./SearchField.module.css";
+
+/** The clear button's glyph; React Aria names the button itself. */
+const CLEAR = "×";
+
+interface SearchFieldProps {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+}
+
+/** A search box: Escape or its clear button (named by React Aria, in the app's locale) empties it. */
+export function SearchField({ label, value, onChange }: Readonly<SearchFieldProps>): ReactNode {
+  return (
+    <AriaSearchField className={styles.field} value={value} onChange={onChange}>
+      <Label className={styles.label}>{label}</Label>
+      <div className={styles.box}>
+        <Input className={styles.input} />
+        <Button className={styles.clear}>{CLEAR}</Button>
+      </div>
+    </AriaSearchField>
+  );
+}
