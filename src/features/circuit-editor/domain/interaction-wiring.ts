@@ -104,7 +104,10 @@ export const complete = (
     const { bus, bits } = completion;
     return done({ ...state, bitPick: { armed: armed.end, target, bus, bits, screen, ...color } });
   }
-  return refused(armPin(state, target, context), completion.reason);
+  const rearmed = armPin(state, target, context);
+  // Tapping the armed pin again only re-arms it: that is no attempt to connect.
+  const again = target.instanceId === armed.end.instanceId && target.pin === armed.end.pin;
+  return again ? rearmed : refused(rearmed, completion.reason);
 };
 
 /** A pin is aimed at (tapped, chosen by key or under a released drag): wire it, or arm it. */

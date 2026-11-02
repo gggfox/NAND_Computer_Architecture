@@ -248,6 +248,18 @@ describe("a refused connection", () => {
     });
   });
 
+  it("tapping the armed pin again re-arms it without a refusal", () => {
+    const { context, state, pieceA } = wiring();
+    const result = gestures(state, context, [tap(PIN_A_OUT), tap(PIN_A_OUT)]);
+    expect(result.state.notice).toBeUndefined();
+    expect(result.state.armed?.end).toEqual({ instanceId: pieceA.id, pin: 0 });
+    expect(
+      result.effects.some(
+        (effect) => effect.type === "announce" && effect.announcement.type === "refused",
+      ),
+    ).toBe(false);
+  });
+
   it("output to output is refused", () => {
     const { context, state } = wiring();
     const result = gestures(state, context, [tap(NAND_OUT), tap(PIN_A_OUT)]);
