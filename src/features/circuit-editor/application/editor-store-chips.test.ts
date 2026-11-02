@@ -9,8 +9,9 @@ import {
   projectWith,
 } from "~/features/projects";
 import type { Project } from "~/features/projects";
-import { newChipId, newInstanceId } from "~/shared/ids";
+import { newChipId, newFolderId, newInstanceId } from "~/shared/ids";
 
+import { editorStoreErrorMessage } from "../domain/messages";
 import { createEditorStore, openCircuit } from "./editor-store";
 import type { EditorStore } from "./editor-store";
 import { DEBOUNCE_MS, fakeRepo, SAVED } from "./editor-store.fixtures";
@@ -182,5 +183,54 @@ describe("createEditorStore createChip", () => {
     expect(store.getState().history.past).toHaveLength(0);
     store.getState().undo();
     expect(findChip(store.getState().history.present, created)).toBeDefined();
+  });
+});
+
+describe("createEditorStore library actions", () => {
+  it("createFolder is an undo step", () => {
+    const store = createEditorStore(twoChips(), fakeRepo(SAVED).repo);
+    store.getState().dispatch({ type: "createFolder", folderId: newFolderId(), name: "Gates" });
+    expect(store.getState().history.present.folders).toHaveLength(1);
+    store.getState().undo();
+    expect(store.getState().history.present.folders).toHaveLength(0);
+  });
+
+  it("deleteChip of a chip that is not open resets history and undo changes nothing", () => {
+    const store = createEditorStore(twoChips(), fakeRepo(SAVED).repo);
+    const [first] = store.getState().history.present.chips;
+    assert(first !== undefined);
+    store.getState().dispatch({ type: "starChip", chipId: first.id, starred: true });
+    store.getState().dispatch({ type: "deleteChip", chipId: first.id });
+    expect(store.getState().history.past).toHaveLength(0);
+    const { present } = store.getState().history;
+    store.getState().undo();
+    expect(store.getState().history.present).toBe(present);
+    expect(findChip(present, first.id)).toBeUndefined();
+  });
+
+  it("deleteChip of the open chip opens the first remaining chip and autosaves it", async () => {
+    const { repo, saved } = fakeRepo(SAVED);
+    const project = twoChips();
+    const store = createEditorStore(project, repo);
+    const [first] = project.chips;
+    assert(first !== undefined);
+    store.getState().dispatch({ type: "deleteChip", chipId: store.getState().chipId });
+    expect(store.getState().chipId).toBe(first.id);
+    await store.getState().flush();
+    expect(saved.at(-1)?.lastOpenedChipId).toBe(first.id);
+  });
+
+  it("deleteChip of the last chip is refused with LastChip", () => {
+    const store = createEditorStore(createDemoProject("x"), fakeRepo(SAVED).repo);
+    const { chipId } = store.getState();
+    const result = store.getState().dispatch({ type: "deleteChip", chipId });
+    expect(result).toEqual({ ok: false, error: { type: "LastChip" } });
+    expect(store.getState().lastError).toEqual({ type: "LastChip" });
+  });
+
+  it("editorStoreErrorMessage names the chip that uses another", () => {
+    expect(
+      editorStoreErrorMessage({ type: "ChipInUse", chipId: newChipId(), usedByName: "Full adder" }),
+    ).toBe("Used in Full adder");
   });
 });

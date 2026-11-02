@@ -152,10 +152,50 @@ const nextHistory = (
   if (action.type === "saveChip") {
     return savedEverywhere(history, action.chipId);
   }
+  if (action.type === "deleteChip") {
+    return createHistory(project);
+  }
   const created = action.type === "createChip" ? findChip(project, action.chipId) : undefined;
   return created === undefined
     ? pushHistory(history, project)
     : createdEverywhere(history, created);
+};
+
+interface Edits {
+  readonly get: Get;
+  readonly set: Set;
+  readonly commit: Commit["commit"];
+  readonly touch: Commit["touch"];
+}
+
+/** Deleting the open chip opens the first remaining one (D4) and autosaves that choice. */
+const reopenAfterDelete = (
+  { get, set, touch }: Edits,
+  action: EditorAction,
+  project: Project,
+): void => {
+  const [first] = project.chips;
+  if (action.type === "deleteChip" && action.chipId === get().chipId && first !== undefined) {
+    set({ chipId: first.id });
+    touch();
+  }
+};
+
+const applyEdit = (edits: Edits, action: EditorAction): Result<void, EditorError> => {
+  const { get, set, commit } = edits;
+  const result = applyAction(get().history.present, action);
+  if (!result.ok) {
+    set({ lastError: result.error });
+    return err(result.error);
+  }
+  set({ lastError: NO_ERROR });
+  // An edit that changed nothing (Tidy on tidy wires, the same colour) is no undo step.
+  if (result.value !== get().history.present) {
+    commit(nextHistory(get().history, action, result.value));
+  }
+  reopenAfterDelete(edits, action, result.value);
+  // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
+  return ok(undefined);
 };
 
 export const createEditorStore = (project: Project, repo: ProjectRepository): EditorStore =>
@@ -173,20 +213,7 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       chipId: project.lastOpenedChipId,
       lastError: NO_ERROR,
       inputs: new Map(),
-      dispatch: (action) => {
-        const result = applyAction(get().history.present, action);
-        if (!result.ok) {
-          set({ lastError: result.error });
-          return err(result.error);
-        }
-        set({ lastError: NO_ERROR });
-        // An edit that changed nothing (Tidy on tidy wires, the same colour) is no undo step.
-        if (result.value !== get().history.present) {
-          commit(nextHistory(get().history, action, result.value));
-        }
-        // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
-        return ok(undefined);
-      },
+      dispatch: (action) => applyEdit({ get, set, commit, touch }, action),
       openChip: (chipId) => {
         if (findChip(get().history.present, chipId) === undefined) {
           return err({ type: "ChipNotFound", chipId });
