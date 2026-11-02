@@ -38,3 +38,8 @@
   margin: 0;
   font-size: var(--font-size-title);
 }
+
+.tucked {
+  visibility: hidden;
+  pointer-events: none;
+}

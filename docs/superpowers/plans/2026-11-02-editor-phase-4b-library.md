@@ -789,3 +789,18 @@ The existing `canvas_menu_tidy` is reused.
 - [ ] **Step 3:** Run the visual baselines in Docker, then `pnpm check`. Expect it to exit 0.
 - [ ] **Step 4:** Write ADR 46, the GLOSSARY entries, and a Status section in this plan: what shipped, rulings, follow-ups.
 - [ ] **Step 5: Commit**, in two commits: `test(e2e): library placement on phones, a11y and visual baselines`, then `docs: record the chip library and placement decisions`.
+
+## Drag spike result
+
+Task 1 ran a throwaway page (a full-screen `div` canvas plus an open `Sheet` holding 40 rows, each `touch-action: pan-y`) driven by `stepIntent`. `pointermove`/`pointerup` listened on `window`, a 50 ms interval ticked while pressing, and a non-passive `touchmove` listener called `preventDefault()` only while `held` or `dragging`. The sheet was tucked (`isTucked`) when the drag started. Touch used real CDP `Input.dispatchTouchEvent` (the synthetic `touch` helper in `e2e/support.ts` can't scroll a list), so it ran on Chromium engines only. The page and spec were deleted afterwards.
+
+| Check | mobile-chrome (Pixel 7, touch) | mobile-safari (iPhone 15) | chromium / webkit (mouse) |
+| --- | --- | --- | --- |
+| (a) long-press then drag from row 30 (after scrolling), drops on the canvas at the release point ±2 px, list scroll unchanged | pass | not run: no CDP touch in WebKit | n/a |
+| (b) quick vertical swipe scrolls the list, no drag | pass | not run | n/a |
+| (c) long-press held still reports `menu` | pass | not run | n/a |
+| (d) mouse drag drops on the canvas | n/a | n/a | pass on both |
+
+**Winner: long-press** (no grip handle needed), on the evidence of mobile-chrome. iOS Safari is unverified: Playwright's WebKit can't inject real touches, so the behaviour of `preventDefault()` on `touchmove` after a long-press (and whether iOS fires `pointercancel` when it claims the gesture) needs a manual check on a device or the simulator before Task 10 is called done. If iOS cancels the drag, fall back to the grip handle described in the Task 1 brief.
+
+**Finding for Task 10:** while a `Sheet` is open, React Aria marks the rest of the page `inert`. Tucking the sheet hides it but the canvas stays inert, so `document.elementFromPoint` returns `<html>` over the canvas. The drop target must be found by testing the release point against the canvas's `getBoundingClientRect()`, not by `elementFromPoint`. Pointer events on `window` keep arriving, and the drag survives the tuck because the row stays mounted.
