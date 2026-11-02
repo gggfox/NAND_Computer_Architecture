@@ -79,7 +79,8 @@ const createDebounce = (delayMs: number): Debounce => {
 type Set = StoreApi<EditorState>["setState"];
 
 interface Commit {
-  readonly commit: (next: History<Project>) => void;
+  /** Sets the history, and the open chip when given, in one update, then schedules an autosave. */
+  readonly commit: (next: History<Project>, chipId?: ChipId) => void;
   /** Autosaves without an edit, for a change that lives outside history (the open chip). */
   readonly touch: () => void;
   readonly flush: () => Promise<void>;
@@ -101,8 +102,8 @@ const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
     }
   };
   return {
-    commit: (next) => {
-      set({ history: next });
+    commit: (next, chipId) => {
+      set(chipId === undefined ? { history: next } : { history: next, chipId });
       schedule(persist);
     },
     touch: () => {
@@ -165,24 +166,23 @@ interface Edits {
   readonly get: Get;
   readonly set: Set;
   readonly commit: Commit["commit"];
-  readonly touch: Commit["touch"];
 }
 
-/** Deleting the open chip opens the first remaining one (D4) and autosaves that choice. */
-const reopenAfterDelete = (
-  { get, set, touch }: Edits,
-  action: EditorAction,
-  project: Project,
-): void => {
+/**
+ * Deleting the open chip opens the first remaining one (D4). It is committed with the history,
+ * so no subscriber sees a project without the open chip.
+ */
+const chipAfter = (open: ChipId, action: EditorAction, project: Project): ChipId => {
   const [first] = project.chips;
-  if (action.type === "deleteChip" && action.chipId === get().chipId && first !== undefined) {
-    set({ chipId: first.id });
-    touch();
-  }
+  return action.type === "deleteChip" && action.chipId === open && first !== undefined
+    ? first.id
+    : open;
 };
 
-const applyEdit = (edits: Edits, action: EditorAction): Result<void, EditorError> => {
-  const { get, set, commit } = edits;
+const applyEdit = (
+  { get, set, commit }: Edits,
+  action: EditorAction,
+): Result<void, EditorError> => {
   const result = applyAction(get().history.present, action);
   if (!result.ok) {
     set({ lastError: result.error });
@@ -191,9 +191,10 @@ const applyEdit = (edits: Edits, action: EditorAction): Result<void, EditorError
   set({ lastError: NO_ERROR });
   // An edit that changed nothing (Tidy on tidy wires, the same colour) is no undo step.
   if (result.value !== get().history.present) {
-    commit(nextHistory(get().history, action, result.value));
+    const { chipId } = get();
+    const next = chipAfter(chipId, action, result.value);
+    commit(nextHistory(get().history, action, result.value), next === chipId ? undefined : next);
   }
-  reopenAfterDelete(edits, action, result.value);
   // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
   return ok(undefined);
 };
@@ -213,7 +214,7 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
       chipId: project.lastOpenedChipId,
       lastError: NO_ERROR,
       inputs: new Map(),
-      dispatch: (action) => applyEdit({ get, set, commit, touch }, action),
+      dispatch: (action) => applyEdit({ get, set, commit }, action),
       openChip: (chipId) => {
         if (findChip(get().history.present, chipId) === undefined) {
           return err({ type: "ChipNotFound", chipId });

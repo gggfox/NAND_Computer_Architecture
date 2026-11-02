@@ -246,3 +246,18 @@ describe("createEditorStore library edits that change nothing", () => {
     expect(store.getState().history.past).toBe(past);
   });
 });
+
+describe("createEditorStore deleting the open chip", () => {
+  it("deleting the open chip never notifies a chipId missing from the present project", () => {
+    const store = createEditorStore(twoChips(), fakeRepo(SAVED).repo);
+    const missing: unknown[] = [];
+    const unsubscribe = store.subscribe((state) => {
+      if (findChip(state.history.present, state.chipId) === undefined) {
+        missing.push(state.chipId);
+      }
+    });
+    store.getState().dispatch({ type: "deleteChip", chipId: store.getState().chipId });
+    unsubscribe();
+    expect(missing).toEqual([]);
+  });
+});
