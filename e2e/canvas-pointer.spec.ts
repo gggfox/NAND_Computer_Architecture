@@ -10,11 +10,13 @@ import {
   NAND_MOVED,
   nandPosition,
   test,
+  urlCamera,
   worldToPage,
 } from "./support";
 
 const MOVES = 10;
 const BOTH_INPUTS = 2;
+const WHEEL = 100;
 
 test.beforeEach(({ isMobile }) => {
   test.skip(isMobile, "Mouse flows run on the desktop projects; touch has its own spec");
@@ -33,6 +35,43 @@ test("dragging the NAND two grid steps moves it, and Undo puts it back", async (
   await page.getByRole("button", { name: "Undo" }).click();
   expect(nandPosition(await exportedProject(page))).toEqual(NAND_AT);
   await expect(page.getByRole("button", { name: "Redo" })).toBeEnabled();
+});
+
+test("the wheel pans up and down, and with Shift sideways", async ({ page }) => {
+  await createProject(page);
+  const start = await chipCenter(page, DEMO_PART.nand);
+  await page.mouse.move(start.x, start.y);
+  const before = urlCamera(page);
+  await page.mouse.wheel(0, WHEEL);
+  await expect.poll(() => urlCamera(page).y).not.toBe(before.y);
+  expect(urlCamera(page).x).toBe(before.x);
+
+  // With Shift a browser may report the scroll as deltaY (as sent) or move it to deltaX.
+  for (const [deltaX, deltaY] of [
+    [0, WHEEL],
+    [WHEEL, 0],
+  ] as const) {
+    const last = urlCamera(page);
+    await page.keyboard.down("Shift");
+    await page.mouse.wheel(deltaX, deltaY);
+    await page.keyboard.up("Shift");
+    await expect.poll(() => urlCamera(page).x).not.toBe(last.x);
+    expect(urlCamera(page).y).toBe(last.y);
+  }
+});
+
+test("a middle-button drag pans, even when it starts on the NAND", async ({ page }) => {
+  await createProject(page);
+  await expect(page.getByRole("radio", { name: "Pan" })).toBeHidden();
+  const before = urlCamera(page);
+  const start = await chipCenter(page, DEMO_PART.nand);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down({ button: "middle" });
+  await page.mouse.move(start.x + NAND_MOVED.x - NAND_AT.x, start.y, { steps: MOVES });
+  await page.mouse.up({ button: "middle" });
+
+  await expect.poll(() => urlCamera(page).x).not.toBe(before.x);
+  expect(nandPosition(await exportedProject(page))).toEqual(NAND_AT);
 });
 
 test("right-click on the NAND deletes it from the menu, and Undo brings it back", async ({

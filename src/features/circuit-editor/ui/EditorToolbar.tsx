@@ -2,23 +2,17 @@ import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
 import { downloadProjectFile, piece } from "~/features/projects";
-import { ThemePicker } from "~/features/theming";
-import type { ThemeId } from "~/features/theming";
 import { m } from "~/i18n/paraglide/messages";
-import { Button, FileButton, LanguagePicker, Toolbar } from "~/shared/ui";
+import { Button, FileButton, Toolbar } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
 import { openCircuit } from "../application/editor-store";
 import { freeNandPosition } from "../domain/geometry";
 import { CanvasButtons, ToolSwitch } from "./CanvasControls";
 
-const PROJECT_FILE_TYPES = ["application/json", ".json"];
+import styles from "./EditorToolbar.module.css";
 
-const themeLabels = (): Readonly<Record<ThemeId, string>> => ({
-  light: m.theme_light(),
-  dark: m.theme_dark(),
-  "high-contrast": m.theme_high_contrast(),
-});
+const PROJECT_FILE_TYPES = ["application/json", ".json"];
 
 interface EditorToolbarProps {
   readonly session: EditorSession;
@@ -65,7 +59,9 @@ export function EditorToolbar({ session, onImport, leading }: EditorToolbarProps
         {m.redo()}
       </Button>
       <Button onPress={handleAddNand}>{m.add_nand()}</Button>
-      <ToolSwitch session={session} />
+      <span className={styles.touch}>
+        <ToolSwitch session={session} />
+      </span>
       <CanvasButtons session={session} />
       <Button onPress={handleExport} variant="quiet">
         {m.export()}
@@ -73,8 +69,6 @@ export function EditorToolbar({ session, onImport, leading }: EditorToolbarProps
       <FileButton acceptedFileTypes={PROJECT_FILE_TYPES} onSelect={onImport} variant="quiet">
         {m.import()}
       </FileButton>
-      <ThemePicker label={m.theme_label()} optionLabels={themeLabels()} />
-      <LanguagePicker />
     </Toolbar>
   );
 }

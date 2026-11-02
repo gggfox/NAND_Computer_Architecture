@@ -22,12 +22,17 @@ const switchLocale = async (locale: Locale): Promise<void> => {
   await setLocale(locale);
 };
 
-export function LanguagePicker(): ReactNode {
+export function LanguagePicker({
+  isLabelHidden = false,
+}: {
+  readonly isLabelHidden?: boolean;
+}): ReactNode {
   const options = locales.map((locale) => ({ id: locale, label: localeLabels[locale]() }));
 
   return (
     <Select
       label={m.language_label()}
+      isLabelHidden={isLabelHidden}
       options={options}
       value={getLocale()}
       onChange={(key) => {

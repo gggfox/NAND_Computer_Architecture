@@ -149,7 +149,7 @@
   "help_pins": "Lee los pines del chip seleccionado uno a uno",
   "help_keys_tools": "V y H",
   "help_tools": "Herramienta de selección, de desplazamiento",
-  "help_keys_space": "Espacio + arrastrar",
+  "help_keys_space": "Espacio + arrastrar, o arrastrar con el botón central",
   "help_space": "Desplaza con cualquier herramienta",
   "help_keys_escape": "Esc",
   "help_escape": "Cierra un menú o una tarjeta y luego vacía la selección",

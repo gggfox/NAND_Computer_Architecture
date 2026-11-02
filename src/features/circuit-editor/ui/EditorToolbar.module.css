@@ -1,0 +1,13 @@
+/*
+ * The Pan or Select switch is for touch, where a one-finger drag has to be one or the other. A
+ * mouse always selects, and pans with the middle button, Space or the wheel.
+ */
+.touch {
+  display: contents;
+}
+
+@media not (any-pointer: coarse) {
+  .touch {
+    display: none;
+  }
+}

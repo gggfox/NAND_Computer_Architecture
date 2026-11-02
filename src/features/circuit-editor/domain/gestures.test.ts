@@ -1,70 +1,8 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { describe, expect, it } from "vitest";
 
-import type { Gesture, Modifiers, PointerInput, PointerKind } from "./gesture-types";
-import { INITIAL_GESTURES, LONG_PRESS_MS, recognize } from "./gestures";
-import type { GestureState } from "./gestures";
-
-const NONE: Modifiers = { shift: false, alt: false, ctrlOrMeta: false, space: false };
-
-interface At {
-  readonly x?: number;
-  readonly y?: number;
-  readonly id?: number;
-  readonly kind?: PointerKind;
-  readonly time?: number;
-  readonly button?: number;
-  readonly modifiers?: Modifiers;
-}
-
-const pointer =
-  (type: "down" | "move" | "up" | "cancel" | "leave") =>
-  ({
-    x = 0,
-    y = 0,
-    id = 1,
-    kind = "touch",
-    time = 0,
-    button = 0,
-    modifiers = NONE,
-  }: At = {}): PointerInput => ({
-    type,
-    id,
-    kind,
-    button,
-    point: { x, y },
-    time,
-    modifiers,
-  });
-
-const down = pointer("down");
-const move = pointer("move");
-const up = pointer("up");
-const cancel = pointer("cancel");
-const leave = pointer("leave");
-const timer = (time: number): PointerInput => ({ type: "timer", time });
-
-interface Run {
-  readonly state: GestureState;
-  readonly gestures: readonly Gesture[];
-  readonly timers: readonly number[];
-}
-
-const run = (inputs: readonly PointerInput[], from: GestureState = INITIAL_GESTURES): Run =>
-  inputs.reduce<Run>(
-    (acc, input) => {
-      const next = recognize(acc.state, input);
-      return {
-        state: next.state,
-        gestures: [...acc.gestures, ...next.gestures],
-        timers: next.timerAt === undefined ? acc.timers : [...acc.timers, next.timerAt],
-      };
-    },
-    { state: from, gestures: [], timers: [] },
-  );
-
-const types = (inputs: readonly PointerInput[]): readonly string[] =>
-  run(inputs).gestures.map((gesture) => gesture.type);
+import { INITIAL_GESTURES, LONG_PRESS_MS } from "./gestures";
+import { cancel, down, leave, move, NONE, run, timer, types, up } from "./gestures.fixtures";
 
 describe("tap and drag", () => {
   it("a mouse within 4 px is a tap; beyond is a drag", () => {
@@ -174,10 +112,16 @@ describe("secondary and other buttons", () => {
     ).toEqual(["contextMenu", "tap"]);
   });
 
-  it("a middle, back or forward press starts nothing", () => {
+  it("a middle drag holds Space, so it pans whatever the tool", () => {
     const middle = { kind: "mouse", button: 1 } as const;
-    expect(run([down(middle)])).toMatchObject({ state: INITIAL_GESTURES, timers: [] });
-    expect(types([down(middle), move({ ...middle, x: 50 }), up(middle)])).toEqual(["hover"]);
+    const { gestures } = run([down(middle), move({ ...middle, x: 50 }), up({ ...middle, x: 50 })]);
+    expect(gestures.map((gesture) => gesture.type)).toEqual(["dragStart", "dragEnd"]);
+    expect(gestures[0]).toMatchObject({ modifiers: { space: true } });
+  });
+
+  it("a middle click, back or forward press gives nothing", () => {
+    const middle = { kind: "mouse", button: 1 } as const;
+    expect(types([down(middle), up(middle)])).toEqual([]);
     expect(types([down({ kind: "mouse", button: 3 }), up({ kind: "mouse" })])).toEqual([]);
   });
 });

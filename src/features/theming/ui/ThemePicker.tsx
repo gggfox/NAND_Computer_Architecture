@@ -12,9 +12,14 @@ import styles from "./ThemePicker.module.css";
 interface ThemePickerProps {
   readonly label: string;
   readonly optionLabels: Readonly<Record<ThemeId, string>>;
+  readonly isLabelHidden?: boolean;
 }
 
-export function ThemePicker({ label, optionLabels }: Readonly<ThemePickerProps>): ReactNode {
+export function ThemePicker({
+  label,
+  optionLabels,
+  isLabelHidden = false,
+}: Readonly<ThemePickerProps>): ReactNode {
   const [theme, setTheme] = useState<ThemeId>(initTheme);
   const options = themeIds.map((id) => ({ id, label: optionLabels[id] }));
 
@@ -28,7 +33,13 @@ export function ThemePicker({ label, optionLabels }: Readonly<ThemePickerProps>)
 
   return (
     <div className={styles.root}>
-      <Select label={label} options={options} value={theme} onChange={onChange} />
+      <Select
+        label={label}
+        isLabelHidden={isLabelHidden}
+        options={options}
+        value={theme}
+        onChange={onChange}
+      />
     </div>
   );
 }

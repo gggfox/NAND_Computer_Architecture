@@ -53,3 +53,37 @@ export type Gesture =
   /** `scale` and `pan` (screen px) are since the previous pinch event. */
   | { readonly type: "pinch"; readonly center: Point; readonly scale: number; readonly pan: Point }
   | { readonly type: "pinchEnd" };
+
+/** The one pointer of a one-finger (or mouse) gesture. */
+export interface Press {
+  readonly id: number;
+  readonly kind: PointerKind;
+  readonly origin: Point;
+  /** Where the pointer is now. */
+  readonly point: Point;
+  readonly start: number;
+  readonly modifiers: Modifiers;
+  /** A mouse's middle button: it only pans, so its drag holds Space and its click does nothing. */
+  readonly panOnly: boolean;
+}
+
+/** The two fingers of a pinch, by pointer id. */
+export interface Finger {
+  readonly id: number;
+  readonly point: Point;
+}
+
+export interface Pinch {
+  readonly fingers: readonly [Finger, Finger];
+  readonly center: Point;
+  readonly spread: number;
+}
+
+/** Opaque to callers of `recognize`: start from `INITIAL_GESTURES` and feed it. */
+export type GestureState =
+  | { readonly phase: "idle" }
+  | { readonly phase: "pressed" | "longPressed" | "dragging"; readonly press: Press }
+  | { readonly phase: "secondary"; readonly id: number }
+  | { readonly phase: "pinching"; readonly pinch: Pinch }
+  /** Fingers left over from a pinch: ignored until all are lifted, so no stray tap follows. */
+  | { readonly phase: "draining"; readonly ids: ReadonlySet<number> };
