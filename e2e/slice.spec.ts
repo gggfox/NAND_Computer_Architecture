@@ -20,7 +20,9 @@ test("the demo project follows the NAND truth table and survives a reload", asyn
 
   for (const row of NAND_TRUTH_TABLE) {
     await setInputs(page, row.a, row.b);
-    await expect(page.getByText(/Output: 1|Output: 0/u)).toHaveText(`Output: ${String(row.out)}`);
+    await expect(page.getByText(/Output OUT: 1|Output OUT: 0/u)).toHaveText(
+      `Output OUT: ${String(row.out)}`,
+    );
   }
 
   const url = page.url();
@@ -28,7 +30,7 @@ test("the demo project follows the NAND truth table and survives a reload", asyn
   await expect(page).toHaveURL(url);
   await expect(page.getByRole("heading", { level: 1, name: "NAND demo" })).toBeAttached();
   await expect(inputSwitch(page, "Input A")).toBeVisible();
-  await expect(output(page)).toHaveText(/Output: [01]/u);
+  await expect(output(page)).toHaveText(/Output OUT: [01]/u);
 
   await page.getByRole("link", { name: "All projects" }).click();
   await expect(page.getByRole("link", { name: "NAND demo" })).toBeVisible();

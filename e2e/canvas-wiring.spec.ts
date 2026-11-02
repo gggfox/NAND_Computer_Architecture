@@ -47,9 +47,9 @@ const expectInputBWired = async (page: Page): Promise<void> => {
     expect(isOrthogonal(polylineOf(file, wire))).toBe(true);
   }
   await setInputs(page, true, true);
-  await expect(output(page)).toHaveText("Output: 0");
+  await expect(output(page)).toHaveText("Output OUT: 0");
   await setInputs(page, true, false);
-  await expect(output(page)).toHaveText("Output: 1");
+  await expect(output(page)).toHaveText("Output OUT: 1");
 };
 
 const expectUndoRemovesIt = async (page: Page): Promise<void> => {

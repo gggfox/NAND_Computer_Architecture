@@ -26,15 +26,16 @@ export const createProject = async (page: Page): Promise<void> => {
   await page.goto("/");
   await page.getByRole("button", { name: "New project" }).click();
   await expect(page).toHaveURL(PROJECT_URL);
-  await expect(output(page)).toHaveText(/Output: [01]/u);
+  await expect(output(page)).toHaveText(/Output OUT: [01]/u);
 };
 
 type SwitchName = "Input A" | "Input B";
 
-export const inputSwitch = (page: Page, name: SwitchName) => page.getByRole("switch", { name });
+export const inputSwitch = (page: Page, name: SwitchName) =>
+  page.getByRole("switch", { name, exact: true });
 
 /** The summary's live region (the status `<output>` above the canvas is a different element). */
-export const output = (page: Page) => page.getByText(/^Output: /u);
+export const output = (page: Page) => page.getByText(/^Output OUT: /u);
 
 /** Picks a theme through the toolbar's Theme select (the user path, not localStorage). */
 export const pickTheme = async (page: Page, theme: Theme): Promise<void> => {
