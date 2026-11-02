@@ -1,0 +1,97 @@
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+import { describe, expect, test } from "vitest";
+
+import { newChip, pinDef, pinPiece, piece, projectWith } from "./builders";
+import { parseProjectFile, serializeProject } from "./format";
+import type { Project } from "./model";
+
+/*
+ * Generates the E2E fixtures in `e2e/fixtures/` from the real builders and checks that each
+ * committed file is still what they produce and that it parses through the import path.
+ * Regenerate them with
+ * `UPDATE_E2E_FIXTURES=1 pnpm vitest run src/features/projects/domain/e2e-fixtures.test.ts`.
+ */
+
+const FIXTURES = path.join(import.meta.dirname, "..", "..", "..", "..", "e2e", "fixtures");
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gu;
+const HEX = 16;
+const ID_DIGITS = 12;
+const BUS_WIDTH = 4;
+const SEED = 7;
+const BUS_IDS = 0x2_00;
+const SAVED_IDS = 0x3_00;
+
+/** A 4-bit input D (its pin at world (40, 80)), a NAND at (160, 40) and an output; no wires. */
+const busProject = (): Project => {
+  const bus = pinDef("D", "input", BUS_WIDTH);
+  const out = pinDef("OUT", "output");
+  const draft = {
+    pins: [bus, out],
+    instances: [
+      pinPiece(bus, { x: 0, y: 40 }),
+      piece({ type: "nand" }, { x: 160, y: 40 }),
+      pinPiece(out, { x: 320, y: 40 }),
+    ],
+    wires: [],
+  };
+  return projectWith("Bus", [newChip("Main", draft)], SEED);
+};
+
+/**
+ * `Main` (open) holds one instance of `Inner` at (160, 40). `Inner` is saved, with inputs X and Y
+ * in that order, and its draft is the same, so a reorder inside it changes only the draft.
+ */
+const savedChipProject = (): Project => {
+  const first = pinDef("X", "input");
+  const second = pinDef("Y", "input");
+  const inner = newChip(
+    "Inner",
+    {
+      pins: [first, second],
+      instances: [pinPiece(first, { x: 0, y: 0 }), pinPiece(second, { x: 0, y: 80 })],
+      wires: [],
+    },
+    { saved: true },
+  );
+  const main = newChip("Main", {
+    pins: [],
+    instances: [piece({ type: "custom", chipId: inner.id }, { x: 160, y: 40 })],
+    wires: [],
+  });
+  return projectWith("Saved chip", [main, inner], SEED);
+};
+
+/** Random ids replaced, in order of appearance, by fixed ones from `base`, so a file is reproducible. */
+const withFixedIds = (text: string, base: number): string => {
+  const ids = new Map<string, string>();
+  return text.replaceAll(UUID, (id) => {
+    const known = ids.get(id);
+    if (known !== undefined) {
+      return known;
+    }
+    const fixed = `00000000-0000-4000-8000-${(base + ids.size).toString(HEX).padStart(ID_DIGITS, "0")}`;
+    ids.set(id, fixed);
+    return fixed;
+  });
+};
+
+const FIXTURE_CASES = [
+  { file: "bus.json", build: busProject, idBase: BUS_IDS },
+  { file: "saved-chip.json", build: savedChipProject, idBase: SAVED_IDS },
+] as const;
+
+describe("the E2E fixtures", () => {
+  test.each(FIXTURE_CASES)("$file is what the builders produce, and it imports", (fixture) => {
+    const target = path.join(FIXTURES, fixture.file);
+    const generated = `${withFixedIds(serializeProject(fixture.build()), fixture.idBase)}\n`;
+    if (process.env["UPDATE_E2E_FIXTURES"] === "1") {
+      writeFileSync(target, generated);
+    }
+    const committed = readFileSync(target, "utf-8");
+    expect(committed).toBe(generated);
+    expect(parseProjectFile(committed).ok).toBe(true);
+  });
+});

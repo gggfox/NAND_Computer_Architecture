@@ -3,6 +3,7 @@ import { m } from "~/i18n/paraglide/messages";
 import { assertNever } from "~/shared/assert-never";
 import type { InstanceId } from "~/shared/ids";
 
+import { editorErrorMessage } from "./editor-error-messages";
 import { layoutIn } from "./geometry";
 import type { Scene } from "./geometry";
 import type { Announcement } from "./interaction";
@@ -88,13 +89,14 @@ const wireText = (
 
 type WiringAnnouncement = Extract<
   Announcement,
-  { type: "armed" | "wired" | "disarmed" | "bends" | "wireSelected" }
+  { type: "armed" | "wired" | "disarmed" | "refused" | "bends" | "wireSelected" }
 >;
 
 const WIRING_TYPES: ReadonlySet<Announcement["type"]> = new Set([
   "armed",
   "wired",
   "disarmed",
+  "refused",
   "bends",
   "wireSelected",
 ]);
@@ -103,8 +105,8 @@ const isWiring = (announcement: Announcement): announcement is WiringAnnouncemen
   WIRING_TYPES.has(announcement.type);
 
 /**
- * The wiring announcements: a pin armed, a wire added, wiring cancelled, bend mode on or off, a
- * wire selected from the keyboard.
+ * The wiring announcements: a pin armed, a wire added, wiring cancelled, a connection refused,
+ * bend mode on or off, a wire selected from the keyboard.
  */
 const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnouncement): string => {
   switch (announcement.type) {
@@ -116,6 +118,9 @@ const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnoun
     }
     case "disarmed": {
       return m.canvas_disarmed();
+    }
+    case "refused": {
+      return editorErrorMessage(announcement.reason);
     }
     case "bends": {
       return announcement.active ? m.canvas_bends() : m.canvas_bends_done();

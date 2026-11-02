@@ -63,7 +63,7 @@ const onLongPress = (
   if (hit.type === "pin") {
     return withCard(done(withoutOverlays(state)), hit);
   }
-  if (hit.type === "chip") {
+  if (hit.type === "chip" || hit.type === "label") {
     return withMenu(selected(state, selectInstances([hit.instanceId]), hit.instanceId), {
       kind: "chip",
       instanceId: hit.instanceId,

@@ -14,9 +14,20 @@ for (const theme of THEMES) {
       await createProject(page);
       await pickTheme(page, theme);
       await setInputs(page, true, true);
-      await expect(output(page)).toHaveText("Output: 0");
+      await expect(output(page)).toHaveText("Output OUT: 0");
       // The main canvas; its screenshot includes the minimap drawn over its corner.
       await expect(page.locator("canvas").first()).toHaveScreenshot(`demo-${slug(theme)}.png`);
     },
   );
 }
+
+const DEMO_INPUTS = 2;
+
+test("demo with the Pins panel open", { tag: "@visual" }, async ({ page }) => {
+  await createProject(page);
+  await expect(page.getByRole("grid", { name: "Inputs" }).getByRole("row")).toHaveCount(
+    DEMO_INPUTS,
+  );
+  // The whole editor: the canvas, its pin badges and the panel beside it.
+  await expect(page).toHaveScreenshot("demo-pins-panel.png");
+});

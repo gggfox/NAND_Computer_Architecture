@@ -8,7 +8,7 @@ import type { Drag, InteractionContext, InteractionState, Interpreted } from "./
 import { endSegmentDrag, segmentMoved, startSegmentDrag } from "./interaction-bends";
 import { chipOf, hitAt, toWorld } from "./interaction-hits";
 import { endMarquee, marqueePoints } from "./interaction-marquee";
-import { disarmed, endWireDrag, startWireDrag } from "./interaction-wiring";
+import { cancelWireDrag, endWireDrag, startWireDrag } from "./interaction-wire-drag";
 import { movesFor } from "./move";
 import { selectInstances } from "./selection";
 
@@ -102,8 +102,8 @@ export const onDragMove = (
 
 /** The moves of the drag in `state` as one action; its returned state is the caller's to replace. */
 const endMove = (state: InteractionState, context: InteractionContext): Interpreted => {
-  const { circuit } = context.scene;
-  const moves = movesFor(circuit, previewOf(state, circuit));
+  const { scene } = context;
+  const moves = movesFor(scene.circuit, previewOf(state, scene));
   return moves.length === 0
     ? done(state)
     : done(
@@ -148,7 +148,7 @@ export const onDragEnd = (
 export const onDragCancel = (state: InteractionState): Interpreted => {
   const { drag, ...rest } = state;
   if (drag?.kind === "wire") {
-    return disarmed(rest);
+    return cancelWireDrag(rest);
   }
   return drag?.kind === "pan" ? done(rest, { type: "cameraSettled" }) : done(rest);
 };

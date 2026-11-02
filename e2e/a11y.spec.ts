@@ -69,6 +69,26 @@ for (const theme of THEMES) {
   });
 }
 
+for (const theme of THEMES) {
+  test(`the pin rename popover, with its error, has no WCAG violations in the ${theme} theme`, async ({
+    page,
+  }) => {
+    await createProject(page);
+    await pickTheme(page, theme);
+    await canvasHost(page).focus();
+    // Input A is first in canvas order: `]` focuses it and F2 renames it.
+    await page.keyboard.press("]");
+    await page.keyboard.press("F2");
+    const field = page.getByRole("textbox", { name: "Pin name" });
+    await expect(field).toBeFocused();
+    expect(await violations(page)).toEqual([]);
+    await field.fill("");
+    await field.press("Enter");
+    await expect(field).toHaveAccessibleDescription("A name can't be empty.");
+    expect(await violations(page)).toEqual([]);
+  });
+}
+
 /** The middle of the demo's straight wire from Input B into the NAND's b, in world units. */
 const WIRE_INTO_B = { x: 100, y: 100 };
 /** In `bus.json`: the NAND's a and the 4-bit input D's pin. */
@@ -120,6 +140,43 @@ for (const theme of THEMES) {
     await expect(
       page.getByRole("menu", { name: "Pick a bit" }).getByRole("menuitem").first(),
     ).toBeFocused();
+    expect(await violations(page)).toEqual([]);
+  });
+}
+
+for (const theme of THEMES) {
+  test(`the Pins panel, its row menu, the Add dialog and a refused name have no WCAG violations in the ${theme} theme`, async ({
+    page,
+  }) => {
+    await createProject(page);
+    await pickTheme(page, theme);
+    // Inline and open from 640 px; on phones the button opens it in a sheet.
+    const toggle = page.getByRole("button", { name: "Pins 3" });
+    if ((await toggle.getAttribute("aria-expanded")) === "false") {
+      await toggle.click();
+      await expect(page.getByRole("dialog", { name: "Pins 3" })).toBeVisible();
+    }
+    const inputs = page.getByRole("grid", { name: "Inputs" });
+    await expect(inputs.getByRole("row", { name: "B" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await page.getByRole("button", { name: "Actions for A" }).click();
+    await expect(page.getByRole("menuitem", { name: "Move down" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: "Add inputs…" }).click();
+    const add = page.getByRole("dialog", { name: "Add inputs" });
+    await expect(add).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await add.getByRole("button", { name: "Cancel" }).click();
+    await expect(add).toHaveCount(0);
+
+    // A refused name shows its reason under the field.
+    const name = page.getByRole("textbox", { name: "Name of input 1", exact: true });
+    await name.fill("");
+    await name.press("Enter");
+    await expect(name).toHaveAccessibleDescription("A name can't be empty.");
     expect(await violations(page)).toEqual([]);
   });
 }

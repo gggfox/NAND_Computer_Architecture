@@ -69,6 +69,15 @@ export type EditorAction =
       readonly instanceId: InstanceId;
       readonly position: Point;
     }
+  | {
+      readonly type: "addPins";
+      readonly chipId: ChipId;
+      readonly pins: readonly {
+        readonly pin: PinDef;
+        readonly instanceId: InstanceId;
+        readonly position: Point;
+      }[];
+    }
   | { readonly type: "removePin"; readonly chipId: ChipId; readonly pinId: PinId }
   | {
       readonly type: "renamePin";
@@ -114,6 +123,7 @@ export type EditorError =
   | { readonly type: "NothingToRemove" }
   | { readonly type: "NothingToRecolor" }
   | { readonly type: "NothingToReroute" }
+  | { readonly type: "NothingToAdd" }
   | PlaceError
   | SaveError
   | ConnectionError;

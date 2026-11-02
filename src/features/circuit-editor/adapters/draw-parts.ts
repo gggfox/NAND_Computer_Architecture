@@ -1,10 +1,11 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance } from "~/features/projects";
+import type { ChipInstance, PinDef } from "~/features/projects";
 import { readableTextOn } from "~/shared/contrast";
 
 import type { ChipLayout, Rect } from "../domain/chip-layout";
 import { layoutIn } from "../domain/geometry";
-import { instanceLevel, pinLevelKey, pinValue } from "../domain/signals";
+import { panelNumber } from "../domain/io-layout";
+import { instanceLevel, pieceValue, pinLevelKey, pinValue } from "../domain/signals";
 import type { Level } from "../domain/signals";
 import { inPart, intersects, levelColor } from "./frame";
 import type { Frame } from "./frame";
@@ -16,7 +17,14 @@ const TITLE_FONT = "600 14px system-ui, sans-serif";
 /** Matches `CHAR_WIDTH` in the layout: labels are measured, not guessed. */
 const LABEL_FONT = "13px ui-monospace, SFMono-Regular, Menlo, monospace";
 const LABEL_INSET = 10;
-const NAME_GAP = 8;
+/** A wide value (four or five digits) on a one-grid-wide pin piece. */
+const WIDE_VALUE_FONT = "600 11px system-ui, sans-serif";
+const WIDE_VALUE = 1000;
+/** The order badge: a number in a small circle at the body's top-left. */
+const BADGE_FONT = "600 9px system-ui, sans-serif";
+const BADGE_RADIUS = 6;
+const BADGE_INSET = 8;
+const FULL_TURN = Math.PI + Math.PI;
 /** Shown on an input or output body before the engine has reported a level. */
 const UNKNOWN_LEVEL = "?";
 /** While a pin is armed, pins it cannot reach are drawn this faint. */
@@ -135,25 +143,84 @@ const drawPart = (frame: Frame, instance: ChipInstance, layout: ChipLayout): voi
   drawTabs(frame, instance, layout);
 };
 
-/** A pin piece's name, outside its body on the side away from its pin. */
+/** A pin piece's name, where the layout puts it: outside the body, away from its pin. */
 const drawPieceName = (frame: Frame, layout: ChipLayout): void => {
   const { ctx } = frame;
-  const { rect } = layout;
+  const { name } = layout;
+  if (name === undefined) {
+    return;
+  }
+  // An input's name ends at the gap before its body, so it is right-aligned there.
   const facesRight = layout.pins[0]?.side !== "left";
   ctx.font = LABEL_FONT;
   ctx.fillStyle = frame.palette.text;
   ctx.textAlign = facesRight ? "right" : "left";
-  const x = facesRight ? rect.x - NAME_GAP : rect.x + rect.width + NAME_GAP;
-  ctx.fillText(layout.title, x, rect.y + rect.height * HALF);
+  ctx.fillText(
+    layout.title,
+    facesRight ? name.x + name.width : name.x,
+    name.y + name.height * HALF,
+  );
 };
 
-/** A pin piece: its level on the body, its name outside, its tab. */
+/** The piece's 1-based place in its direction's Pins-panel list, in a circle at the top-left. */
+const drawBadge = (frame: Frame, rect: Rect, def: PinDef | undefined): void => {
+  if (def === undefined) {
+    return;
+  }
+  const { ctx, palette } = frame;
+  // `drawBody` has just set the 1 px line width this outline uses.
+  ctx.fillStyle = palette["chip-nand"];
+  ctx.strokeStyle = palette["chip-text"];
+  ctx.beginPath();
+  ctx.arc(rect.x + BADGE_INSET, rect.y + BADGE_INSET, BADGE_RADIUS, 0, FULL_TURN);
+  ctx.fill();
+  ctx.stroke();
+  drawBadgeNumber(frame, rect, panelNumber(frame.circuit.pins, def.id));
+};
+
+/** The badge's number, in the chip text colour on the chip fill, so it reads in every theme. */
+const drawBadgeNumber = (frame: Frame, rect: Rect, place: number): void => {
+  const { ctx, palette } = frame;
+  ctx.fillStyle = palette["chip-text"];
+  ctx.font = BADGE_FONT;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(place), rect.x + BADGE_INSET, rect.y + BADGE_INSET);
+};
+
+/** The piece's value: one level on a 1-bit body, the decimal value on a wider one. */
+const drawValue = (frame: Frame, rect: Rect, value: number | undefined): void => {
+  const { ctx } = frame;
+  ctx.font = value !== undefined && value >= WIDE_VALUE ? WIDE_VALUE_FONT : TITLE_FONT;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const text = value === undefined ? UNKNOWN_LEVEL : String(value);
+  ctx.fillText(text, rect.x + rect.width * HALF, rect.y + rect.height * HALF);
+};
+
+const defOf = (frame: Frame, instance: ChipInstance): PinDef | undefined => {
+  const { kind } = instance;
+  return kind.type === "pin" ? frame.circuit.pins.find((pin) => pin.id === kind.pinId) : undefined;
+};
+
+/** A 1-bit piece's level, as `instanceLevel` reads it, without looking the instance up again. */
+const levelOfPiece = (def: PinDef | undefined, value: number | undefined): Level | undefined => {
+  if (def?.width !== 1 || value === undefined) {
+    return NO_LEVEL;
+  }
+  return value === 0 ? 0 : 1;
+};
+
+/** A pin piece: its value on the body, its order badge, its name outside, its tab. */
 const drawPiece = (frame: Frame, instance: ChipInstance, layout: ChipLayout): void => {
   const { palette } = frame;
-  const level = instanceLevel(frame.circuit, frame.known, instance);
+  const def = defOf(frame, instance);
+  const value = def === undefined ? undefined : pieceValue(frame.known, def);
+  const level = levelOfPiece(def, value);
   drawBody(frame, layout.rect, { fill: levelColor(palette, level), radius: CHIP_RADIUS });
   frame.ctx.fillStyle = palette[level === 0 ? "chip-text-low" : "chip-text"];
-  centerText(frame, level === undefined ? UNKNOWN_LEVEL : String(level), layout.rect);
+  drawValue(frame, layout.rect, value);
+  drawBadge(frame, layout.rect, def);
   drawPieceName(frame, layout);
   drawTabs(frame, instance, layout);
 };

@@ -1,5 +1,6 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import {
+  canvasHost,
   chipCenter,
   createProject,
   DEMO_PART,
@@ -135,4 +136,37 @@ test("with the Pan tool, a one-finger drag on empty canvas pans", async ({ page 
       return after.x !== before.x && after.y !== before.y;
     })
     .toBe(true);
+});
+
+/** `]` steps through the demo's parts in order: A, B, the NAND, then OUT. */
+const STEPS_TO_OUT = 4;
+/** At zoom 1 from world x 40, OUT's name starts about 40 px from a phone's right edge. */
+const OUT_NEAR_RIGHT = "zoom=1&x=40&y=0";
+
+test("renaming OUT keeps the popover on screen, with no sideways scroll", async ({ page }) => {
+  await createProject(page);
+  const url = new URL(page.url());
+  url.search = OUT_NEAR_RIGHT;
+  await page.goto(url.toString());
+  await expect.poll(() => urlCamera(page)).toEqual({ zoom: 1, x: 40, y: 0 });
+  await canvasHost(page).focus();
+  for (let step = 0; step < STEPS_TO_OUT; step += 1) {
+    await page.keyboard.press("]");
+  }
+  await expect(spoken(page)).toHaveText(/OUT.*selected/u);
+  await page.keyboard.press("F2");
+  const field = page.getByRole("textbox", { name: "Pin name" });
+  await expect(field).toHaveValue("OUT");
+  const box = await page.locator("form").filter({ has: field }).boundingBox();
+  // A phone stretches its layout viewport to fit wide content, so compare with the device width.
+  const width = page.viewportSize()?.width ?? 0;
+  expect(box).not.toBeNull();
+  expect(box?.x).toBeGreaterThanOrEqual(0);
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+  const layout = await page.evaluate(() => ({
+    inner: window.innerWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(layout.inner).toBe(width);
+  expect(layout.scroll).toBeLessThanOrEqual(layout.inner);
 });

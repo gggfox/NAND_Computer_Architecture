@@ -1,36 +1,27 @@
-import type { PinRef, Point, WireColor } from "~/features/projects";
+import type { ConnectionError, PinRef, Point, WireColor } from "~/features/projects";
 
 import { worldToScreen } from "./camera";
 import { layoutIn } from "./geometry";
-import type { Gesture } from "./gesture-types";
-import { nearestPin } from "./hit-test";
 import type { Hit } from "./hit-test";
 import { done, withoutOverlays } from "./interaction";
 import type {
   Armed,
-  Drag,
   Effect,
   InteractionCommand,
   InteractionContext,
   InteractionState,
   Interpreted,
 } from "./interaction";
-import { toWorld } from "./interaction-hits";
-import { pinLevelKey } from "./signals";
 import { completionFor, legalTargets } from "./wiring-targets";
 
 type PinHit = Extract<Hit, { type: "pin" }>;
-type WireDrag = Extract<Drag, { kind: "wire" }>;
-
-/** Half the smallest target (24 px): how far a released wire reaches for a pin, in screen px. */
-const REACH_PX = 12;
 
 const announce = (announcement: Extract<Effect, { type: "announce" }>["announcement"]): Effect => ({
   type: "announce",
   announcement,
 });
 
-const refOf = (hit: PinHit): PinRef => ({ instanceId: hit.instanceId, pin: hit.pin });
+export const refOf = (hit: PinHit): PinRef => ({ instanceId: hit.instanceId, pin: hit.pin });
 
 /** The state with nothing armed, the bit picker closed and no wire being drawn. */
 const unarmed = (state: InteractionState): InteractionState => {
@@ -43,12 +34,12 @@ export const disarmed = (state: InteractionState): Interpreted =>
   done(unarmed(state), announce({ type: "disarmed" }));
 
 /** Where a new wire starts and the colour it gets; `undefined` is the default colour. */
-interface Start {
+export interface Start {
   readonly end: PinRef;
   readonly color: WireColor | undefined;
 }
 
-const colorOf = (color: WireColor | undefined): { readonly color?: WireColor } =>
+export const colorOf = (color: WireColor | undefined): { readonly color?: WireColor } =>
   color === undefined ? {} : { color };
 
 /** Arms `end` with its legal targets, worked out once here. */
@@ -83,14 +74,23 @@ const connected = (
     announce({ type: "wired" }),
   );
 
+/** Why a connection was refused: shown over the canvas as `notice` and announced. */
+export const refused = ({ state, effects }: Interpreted, reason: ConnectionError): Interpreted => ({
+  state: { ...state, notice: reason },
+  effects: [...effects, announce({ type: "refused", reason })],
+});
+
 /** Where the armed pin is aimed: the target pin, and where a bit picker would point. */
-interface Aim {
+export interface Aim {
   readonly target: PinRef;
   readonly screen: Point;
 }
 
-/** `armed` meets the aimed pin: it connects, opens the bit picker, or arms the target instead. */
-const complete = (
+/**
+ * `armed` meets the aimed pin: it connects, opens the bit picker, or arms the target instead and
+ * says why it could not connect.
+ */
+export const complete = (
   state: InteractionState,
   { armed, target, screen }: Aim & { readonly armed: Armed },
   context: InteractionContext,
@@ -104,7 +104,10 @@ const complete = (
     const { bus, bits } = completion;
     return done({ ...state, bitPick: { armed: armed.end, target, bus, bits, screen, ...color } });
   }
-  return armPin(state, target, context);
+  const rearmed = armPin(state, target, context);
+  // Tapping the armed pin again only re-arms it: that is no attempt to connect.
+  const again = target.instanceId === armed.end.instanceId && target.pin === armed.end.pin;
+  return again ? rearmed : refused(rearmed, completion.reason);
 };
 
 /** A pin is aimed at (tapped, chosen by key or under a released drag): wire it, or arm it. */
@@ -124,81 +127,6 @@ export const onPinTap = (
     { target: refOf(hit), screen: worldToScreen(state.camera, hit.anchor) },
     context,
   );
-
-/**
- * A drag from a pin starts at it; one from a wire branches from that wire's source, in its
- * colour, except in the Pan tool, where a drag on a wire pans.
- */
-const startOf = (
-  state: InteractionState,
-  hit: Hit,
-  context: InteractionContext,
-): Start | undefined => {
-  if (hit.type === "pin") {
-    return { end: refOf(hit), color: state.wireColor };
-  }
-  const wire =
-    hit.type === "wire" && state.tool === "select"
-      ? context.scene.circuit.wires.find((item) => item.id === hit.wireId)
-      : undefined;
-  return wire && { end: wire.from, color: wire.color };
-};
-
-/** A drag that draws a wire, from a pin or (a branch) from a wire; else, or with Space, `undefined`. */
-export const startWireDrag = (
-  state: InteractionState,
-  {
-    gesture,
-    hit,
-  }: { readonly gesture: Extract<Gesture, { type: "dragStart" }>; readonly hit: Hit },
-  context: InteractionContext,
-): Interpreted | undefined => {
-  const start = gesture.modifiers.space ? undefined : startOf(state, hit, context);
-  if (start === undefined) {
-    return undefined;
-  }
-  const armed = arm(withoutOverlays(state), start, context);
-  const drag: WireDrag = {
-    kind: "wire",
-    from: start.end,
-    point: toWorld(state, gesture.origin),
-    ...colorOf(start.color),
-  };
-  // A hover ring would stay at the pin the wire leaves, as it would for a chip move.
-  const { hover: _hover, ...rest } = armed.state;
-  return { ...armed, state: { ...rest, drag } };
-};
-
-const sameEnd = (first: PinRef, second: PinRef): boolean =>
-  first.instanceId === second.instanceId && first.pin === second.pin && first.bit === second.bit;
-
-/** A wire drag ended: it connects to the nearest legal pin within reach, else nothing is wired. */
-export const endWireDrag = (
-  state: InteractionState,
-  drag: WireDrag,
-  context: InteractionContext,
-): Interpreted => {
-  // `w` may have armed another pin mid-drag; the drop is legal for the pin the drag started at.
-  // With nothing armed (wiring was cancelled), nothing is.
-  const { armed: current } = state;
-  const legal =
-    current === undefined || sameEnd(current.end, drag.from)
-      ? (current?.legal ?? new Set<string>())
-      : legalTargets(context.scene, drag.from);
-  const target = nearestPin(context.index(), drag.point, {
-    reach: REACH_PX / state.camera.zoom,
-    accept: (hit) => legal.has(pinLevelKey(hit.instanceId, hit.pin)),
-  });
-  // The wire is drawn from where the drag started, whatever else was armed meanwhile.
-  const armed: Armed = { end: drag.from, legal, ...colorOf(drag.color) };
-  return target === undefined
-    ? disarmed(state)
-    : complete(
-        state,
-        { armed, target: refOf(target), screen: worldToScreen(state.camera, target.anchor) },
-        context,
-      );
-};
 
 /**
  * Escape's wiring step: the bit picker closes first, then the armed pin (and a wire being drawn,

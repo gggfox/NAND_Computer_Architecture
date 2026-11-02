@@ -94,6 +94,7 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
     focus,
     menu,
     card,
+    renaming,
     hover: _hover,
     armed: _armed,
     bitPick: _pick,
@@ -107,6 +108,7 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
     ...(focus !== undefined && present.instances.has(focus) ? { focus } : {}),
     ...(menuThere(menu, present) ? { menu } : {}),
     ...(stillThere(card, present.instances) === undefined ? {} : { card }),
+    ...(stillThere(renaming, present.instances) === undefined ? {} : { renaming }),
     ...wiringAfter(state, scene, present),
     ...dragAfter(state, present),
   };

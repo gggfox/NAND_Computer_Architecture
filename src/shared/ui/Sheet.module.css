@@ -1,0 +1,40 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+  background-color: rgb(0 0 0 / 50%);
+}
+
+.sheet {
+  inline-size: 100%;
+  max-block-size: 85dvh;
+  overflow: auto;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-block-end: none;
+  border-start-start-radius: 0.75rem;
+  border-start-end-radius: 0.75rem;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  outline: none;
+}
+
+.header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-title);
+}

@@ -1,4 +1,4 @@
-import type { BitWidth, Circuit, PinDirection } from "~/features/projects";
+import type { BitWidth, Circuit, PinDef, PinDirection } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
 
 import type { Level } from "./signals";
@@ -54,3 +54,23 @@ export const unpackOutputs = (
   bits: readonly Level[],
 ): ReadonlyMap<PinId, number> =>
   new Map(layout.outputs.map((slot) => [slot.pinId, valueAt(slot, bits)]));
+
+/**
+ * A pin's 1-based place among the pins of its direction, in Pins-panel order (`circuit.pins`), for
+ * its order badge; 0 when it is not there. One pass, no allocation: the renderer calls it per frame.
+ */
+export const panelNumber = (pins: readonly PinDef[], pinId: PinId): number => {
+  let inputs = 0;
+  let outputs = 0;
+  for (const pin of pins) {
+    if (pin.direction === "input") {
+      inputs += 1;
+    } else {
+      outputs += 1;
+    }
+    if (pin.id === pinId) {
+      return pin.direction === "input" ? inputs : outputs;
+    }
+  }
+  return 0;
+};

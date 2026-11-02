@@ -1,5 +1,5 @@
 import { checkConnection, endpointInfo, pinKeys } from "~/features/projects";
-import type { PinKey, PinRef } from "~/features/projects";
+import type { ConnectionError, PinKey, PinRef } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import type { Scene } from "./geometry";
@@ -14,9 +14,10 @@ export type Completion =
       readonly bus: "armed" | "target";
       readonly bits: readonly number[];
     }
-  | { readonly type: "illegal" };
+  /** Nothing can connect; `reason` says why. */
+  | { readonly type: "illegal"; readonly reason: ConnectionError };
 
-const ILLEGAL: Completion = { type: "illegal" };
+const illegal = (reason: ConnectionError): Completion => ({ type: "illegal", reason });
 
 /** The pin's width as a wire sees it (a tapped bit counts as 1); NaN for a pin that is not there. */
 const sideWidth = (scene: Scene, ref: PinRef): number => {
@@ -31,7 +32,9 @@ const needsBit = (scene: Scene, bus: PinRef, other: PinRef): boolean =>
   bus.bit === undefined && sideWidth(scene, other) === 1 && sideWidth(scene, bus) > 1;
 
 const connectOf = (result: ReturnType<typeof checkConnection>): Completion =>
-  result.ok ? { type: "connect", from: result.value.from, to: result.value.to } : ILLEGAL;
+  result.ok
+    ? { type: "connect", from: result.value.from, to: result.value.to }
+    : illegal(result.error);
 
 interface Ends {
   readonly armed: PinRef;
@@ -47,15 +50,16 @@ const tapped = ({ armed, target }: Ends, bus: "armed" | "target", bit: number): 
 const connectEnds = (scene: Scene, { armed, target }: Ends): Completion =>
   connectOf(checkConnection(scene.project, scene.circuit, armed, target));
 
+/**
+ * Picks the bit on the `bus` end. With no bit free, the reason is the per-bit refusal (every bit
+ * is already driven), not the whole-pin width mismatch: 1-bit to a bus is normally allowed.
+ */
 const chooseBit = (scene: Scene, ends: Ends, bus: "armed" | "target"): Completion => {
   const width = sideWidth(scene, ends[bus]);
   const free = Array.from({ length: width }, (_unused, bit) => bit).filter(
     (bit) => connectEnds(scene, tapped(ends, bus, bit)).type === "connect",
   );
-  const [only] = free;
-  if (only === undefined) {
-    return ILLEGAL;
-  }
+  const [only = 0] = free;
   return free.length > 1
     ? { type: "pickBit", bus, bits: free }
     : connectEnds(scene, tapped(ends, bus, only));
@@ -70,7 +74,9 @@ export const completionFor = (scene: Scene, armed: PinRef, target: PinRef): Comp
   if (needsBit(scene, target, armed)) {
     return chooseBit(scene, { armed, target }, "target");
   }
-  return needsBit(scene, armed, target) ? chooseBit(scene, { armed, target }, "armed") : ILLEGAL;
+  return needsBit(scene, armed, target)
+    ? chooseBit(scene, { armed, target }, "armed")
+    : illegal(direct.error);
 };
 
 /** `pinLevelKey` of every pin that can take a wire from `armed` (some bit choice may be needed). */

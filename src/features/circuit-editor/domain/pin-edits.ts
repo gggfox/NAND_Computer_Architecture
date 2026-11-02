@@ -27,7 +27,7 @@ const editPin = (
   });
 
 /** After the last pin of the same direction; inputs lead the list when there is none. */
-const insertionIndex = (pins: readonly PinDef[], added: PinDef): number => {
+export const insertionIndex = (pins: readonly PinDef[], added: PinDef): number => {
   const last = pins.findLastIndex((pin) => pin.direction === added.direction);
   if (last !== -1) {
     return last + 1;

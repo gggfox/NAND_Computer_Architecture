@@ -48,13 +48,13 @@ test("create a project and drive the NAND with the keyboard alone", async ({ pag
   await tabTo(page, "New project");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(PROJECT_URL);
-  await expect(output(page)).toHaveText("Output: 1");
+  await expect(output(page)).toHaveText("Output OUT: 1");
 
   await tabTo(page, "Input A");
   await page.keyboard.press("Space");
-  await expect(output(page)).toHaveText("Output: 1");
+  await expect(output(page)).toHaveText("Output OUT: 1");
 
   await tabTo(page, "Input B");
   await page.keyboard.press("Space");
-  await expect(output(page)).toHaveText("Output: 0");
+  await expect(output(page)).toHaveText("Output OUT: 0");
 });

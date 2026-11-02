@@ -1,9 +1,12 @@
+import type { InstanceId } from "~/shared/ids";
+
 import type { Gesture } from "./gesture-types";
 import type { Hit } from "./hit-test";
 import { done, selected, withoutOverlays } from "./interaction";
 import type { InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { tappedInBends } from "./interaction-bends";
 import { hitAt } from "./interaction-hits";
+import { startRename, withToggle } from "./interaction-pins";
 import { disarmed, onPinTap } from "./interaction-wiring";
 import { selectInstances, selectWire, toggleInstance, toggleWire } from "./selection";
 
@@ -14,18 +17,28 @@ type Tap = Extract<Gesture, { type: "tap" }>;
 const emptyTap = (state: InteractionState, _hit: Extract<Hit, { type: "empty" }>): Interpreted =>
   selected(state, selectInstances([]));
 
-/** A tap on a chip, a wire or empty canvas, with nothing armed. */
+/** A tap on a chip selects it; a plain one on a 1-bit input piece also flips its value. */
+const chipTap = (
+  state: InteractionState,
+  { gesture, instanceId }: { readonly gesture: Tap; readonly instanceId: InstanceId },
+  context: InteractionContext,
+): Interpreted =>
+  gesture.modifiers.shift
+    ? selected(state, toggleInstance(state.selection, instanceId), instanceId)
+    : withToggle(selected(state, selectInstances([instanceId]), instanceId), instanceId, context);
+
+/** A tap on a chip, a pin piece's name, a wire or empty canvas, with nothing armed. */
 const plainTap = (
   state: InteractionState,
   gesture: Tap,
-  hit: Exclude<Hit, PinHit>,
+  { hit, context }: { readonly hit: Exclude<Hit, PinHit>; readonly context: InteractionContext },
 ): Interpreted => {
   const { shift } = gesture.modifiers;
   if (hit.type === "chip") {
-    const selection = shift
-      ? toggleInstance(state.selection, hit.instanceId)
-      : selectInstances([hit.instanceId]);
-    return selected(state, selection, hit.instanceId);
+    return chipTap(state, { gesture, instanceId: hit.instanceId }, context);
+  }
+  if (hit.type === "label") {
+    return startRename(state, hit.instanceId, context);
   }
   if (hit.type === "wire") {
     return selected(
@@ -46,13 +59,13 @@ const tapAt = (state: InteractionState, gesture: Tap, context: InteractionContex
     return onPinTap(state, hit, context);
   }
   if (state.armed === undefined) {
-    return plainTap(state, gesture, hit);
+    return plainTap(state, gesture, { hit, context });
   }
   const cancelled = disarmed(withoutOverlays(state));
   if (hit.type === "empty") {
     return cancelled;
   }
-  const tapped = plainTap(cancelled.state, gesture, hit);
+  const tapped = plainTap(cancelled.state, gesture, { hit, context });
   return { ...tapped, effects: [...cancelled.effects, ...tapped.effects] };
 };
 

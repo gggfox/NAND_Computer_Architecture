@@ -1,0 +1,19 @@
+/* Renames a pin piece in place: a small non-modal form just below its name. */
+.popover {
+  /* The name's start edge on the canvas, set inline; the default keeps the edge inset. */
+  --anchor-x: 0.5rem;
+  --popover-size: min(12rem, 100% - 1rem);
+
+  position: absolute;
+
+  /* Stays inside the canvas on both sides: an output's name sits near the right edge on a phone. */
+  inset-inline-start: clamp(0.5rem, var(--anchor-x), 100% - var(--popover-size) - 0.5rem);
+  z-index: var(--z-overlay);
+  inline-size: var(--popover-size);
+  padding: 0.5rem 0.75rem;
+  margin-block-start: 0.25rem;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-radius: 0.5rem;
+}

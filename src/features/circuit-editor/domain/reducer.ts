@@ -6,6 +6,7 @@ import type { EditorAction, EditorError } from "./actions";
 import { moveChips, removeItems } from "./batch-edits";
 import { createChip, discardDraft, recolorChip, renameChip, saveChip } from "./chip-edits";
 import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
+import { addPins } from "./pin-batch-edits";
 import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
 import { connectWire, recolorWires, rerouteWires } from "./wire-edits";
 
@@ -31,6 +32,7 @@ const HANDLERS: Handlers = {
   removeWire,
   moveWaypoint,
   addPin,
+  addPins,
   removePin,
   renamePin,
   setPinWidth,

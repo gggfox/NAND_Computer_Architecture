@@ -3,9 +3,8 @@ import type { Point } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import { boundsOf, centreOn, fitBounds, panBy, worldToScreen, zoomAt } from "./camera";
-import { GRID } from "./chip-layout";
-import type { Rect } from "./chip-layout";
-import { layoutIn } from "./geometry";
+import { GRID, layoutIn } from "./geometry";
+import type { Rect } from "./geometry";
 import { done, selected, withoutOverlays } from "./interaction";
 import type {
   InteractionCommand,
@@ -15,6 +14,7 @@ import type {
 } from "./interaction";
 import { bendKey } from "./interaction-bend-keys";
 import { MENU_COMMANDS, openMenuByKey } from "./interaction-menus";
+import { PIN_COMMANDS } from "./interaction-pins";
 import { cancelWiring, WIRING_COMMANDS } from "./interaction-wiring";
 import {
   addInstances,
@@ -275,6 +275,7 @@ const HANDLERS: Handlers = {
   },
   ...WIRING_COMMANDS,
   ...MENU_COMMANDS,
+  ...PIN_COMMANDS,
 };
 
 const run = <Type extends InteractionCommand["type"]>(

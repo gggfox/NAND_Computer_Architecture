@@ -83,6 +83,9 @@ const EFFECTS: EffectHandlers = {
   redo: (deps) => {
     deps.editor.getState().redo();
   },
+  setInput: (deps, effect) => {
+    deps.editor.getState().setInput(effect.pinId, effect.value);
+  },
   cameraSettled: (deps) => {
     deps.view.settle();
   },
@@ -141,6 +144,7 @@ export const createInteractionStore = (deps: InteractionDeps): InteractionHandle
       viewport: deps.viewport(),
       index,
       newWireId: () => newWireId(),
+      inputs: editor.inputs,
     };
   };
   let announced = 0;

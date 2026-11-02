@@ -16,7 +16,16 @@ import {
   PIN_A_OUT,
   wiring,
 } from "./interaction-wiring.fixtures";
-import { command, drag, gesture, gestures, screen, tap, WIRE_ID } from "./interaction.fixtures";
+import {
+  command,
+  drag,
+  gesture,
+  gestures,
+  screen,
+  setup,
+  tap,
+  WIRE_ID,
+} from "./interaction.fixtures";
 
 /** A 4-bit merge at (480, 400) and its bus output's key. */
 const mergeWithOutput = (base: ReturnType<typeof wiring>) => {
@@ -135,6 +144,32 @@ describe("a wire drag interrupted", () => {
         to: { instanceId: nand.id, pin: 0 },
       }),
     ]);
+  });
+});
+
+describe("a wire drag released over an illegal pin", () => {
+  it("says why, and wires nothing", () => {
+    const { context, state } = setup();
+    // B's output cannot drive the NAND's input `a`, which A already drives.
+    const released = gestures(state, context, drag(screen(40, 100), NAND_A));
+    expect(dispatched(released.effects)).toEqual([]);
+    expect(released.state.armed).toBeUndefined();
+    expect(released.state.drag).toBeUndefined();
+    expect(released.state.notice?.type).toBe("InputAlreadyDriven");
+    expect(released.effects.at(-1)).toEqual({
+      type: "announce",
+      announcement: { type: "refused", reason: released.state.notice },
+    });
+  });
+
+  it("dropped back on its own pin, says nothing more than cancelled", () => {
+    const { context, state } = setup();
+    const released = gestures(state, context, drag(PIN_A_OUT, screen(41, 21)));
+    expect(released.state.notice).toBeUndefined();
+    expect(released.effects.at(-1)).toEqual({
+      type: "announce",
+      announcement: { type: "disarmed" },
+    });
   });
 });
 

@@ -6,7 +6,7 @@ import type { RenderState } from "../adapters/render-state";
 import type { EditorSession } from "../application/editor-session";
 import { pinPosition } from "../domain/geometry";
 import type { Scene } from "../domain/geometry";
-import { previewOf } from "../domain/interaction";
+import { movePreviewOf, previewOf } from "../domain/interaction";
 import type { InteractionState } from "../domain/interaction";
 import { pinLevelKey } from "../domain/signals";
 
@@ -55,6 +55,7 @@ export const renderStateOf = (session: EditorSession): RenderState => {
   const scene = interaction.sceneOf(editorState);
   const state = interaction.store.getState();
   const { outputs, levels } = simulation.getState();
+  const { positions, guideX } = movePreviewOf(state, scene);
   const marquee =
     state.drag?.kind === "marquee"
       ? { shape: state.drag.shape, points: state.drag.points }
@@ -69,7 +70,8 @@ export const renderStateOf = (session: EditorSession): RenderState => {
     scope: editorState.chipId,
     overlay: {
       selection: state.selection,
-      positions: previewOf(state, scene.circuit),
+      positions,
+      ...(guideX === undefined ? {} : { guideX }),
       ...(state.hover === undefined ? {} : { hover: state.hover }),
       ...(marquee === undefined ? {} : { marquee }),
       ...armedOf(scene, state),
@@ -88,7 +90,7 @@ export const minimapStateOf = (session: EditorSession, canvas: HTMLCanvasElement
     project: scene.project,
     circuit: scene.circuit,
     layout: interaction.layout,
-    positions: previewOf(state, scene.circuit),
+    positions: previewOf(state, scene),
     view: state.camera,
     viewport: { width: canvas.clientWidth, height: canvas.clientHeight },
     dragging: state.drag !== undefined,

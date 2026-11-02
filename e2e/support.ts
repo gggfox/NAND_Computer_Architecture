@@ -26,15 +26,16 @@ export const createProject = async (page: Page): Promise<void> => {
   await page.goto("/");
   await page.getByRole("button", { name: "New project" }).click();
   await expect(page).toHaveURL(PROJECT_URL);
-  await expect(output(page)).toHaveText(/Output: [01]/u);
+  await expect(output(page)).toHaveText(/Output OUT: [01]/u);
 };
 
 type SwitchName = "Input A" | "Input B";
 
-export const inputSwitch = (page: Page, name: SwitchName) => page.getByRole("switch", { name });
+export const inputSwitch = (page: Page, name: SwitchName) =>
+  page.getByRole("switch", { name, exact: true });
 
 /** The summary's live region (the status `<output>` above the canvas is a different element). */
-export const output = (page: Page) => page.getByText(/^Output: /u);
+export const output = (page: Page) => page.getByText(/^Output OUT: /u);
 
 /** Picks a theme through the toolbar's Theme select (the user path, not localStorage). */
 export const pickTheme = async (page: Page, theme: Theme): Promise<void> => {
@@ -233,7 +234,7 @@ export const fingerDrag = (from: Point, to: Point): readonly TouchStep[] => [
 const PointSchema = z.object({ x: z.number(), y: z.number() });
 const InstanceSchema = z.object({
   id: z.string(),
-  kind: z.object({ type: z.string() }),
+  kind: z.object({ type: z.string(), pinId: z.string().optional() }),
   position: PointSchema,
 });
 const PinRefSchema = z.object({
@@ -248,17 +249,23 @@ const WireSchema = z.object({
   waypoints: z.array(PointSchema),
   manualWaypoints: z.boolean(),
 });
+const PinDefSchema = z.object({ id: z.string(), name: z.string(), direction: z.string() });
 const ChipSchema = z.object({
   name: z.string(),
-  draft: z.object({ instances: z.array(InstanceSchema), wires: z.array(WireSchema) }),
+  saved: z.object({ pins: z.array(PinDefSchema) }).optional(),
+  draft: z.object({
+    pins: z.array(PinDefSchema),
+    instances: z.array(InstanceSchema),
+    wires: z.array(WireSchema),
+  }),
 });
 const ExportedFileSchema = z.object({ project: z.object({ chips: z.array(ChipSchema) }) });
 
 export type ExportedFile = z.output<typeof ExportedFileSchema>;
 export type ExportedWire = z.output<typeof WireSchema>;
 
-/** Exports the project through the toolbar and reads the downloaded JSON. */
-export const exportedProject = async (page: Page): Promise<ExportedFile> => {
+/** Exports the project through the toolbar and returns the downloaded file's text. */
+export const exportedText = async (page: Page): Promise<string> => {
   /*
    * WebKit's phone emulation leaves the page panned once the canvas takes focus from Tab, and the
    * next click on the toolbar then misses its press; start from the top.
@@ -269,9 +276,12 @@ export const exportedProject = async (page: Page): Promise<ExportedFile> => {
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export" }).click();
   const download = await downloadEvent;
-  const text = await readFile(await download.path(), "utf-8");
-  return ExportedFileSchema.parse(JSON.parse(text));
+  return readFile(await download.path(), "utf-8");
 };
+
+/** Exports the project through the toolbar and reads the downloaded JSON. */
+export const exportedProject = async (page: Page): Promise<ExportedFile> =>
+  ExportedFileSchema.parse(JSON.parse(await exportedText(page)));
 
 /** The demo NAND's position in an exported project. */
 export const nandPosition = (file: ExportedFile): Point | undefined =>

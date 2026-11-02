@@ -20,6 +20,8 @@ export interface OverlayView {
   readonly wireDrag?: WireDragView;
   /** Bend mode's wire, focused segment and segment drag. */
   readonly bends?: BendsView;
+  /** While a lone pin piece is dragged into line: the x of the column it lines up with. */
+  readonly guideX?: number;
 }
 
 const SELECTION_GAP = 4;
@@ -28,6 +30,7 @@ const HALO_WIDTH = 9;
 /** The ring around a hovered pin: the 24 px target, in screen pixels. */
 const RING_RADIUS_PX = 12;
 const MARQUEE_DASH_PX = 6;
+const GUIDE_DASH_PX = 4;
 const FULL_TURN = Math.PI + Math.PI;
 
 const strokePath = (
@@ -114,10 +117,31 @@ const drawMarquee = (frame: Frame, marquee: OverlayView["marquee"], zoom: number
   ctx.setLineDash([]);
 };
 
-/** Selection outlines, wiring, the hovered pin's ring and the marquee, above everything else. */
+/** A 1 px dashed vertical line at `x`, the height of the visible world. */
+const drawGuide = (frame: Frame, x: number | undefined, zoom: number): void => {
+  if (x === undefined) {
+    return;
+  }
+  const { ctx, visible } = frame;
+  ctx.strokeStyle = frame.palette["focus-ring"];
+  ctx.lineWidth = 1 / zoom;
+  ctx.setLineDash([GUIDE_DASH_PX / zoom, GUIDE_DASH_PX / zoom]);
+  strokePath(
+    ctx,
+    [
+      { x, y: visible.y },
+      { x, y: visible.y + visible.height },
+    ],
+    false,
+  );
+  ctx.setLineDash([]);
+};
+
+/** Selection outlines, wiring, the hovered pin's ring, the marquee and the pin guide, on top. */
 export const drawOverlays = (frame: Frame, overlay: OverlayView, zoom: number): void => {
   drawChipOutlines(frame, overlay);
   drawWiring(frame, overlay);
   drawHoverRing(frame, overlay.hover, zoom);
   drawMarquee(frame, overlay.marquee, zoom);
+  drawGuide(frame, overlay.guideX, zoom);
 };

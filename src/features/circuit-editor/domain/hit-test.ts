@@ -29,7 +29,8 @@ type Entry =
       readonly anchor: Point;
       readonly tab: Rect;
     }
-  | { readonly type: "wire"; readonly wireId: WireId; readonly from: Point; readonly to: Point };
+  | { readonly type: "wire"; readonly wireId: WireId; readonly from: Point; readonly to: Point }
+  | { readonly type: "label"; readonly instanceId: InstanceId; readonly rect: Rect };
 
 /** Every chip, pin and wire segment of a scene, bucketed by where it lies. */
 export interface SpatialIndex {
@@ -44,6 +45,8 @@ export type Hit =
       readonly anchor: Point;
     }
   | { readonly type: "chip"; readonly instanceId: InstanceId }
+  /** A pin piece's name, outside its body. */
+  | { readonly type: "label"; readonly instanceId: InstanceId }
   | { readonly type: "wire"; readonly wireId: WireId }
   | { readonly type: "empty" };
 
@@ -71,7 +74,8 @@ const segmentBox = (from: Point, to: Point): Rect => ({
 
 const boxOf = (entry: Entry): Rect => {
   switch (entry.type) {
-    case "chip": {
+    case "chip":
+    case "label": {
       return entry.rect;
     }
     case "pin": {
@@ -96,6 +100,9 @@ const chipEntries = (scene: Scene): readonly Entry[] =>
         (pin) =>
           ({ type: "pin", instanceId, pin: pin.key, anchor: pin.anchor, tab: pin.tab }) as const,
       ),
+      ...(layout.name === undefined
+        ? []
+        : [{ type: "label", instanceId, rect: layout.name } as const]),
     ];
   });
 
@@ -224,6 +231,19 @@ const chipAt = (entries: readonly Entry[], point: Point): Hit | undefined => {
   return top && { type: "chip", instanceId: top.instanceId };
 };
 
+/** Within `reach` of the rect's centre on each axis, or inside it: a target at least 24 px across. */
+const inTarget = (rect: Rect, point: Point, reach: number): boolean =>
+  Math.abs(point.x - (rect.x + rect.width * HALF)) <= Math.max(reach, rect.width * HALF) &&
+  Math.abs(point.y - (rect.y + rect.height * HALF)) <= Math.max(reach, rect.height * HALF);
+
+/** A pin piece's name under the point. */
+const labelAt = (entries: readonly Entry[], point: Point, reach: number): Hit | undefined => {
+  const label = entries.find(
+    (entry) => entry.type === "label" && inTarget(entry.rect, point, reach),
+  );
+  return label?.type === "label" ? { type: "label", instanceId: label.instanceId } : undefined;
+};
+
 /** The wire with a segment nearest the point, within `reach`. */
 const wireAt = (entries: readonly Entry[], point: Point, reach: number): Hit | undefined => {
   const [near] = entries
@@ -236,8 +256,9 @@ const wireAt = (entries: readonly Entry[], point: Point, reach: number): Hit | u
 
 /**
  * What a press at `point` (world units) means at `zoom` (spec §5.1, §7): a pin beats a chip body,
- * a chip body beats a wire, and a wire beats empty canvas. Pins and wires reach half a target
- * (12 screen px) at any zoom, so every target is at least 24 px across.
+ * a chip body beats a pin piece's name, the name beats a wire, and a wire beats empty canvas.
+ * Pins, names and wires reach half a target (12 screen px) at any zoom, so every target is at
+ * least 24 px across.
  */
 export const hitTest = (index: SpatialIndex, point: Point, zoom: number): Hit => {
   const reach = (TARGET_PX * HALF) / zoom;
@@ -246,7 +267,12 @@ export const hitTest = (index: SpatialIndex, point: Point, zoom: number): Hit =>
     return pin;
   }
   const entries = candidatesNear(index, point, reach);
-  return chipAt(entries, point) ?? wireAt(entries, point, reach) ?? EMPTY;
+  return (
+    chipAt(entries, point) ??
+    labelAt(entries, point, reach) ??
+    wireAt(entries, point, reach) ??
+    EMPTY
+  );
 };
 
 /** The chips whose bodies touch `rect`, for box and lasso selection to filter further. */

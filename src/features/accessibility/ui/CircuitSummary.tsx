@@ -19,8 +19,8 @@ interface PinEntry<Direction extends PinDirection> {
   readonly instance: ChipInstance;
   readonly part: Direction;
   readonly pinId: PinId;
-  /** Position among the pins of the same direction, in Pins-panel order. */
-  readonly ordinal: number;
+  /** The pin's own name, from its definition in `circuit.pins`. */
+  readonly name: string;
 }
 
 type Entry =
@@ -34,9 +34,6 @@ type Entry =
       readonly number: number;
     };
 
-const pinOrdinal = (circuit: Circuit, direction: PinDirection, pinId: PinId): number =>
-  circuit.pins.filter((pin) => pin.direction === direction).findIndex((pin) => pin.id === pinId);
-
 const toEntries = (project: Project, circuit: Circuit): readonly Entry[] => {
   const seen = new Map<string, number>();
   return circuit.instances.map((instance): Entry => {
@@ -44,8 +41,8 @@ const toEntries = (project: Project, circuit: Circuit): readonly Entry[] => {
     const { kind } = instance;
     if (kind.type === "pin") {
       const direction = part === "output" ? "output" : "input";
-      const ordinal = pinOrdinal(circuit, direction, kind.pinId);
-      return { instance, part: direction, pinId: kind.pinId, ordinal };
+      const name = circuit.pins.find((pin) => pin.id === kind.pinId)?.name ?? "";
+      return { instance, part: direction, pinId: kind.pinId, name };
     }
     const name = partName(project, circuit, kind);
     const number = (seen.get(name) ?? 0) + 1;
@@ -54,23 +51,8 @@ const toEntries = (project: Project, circuit: Circuit): readonly Entry[] => {
   });
 };
 
-const inputLabel = (ordinal: number): string => {
-  if (ordinal === 0) {
-    return m.input_a();
-  }
-  if (ordinal === 1) {
-    return m.input_b();
-  }
-  return m.input_named({ name: String.fromCodePoint("A".codePointAt(0)! + ordinal) });
-};
-
-const outputLabel = (ordinal: number): string =>
-  ordinal === 0 ? m.output() : m.output_numbered({ number: ordinal + 1 });
-
-const outputText = (ordinal: number, value: number | undefined): string => {
-  const label = outputLabel(ordinal);
-  return value === undefined ? m.output_unknown({ label }) : m.output_value({ label, value });
-};
+const outputText = (name: string, value: number | undefined): string =>
+  value === undefined ? m.output_named_unknown({ name }) : m.output_named_value({ name, value });
 
 const otherLabel = (name: string, number: number, isNand: boolean): string =>
   isNand ? m.nand_numbered({ number }) : m.part_numbered({ name, number });
@@ -93,14 +75,14 @@ function EntryControl({ entry, editor, inputs, outputs }: EntryProps): ReactNode
           editor.getState().setInput(pinId, isSelected ? 1 : 0);
         }}
       >
-        {inputLabel(entry.ordinal)}
+        {m.input_named({ name: entry.name })}
       </Switch>
     );
   }
   if (entry.part === "output") {
     return (
       <output className={styles.output} aria-live="polite">
-        {outputText(entry.ordinal, outputs.get(entry.pinId))}
+        {outputText(entry.name, outputs.get(entry.pinId))}
       </output>
     );
   }

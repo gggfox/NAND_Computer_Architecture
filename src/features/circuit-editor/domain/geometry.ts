@@ -34,6 +34,7 @@ const shifted = (layout: ChipLayout, dx: number, dy: number): ChipLayout => {
     ...layout,
     rect: move(layout.rect),
     pins: layout.pins.map((pin) => ({ ...pin, anchor: move(pin.anchor), tab: move(pin.tab) })),
+    ...(layout.name === undefined ? {} : { name: move(layout.name) }),
   };
 };
 

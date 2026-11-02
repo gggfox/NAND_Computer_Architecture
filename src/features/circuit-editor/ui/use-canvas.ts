@@ -82,17 +82,19 @@ const attachInput = (
   };
 };
 
-/** The canvas command for a key; `Enter` reads whether a pin is armed. */
-const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) =>
-  commandForKey(
+/** The canvas command for a key; `Enter` reads whether a pin is armed, `F2` the focused chip. */
+const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) => {
+  const { armed, focus } = session.interaction.store.getState();
+  return commandForKey(
     {
       key: event.key,
       shift: event.shiftKey,
       ctrlOrMeta: event.ctrlKey || event.metaKey,
       alt: event.altKey,
     },
-    { armed: session.interaction.store.getState().armed !== undefined },
+    { armed: armed !== undefined, focus },
   );
+};
 
 /**
  * The host's keyboard map. Only keys aimed at the host itself drive it: the overlays render inside

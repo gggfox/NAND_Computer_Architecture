@@ -1,5 +1,5 @@
-import type { Circuit, PinKey, PinRef, Point, WireColor } from "~/features/projects";
-import type { ChipId, InstanceId, WireId } from "~/shared/ids";
+import type { ConnectionError, PinKey, PinRef, Point, WireColor } from "~/features/projects";
+import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
 
 import type { EditorAction } from "./actions";
 import type { Camera } from "./camera";
@@ -7,7 +7,8 @@ import type { Size } from "./chip-layout";
 import type { Scene } from "./geometry";
 import type { Gesture } from "./gesture-types";
 import type { Hit, SpatialIndex } from "./hit-test";
-import { previewPositions } from "./move";
+import { dragPreview } from "./pin-snap";
+import type { DragPreview } from "./pin-snap";
 import { EMPTY_SELECTION, isEmpty } from "./selection";
 import type { Selection } from "./selection";
 
@@ -83,6 +84,12 @@ export type Menu =
   | { readonly kind: "wire"; readonly wireId: WireId; readonly screen: Point }
   | { readonly kind: "canvas"; readonly screen: Point };
 
+/** A pin piece's name being edited in place; the popover opens at `screen` (screen pixels). */
+export interface Renaming {
+  readonly instanceId: InstanceId;
+  readonly screen: Point;
+}
+
 /** Everything the canvas shows that is not the circuit. None of it is an edit (ADR 8, 22). */
 export interface InteractionState {
   readonly tool: Tool;
@@ -105,6 +112,9 @@ export interface InteractionState {
   readonly wireColor?: WireColor;
   /** The keyboard help dialog is open. */
   readonly help?: true;
+  /** Why the last connection was refused, shown over the canvas until the next gesture or command. */
+  readonly notice?: ConnectionError;
+  readonly renaming?: Renaming;
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -148,7 +158,12 @@ export type InteractionCommand =
   /** Arms the wire's source, in its colour, for a new wire. */
   | { readonly type: "branch"; readonly wireId: WireId }
   /** Enters bend mode for the wire. */
-  | { readonly type: "editBends"; readonly wireId: WireId };
+  | { readonly type: "editBends"; readonly wireId: WireId }
+  /** Selects pin pieces (the Pins panel), focusing the first. */
+  | { readonly type: "selectPieces"; readonly instanceIds: readonly InstanceId[] }
+  /** Opens the rename popover at a pin piece's name; `endRename` closes it. */
+  | { readonly type: "startRename"; readonly instanceId: InstanceId }
+  | { readonly type: "endRename" };
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -171,6 +186,8 @@ export type Announcement =
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "wired" }
   | { readonly type: "disarmed" }
+  /** A connection was refused: `reason` says why. */
+  | { readonly type: "refused"; readonly reason: ConnectionError }
   /** A wire was selected from the keyboard: its ends are named. */
   | { readonly type: "wireSelected"; readonly wireId: WireId }
   /** Bend mode began (`active`) or ended. */
@@ -181,6 +198,8 @@ export type Effect =
   | { readonly type: "undo" | "redo" }
   /** A camera gesture ended: write the camera to the URL now. */
   | { readonly type: "cameraSettled" }
+  /** Sets an input pin of the open chip, as the Pins panel does. */
+  | { readonly type: "setInput"; readonly pinId: PinId; readonly value: number }
   | { readonly type: "announce"; readonly announcement: Announcement };
 
 /** What interpreting an input reads; `index` is built lazily, only when a hit-test needs it. */
@@ -191,6 +210,8 @@ export interface InteractionContext {
   readonly index: () => SpatialIndex;
   /** The id a new wire gets. */
   readonly newWireId: () => WireId;
+  /** The input values set so far; a missing one is 0. */
+  readonly inputs: ReadonlyMap<PinId, number>;
 }
 
 export interface Interpreted {
@@ -203,18 +224,22 @@ export const done = (state: InteractionState, ...effects: readonly Effect[]): In
   effects,
 });
 
-/** The chips being dragged and where they are drawn; empty when no move is in progress. */
-export const previewOf = (
-  state: InteractionState,
-  circuit: Circuit,
-): ReadonlyMap<InstanceId, Point> =>
+/**
+ * The chips being dragged, where they are drawn (and will drop), and a lone pin piece's guide;
+ * empty when no move is in progress.
+ */
+export const movePreviewOf = (state: InteractionState, scene: Scene): DragPreview =>
   state.drag?.kind === "move"
-    ? previewPositions(circuit, state.selection.instances, state.drag.delta)
-    : new Map();
+    ? dragPreview(scene, state.selection.instances, state.drag.delta)
+    : { positions: new Map() };
 
-/** The state with the menu, pin card and bit picker closed; an armed pin stays armed. */
+/** Just the positions of `movePreviewOf`. */
+export const previewOf = (state: InteractionState, scene: Scene): ReadonlyMap<InstanceId, Point> =>
+  movePreviewOf(state, scene).positions;
+
+/** The state with the menu, pin card, bit picker and rename closed; an armed pin stays armed. */
 export const withoutOverlays = (state: InteractionState): InteractionState => {
-  const { menu: _menu, card: _card, bitPick: _bitPick, ...rest } = state;
+  const { menu: _menu, card: _card, bitPick: _bitPick, renaming: _renaming, ...rest } = state;
   return rest;
 };
 
