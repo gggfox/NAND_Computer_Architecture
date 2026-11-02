@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import { importLibrary, LIBRARY, libraryRow, openLibrary } from "./library-support";
-import { expect, test } from "./support";
+import { canvasHost, expect, test } from "./support";
 
 const NOT_SAVED = "Save this chip before placing it in another chip.";
 const LONG_NAME_LENGTH = 60;
@@ -119,4 +119,23 @@ test("a row that can't be placed takes keyboard focus, and Enter on it places no
   // Placing a part is an undo step; nothing was placed.
   await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
   await expect(scratch).toBeFocused();
+});
+
+test("a long library scrolls in its column and leaves the canvas height alone", async ({
+  page,
+}) => {
+  test.skip((page.viewportSize()?.width ?? 0) < WIDE, "On phones the library is a sheet.");
+  await importLibrary(page);
+  const canvas = canvasHost(page);
+  const pageHeight = () => page.evaluate(() => document.documentElement.scrollHeight);
+  const before = await canvas.boundingBox();
+  const heightBefore = await pageHeight();
+  const tree = await openLibrary(page);
+  for (const folder of ["Built-in", "Arithmetic", "Adders", "Logic"]) {
+    await libraryRow(tree, folder).click();
+  }
+  await expect(libraryRow(tree, "Half adder")).toBeVisible();
+  const after = await canvas.boundingBox();
+  expect(after?.height).toBe(before?.height);
+  expect(await pageHeight()).toBe(heightBefore);
 });

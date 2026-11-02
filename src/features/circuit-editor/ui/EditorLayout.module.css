@@ -59,10 +59,19 @@
       / minmax(0, 1fr) minmax(16rem, 22rem);
   }
 
+  /*
+   * The library adds no height to its row (block-size 0), then fills the row the canvas sets and
+   * scrolls, so a long tree never stretches the canvas. It is the containing block of its
+   * visually hidden text, so that is clipped with it too.
+   */
   .library {
+    position: relative;
     display: block;
     grid-area: library;
     min-inline-size: 0;
+    block-size: 0;
+    min-block-size: 100%;
+    overflow: auto;
   }
 
   .library:empty {
