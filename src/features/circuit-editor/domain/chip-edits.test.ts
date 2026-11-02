@@ -113,7 +113,10 @@ describe("discardDraft", () => {
     });
     const dirty = edited.ok ? edited.value : project;
     const result = discardDraft(dirty, { type: "discardDraft", chipId: notChip.id });
-    expect(result.ok ? result.value.chips[1]?.draft : undefined).toEqual(circuit);
+    const draft = result.ok ? result.value.chips[1]?.draft : undefined;
+    // The router fills in the fixture's hand-built straight routes; the content is the saved one.
+    expect(draft?.instances).toEqual(circuit.instances);
+    expect(draft?.wires.map((wire) => wire.id)).toEqual(circuit.wires.map((wire) => wire.id));
   });
 
   it("on a draft-only chip is ChipNotSaved", () => {

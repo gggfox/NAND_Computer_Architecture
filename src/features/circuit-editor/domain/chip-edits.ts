@@ -1,12 +1,12 @@
 import { EMPTY_CIRCUIT, findChip, isHexColor, planSave, replaceChip } from "~/features/projects";
 import type { Chip, Project } from "~/features/projects";
-import type { ChipId } from "~/shared/ids";
+import type { ChipId, WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { LIBRARY_HANDLERS } from "./library-edits";
-import { rerouteReshaped } from "./route-edits";
+import { rerouteReshaped, settled } from "./route-edits";
 
 type Edit<Type extends EditorAction["type"]> = (
   project: Project,
@@ -27,6 +27,9 @@ const editChip = (
   const edited = edit(chip);
   return edited.ok ? ok(replaceChip(project, edited.value)) : edited;
 };
+
+const autoWires = (circuit: Chip["draft"]): ReadonlySet<WireId> =>
+  new Set(circuit.wires.filter((wire) => !wire.manualWaypoints).map((wire) => wire.id));
 
 const newChipFailure = (project: Project, action: CreateChip): EditorError | undefined => {
   const { folderId } = action;
@@ -92,12 +95,28 @@ export const saveChip: Edit<"saveChip"> = (project, action) => {
   return plan.ok ? ok(plan.value.project) : plan;
 };
 
-export const discardDraft: Edit<"discardDraft"> = (project, action) =>
-  editChip(project, action.chipId, (chip) =>
+/**
+ * Restores the saved version. Its automatic wires are routed again for the chips it places now,
+ * since renames and saves of those chips re-route drafts only; hand bends and the parents stay.
+ */
+export const discardDraft: Edit<"discardDraft"> = (project, action) => {
+  const restored = editChip(project, action.chipId, (chip) =>
     chip.saved === undefined
       ? err({ type: "ChipNotSaved", chipId: chip.id })
       : ok({ ...chip, draft: chip.saved }),
   );
+  if (!restored.ok) {
+    return restored;
+  }
+  const chip = findChip(restored.value, action.chipId);
+  if (chip === undefined) {
+    return restored;
+  }
+  const circuit = settled({ project: restored.value, circuit: chip.draft }, autoWires(chip.draft));
+  return circuit === chip.draft
+    ? restored
+    : ok(replaceChip(restored.value, { ...chip, draft: circuit }));
+};
 
 /** Every chip-level handler, the catalog ones (folders, filing, stars, tags, delete) included. */
 export const CHIP_HANDLERS = {
