@@ -246,3 +246,27 @@ describe("discardDraft routing", () => {
     }
   });
 });
+
+/** A saved parent with the wire into the child and the bystander wire hand-bent, both saved. */
+const bentParent = () => {
+  const { child, grown } = growingChild();
+  const placed = parentOf(child);
+  const [, into] = placed.wireIds;
+  const routed = createRouteUnrouted()(placed.project);
+  const bent = handBent(handBent(routed, placed.parent.id, into), placed.parent.id, placed.far.id);
+  const draft = draftIn(bent, placed.parent.id);
+  const project = replaceChip(bent, { ...placed.parent, draft, saved: draft });
+  return { child, grown, project, parent: placed.parent, into, far: placed.far.id };
+};
+
+describe("discardDraft routing of hand bends", () => {
+  it("routes a hand-bent wire again when a child save leaves its stub diagonal", () => {
+    const { child, grown, project, parent, into, far } = bentParent();
+    // Six inputs saved above `i` move its anchor down, off the line of the wire's last waypoint.
+    const childSaved = applied(replaceChip(project, grown), { type: "saveChip", chipId: child.id });
+    const discarded = applied(childSaved, { type: "discardDraft", chipId: parent.id });
+    expect(wireIn(discarded, parent.id, into).manualWaypoints).toBe(false);
+    expectClean(sceneIn(discarded, parent.id), into);
+    expect(wireIn(discarded, parent.id, far)).toBe(wireIn(project, parent.id, far));
+  });
+});

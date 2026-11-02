@@ -110,6 +110,28 @@ const anchorsIn = (scene: Scene): Anchors => {
   };
 };
 
+const diagonal = (anchor: Point | undefined, waypoint: Point | undefined): boolean =>
+  anchor !== undefined &&
+  waypoint !== undefined &&
+  anchor.x !== waypoint.x &&
+  anchor.y !== waypoint.y;
+
+/**
+ * The hand-bent wires whose stub, from a pin's anchor now to its nearest waypoint, is neither
+ * horizontal nor vertical: an anchor moved across it since the bends were made. A diagonal stub is
+ * never a valid route; a stub that is still straight keeps its bends, even if its anchor moved.
+ */
+export const brokenStubs = (scene: Scene): ReadonlySet<WireId> => {
+  const anchor = anchorsIn(scene);
+  const broken = scene.circuit.wires.filter(
+    (wire) =>
+      wire.manualWaypoints &&
+      (diagonal(anchor(wire.from), wire.waypoints[0]) ||
+        diagonal(anchor(wire.to), wire.waypoints.at(-1))),
+  );
+  return new Set(broken.map((wire) => wire.id));
+};
+
 /**
  * The after-draft with every wire on `instanceIds` whose end anchor moved `carried`, and the ids of
  * the wires that must be routed again.

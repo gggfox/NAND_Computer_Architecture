@@ -6,7 +6,7 @@ import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { LIBRARY_HANDLERS } from "./library-edits";
-import { rerouteReshaped, settled } from "./route-edits";
+import { brokenStubs, rerouteReshaped, settled } from "./route-edits";
 
 type Edit<Type extends EditorAction["type"]> = (
   project: Project,
@@ -97,7 +97,8 @@ export const saveChip: Edit<"saveChip"> = (project, action) => {
 
 /**
  * Restores the saved version. Its automatic wires are routed again for the chips it places now,
- * since renames and saves of those chips re-route drafts only; hand bends and the parents stay.
+ * since renames and saves of those chips re-route drafts only, as are hand-bent wires whose stub
+ * an anchor moved across (`brokenStubs`). Other hand bends and the parents stay.
  */
 export const discardDraft: Edit<"discardDraft"> = (project, action) => {
   const restored = editChip(project, action.chipId, (chip) =>
@@ -112,7 +113,8 @@ export const discardDraft: Edit<"discardDraft"> = (project, action) => {
   if (chip === undefined) {
     return restored;
   }
-  const circuit = settled({ project: restored.value, circuit: chip.draft }, autoWires(chip.draft));
+  const scene = { project: restored.value, circuit: chip.draft };
+  const circuit = settled(scene, new Set([...autoWires(chip.draft), ...brokenStubs(scene)]));
   return circuit === chip.draft
     ? restored
     : ok(replaceChip(restored.value, { ...chip, draft: circuit }));

@@ -60,10 +60,10 @@ function ConfirmSaveDialog({
     <ModalDialog title={m.chip_save_title({ name })} onClose={close}>
       <p className={styles.prose}>{m.chip_save_body()}</p>
       <ul className={styles.consequences}>
-        {consequences.map((consequence) => {
-          const text = consequenceText(consequence);
-          return <li key={text}>{text}</li>;
-        })}
+        {consequences.map((consequence, index) => (
+          // Two parents, or two removed pins, can share a name, so the text can repeat.
+          <li key={`${consequence.type}-${String(index)}`}>{consequenceText(consequence)}</li>
+        ))}
       </ul>
       <ConfirmActions label={m.chip_save()} onConfirm={confirmSave} onClose={close} />
     </ModalDialog>
