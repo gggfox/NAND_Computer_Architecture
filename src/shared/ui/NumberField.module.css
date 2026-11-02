@@ -1,0 +1,79 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--color-text);
+}
+
+.label {
+  color: var(--color-text-muted);
+}
+
+.group {
+  display: inline-flex;
+  align-items: stretch;
+  inline-size: fit-content;
+  overflow: hidden;
+  border: 1px solid var(--color-wire);
+  border-radius: 0.5rem;
+}
+
+.group[data-focus-within] {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.input {
+  inline-size: 6ch;
+  min-block-size: 2.75rem;
+  padding-inline: 0.5rem;
+  font: inherit;
+  color: var(--color-text);
+  text-align: center;
+  outline: 2px solid transparent;
+  background-color: var(--color-surface);
+  border: none;
+  border-inline: 1px solid var(--color-wire);
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding: 0;
+  color: var(--color-text);
+  cursor: pointer;
+  background-color: var(--color-surface);
+  border: none;
+}
+
+.step[data-pressed] {
+  opacity: 0.7;
+}
+
+.step[data-focus-visible] {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+}
+
+.step[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.minus,
+.plus {
+  position: relative;
+  inline-size: 0.75rem;
+  block-size: 2px;
+  background-color: var(--color-text);
+}
+
+.plus::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-color: var(--color-text);
+  transform: rotate(90deg);
+}
