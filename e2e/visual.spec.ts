@@ -20,3 +20,14 @@ for (const theme of THEMES) {
     },
   );
 }
+
+const DEMO_INPUTS = 2;
+
+test("demo with the Pins panel open", { tag: "@visual" }, async ({ page }) => {
+  await createProject(page);
+  await expect(page.getByRole("grid", { name: "Inputs" }).getByRole("row")).toHaveCount(
+    DEMO_INPUTS,
+  );
+  // The whole editor: the canvas, its pin badges and the panel beside it.
+  await expect(page).toHaveScreenshot("demo-pins-panel.png");
+});

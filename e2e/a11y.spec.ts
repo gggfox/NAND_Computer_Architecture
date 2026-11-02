@@ -145,7 +145,7 @@ for (const theme of THEMES) {
 }
 
 for (const theme of THEMES) {
-  test(`the Pins panel, its row menu and the Add dialog have no WCAG violations in the ${theme} theme`, async ({
+  test(`the Pins panel, its row menu, the Add dialog and a refused name have no WCAG violations in the ${theme} theme`, async ({
     page,
   }) => {
     await createProject(page);
@@ -166,7 +166,17 @@ for (const theme of THEMES) {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "Add inputs…" }).click();
-    await expect(page.getByRole("dialog", { name: "Add inputs" })).toBeVisible();
+    const add = page.getByRole("dialog", { name: "Add inputs" });
+    await expect(add).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await add.getByRole("button", { name: "Cancel" }).click();
+    await expect(add).toHaveCount(0);
+
+    // A refused name shows its reason under the field.
+    const name = page.getByRole("textbox", { name: "Name of input 1", exact: true });
+    await name.fill("");
+    await name.press("Enter");
+    await expect(name).toHaveAccessibleDescription("A name can't be empty.");
     expect(await violations(page)).toEqual([]);
   });
 }

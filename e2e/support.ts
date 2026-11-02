@@ -234,7 +234,7 @@ export const fingerDrag = (from: Point, to: Point): readonly TouchStep[] => [
 const PointSchema = z.object({ x: z.number(), y: z.number() });
 const InstanceSchema = z.object({
   id: z.string(),
-  kind: z.object({ type: z.string() }),
+  kind: z.object({ type: z.string(), pinId: z.string().optional() }),
   position: PointSchema,
 });
 const PinRefSchema = z.object({
@@ -249,17 +249,23 @@ const WireSchema = z.object({
   waypoints: z.array(PointSchema),
   manualWaypoints: z.boolean(),
 });
+const PinDefSchema = z.object({ id: z.string(), name: z.string(), direction: z.string() });
 const ChipSchema = z.object({
   name: z.string(),
-  draft: z.object({ instances: z.array(InstanceSchema), wires: z.array(WireSchema) }),
+  saved: z.object({ pins: z.array(PinDefSchema) }).optional(),
+  draft: z.object({
+    pins: z.array(PinDefSchema),
+    instances: z.array(InstanceSchema),
+    wires: z.array(WireSchema),
+  }),
 });
 const ExportedFileSchema = z.object({ project: z.object({ chips: z.array(ChipSchema) }) });
 
 export type ExportedFile = z.output<typeof ExportedFileSchema>;
 export type ExportedWire = z.output<typeof WireSchema>;
 
-/** Exports the project through the toolbar and reads the downloaded JSON. */
-export const exportedProject = async (page: Page): Promise<ExportedFile> => {
+/** Exports the project through the toolbar and returns the downloaded file's text. */
+export const exportedText = async (page: Page): Promise<string> => {
   /*
    * WebKit's phone emulation leaves the page panned once the canvas takes focus from Tab, and the
    * next click on the toolbar then misses its press; start from the top.
@@ -270,9 +276,12 @@ export const exportedProject = async (page: Page): Promise<ExportedFile> => {
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export" }).click();
   const download = await downloadEvent;
-  const text = await readFile(await download.path(), "utf-8");
-  return ExportedFileSchema.parse(JSON.parse(text));
+  return readFile(await download.path(), "utf-8");
 };
+
+/** Exports the project through the toolbar and reads the downloaded JSON. */
+export const exportedProject = async (page: Page): Promise<ExportedFile> =>
+  ExportedFileSchema.parse(JSON.parse(await exportedText(page)));
 
 /** The demo NAND's position in an exported project. */
 export const nandPosition = (file: ExportedFile): Point | undefined =>
