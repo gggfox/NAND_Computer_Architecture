@@ -55,6 +55,12 @@ export {
   type SavePlan,
 } from "./domain/save-cascade";
 export {
+  circuitsMatch,
+  hasUnsavedChanges,
+  unsavedState,
+  type UnsavedState,
+} from "./domain/unsaved";
+export {
   checkConnection,
   findInvalidWire,
   type Connection,
