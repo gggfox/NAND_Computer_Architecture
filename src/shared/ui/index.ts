@@ -17,7 +17,7 @@ export { ReorderList } from "./ReorderList";
 export { Sheet } from "./Sheet";
 export { MenuButton } from "./MenuButton";
 export { useMediaQuery } from "./use-media-query";
-export { TreeView, type TreeNode } from "./TreeView";
+export { TreeView, type RowProps, type TreeNode } from "./TreeView";
 export { SearchField } from "./SearchField";
 export { FilterChip } from "./FilterChip";
 export { useKeyboardModality } from "./use-interaction-modality";

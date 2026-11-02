@@ -21,12 +21,19 @@ interface LibraryBodyProps {
     readonly filter: State<LibraryFilter>;
     readonly expansion: State<Expansion>;
   };
-  /** A part was armed or a chip opened: on phones the sheet closes. */
+  /** A part was armed, dropped on the canvas or a chip opened: on phones the sheet closes. */
   readonly onOutOfTheWay: () => void;
+  /** A row drag began (true) or ended (false): on phones the sheet tucks away meanwhile. */
+  readonly onTuck: (isTucked: boolean) => void;
 }
 
 /** What the library panel holds, and the dialogs its buttons and row menus open. */
-export function LibraryBody({ session, state, onOutOfTheWay }: LibraryBodyProps): ReactNode {
+export function LibraryBody({
+  session,
+  state,
+  onOutOfTheWay,
+  onTuck,
+}: LibraryBodyProps): ReactNode {
   const project = useStore(session.editor, (editor) => editor.history.present);
   const openChipId = useStore(session.editor, (editor) => editor.chipId);
   const [filter, setFilter] = state.filter;
@@ -46,6 +53,7 @@ export function LibraryBody({ session, state, onOutOfTheWay }: LibraryBodyProps)
         view={view}
         onExpand={setExpansion}
         onArmed={onOutOfTheWay}
+        onTuck={onTuck}
         onCommand={(node, command) => {
           dialogs.onCommand(node, command);
         }}

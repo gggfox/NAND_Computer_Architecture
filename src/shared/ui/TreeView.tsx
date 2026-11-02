@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { Collection, Tree, TreeItem, TreeItemContent } from "react-aria-components";
 import type { Key } from "react-aria-components";
 
@@ -10,6 +10,10 @@ export interface TreeNode {
   readonly textValue: string;
   readonly children?: readonly TreeNode[];
 }
+
+/** What a caller adds to a row's element: a pointer-down handler and `data-*` attributes. */
+export type RowProps = Readonly<Pick<HTMLAttributes<HTMLDivElement>, "onPointerDown">> &
+  Readonly<Record<`data-${string}`, string | undefined>>;
 
 /** A node whose children are nodes of its own type. */
 type OwnNode<Node> = TreeNode & { readonly children?: readonly Node[] };
@@ -35,6 +39,8 @@ interface TreeViewProps<Node extends OwnNode<Node>> {
   readonly currentKey?: string | undefined;
   /** A right-click on a row, in place of the browser's own menu. */
   readonly onRowContextMenu?: ((node: Node) => void) | undefined;
+  /** Extra props for a row's element, such as a drag's pointer-down. */
+  readonly rowProps?: ((node: Node) => RowProps) | undefined;
 }
 
 const NONE: ReadonlyMap<string, string> = new Map();
@@ -67,6 +73,7 @@ interface RowRenderer<Node> {
   readonly currentKey: string | undefined;
   readonly unavailable: ReadonlyMap<string, string>;
   readonly onRowContextMenu: ((node: Node) => void) | undefined;
+  readonly rowProps: ((node: Node) => RowProps) | undefined;
 }
 
 /** Renders one node and, through RAC's `Collection`, its children; indented by level. */
@@ -75,9 +82,10 @@ const itemRenderer = <Node extends OwnNode<Node>>({
   currentKey,
   unavailable,
   onRowContextMenu,
+  rowProps,
 }: RowRenderer<Node>): ((node: Node) => ReactNode) => {
   // RAC re-renders a cached row only when its item or these change.
-  const dependencies = [renderRow, currentKey, unavailable, onRowContextMenu];
+  const dependencies = [renderRow, currentKey, unavailable, onRowContextMenu, rowProps];
   const renderItem = (node: Node): ReactNode => (
     <TreeItem
       id={node.key}
@@ -92,6 +100,7 @@ const itemRenderer = <Node extends OwnNode<Node>>({
       <TreeItemContent>
         {({ level }) => (
           <div
+            {...rowProps?.(node)}
             className={styles.row}
             style={{ paddingInlineStart: `${String(level - 1)}rem` }}
             onContextMenu={(event) => {
@@ -128,6 +137,7 @@ export function TreeView<Node extends OwnNode<Node>>({
   emptyText,
   currentKey,
   onRowContextMenu,
+  rowProps,
 }: Readonly<TreeViewProps<Node>>): ReactNode {
   const byKey = indexed(items, new Map<string, Node>());
   return (
@@ -135,7 +145,7 @@ export function TreeView<Node extends OwnNode<Node>>({
       aria-label={label}
       className={styles.tree}
       items={items}
-      dependencies={[renderRow, currentKey, unavailable, onRowContextMenu]}
+      dependencies={[renderRow, currentKey, unavailable, onRowContextMenu, rowProps]}
       expandedKeys={expandedKeys}
       onExpandedChange={(keys) => {
         onExpandedChange(new Set([...keys].map(String)));
@@ -150,7 +160,7 @@ export function TreeView<Node extends OwnNode<Node>>({
         ? {}
         : { renderEmptyState: () => <p className={styles.empty}>{emptyText}</p> })}
     >
-      {itemRenderer({ renderRow, currentKey, unavailable, onRowContextMenu })}
+      {itemRenderer({ renderRow, currentKey, unavailable, onRowContextMenu, rowProps })}
     </Tree>
   );
 }

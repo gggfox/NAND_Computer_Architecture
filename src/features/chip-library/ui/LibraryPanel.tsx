@@ -32,13 +32,18 @@ interface LibraryPanelProps {
 export function LibraryPanel({ session, isOpen, isWide, onClose }: LibraryPanelProps): ReactNode {
   const [filter, setFilter] = useState(NO_FILTER);
   const [expansion, setExpansion] = useState(NO_EXPANSION);
+  const [isTucked, setIsTucked] = useState(false);
   const headingId = useId();
-  // On phones the sheet gets out of the canvas's way once a part is armed or a chip opened.
+  /*
+   * On phones the sheet gets out of the canvas's way once a part is armed or a chip opened, and
+   * tucks away (still mounted, so the drag goes on) while a row is dragged.
+   */
   const body = (
     <LibraryBody
       session={session}
       state={{ filter: [filter, setFilter], expansion: [expansion, setExpansion] }}
       onOutOfTheWay={isWide ? noop : onClose}
+      onTuck={setIsTucked}
     />
   );
   if (isWide) {
@@ -52,7 +57,7 @@ export function LibraryPanel({ session, isOpen, isWide, onClose }: LibraryPanelP
     ) : undefined;
   }
   return (
-    <Sheet title={m.library_heading()} isOpen={isOpen} onClose={onClose}>
+    <Sheet title={m.library_heading()} isOpen={isOpen} onClose={onClose} isTucked={isTucked}>
       {body}
     </Sheet>
   );
