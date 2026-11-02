@@ -41,6 +41,8 @@ const HALF_ADDER_NANDS = 6;
 const OR_NANDS = 3;
 /** Past `LONG_PRESS_MS` (500 ms) in `domain/gestures.ts`. */
 const LONG_PRESS_MS = 700;
+/** Longer than the 200 ms the URL waits before it takes the camera. */
+const SETTLE_MS = 500;
 /** Where the two half adders' centres go: below the full adder's row of NANDs, side by side. */
 const HALF_ADDER_SPOTS: readonly Point[] = [
   { x: 160, y: 320 },
@@ -88,9 +90,21 @@ const addNands = async (page: Page, count: number): Promise<void> => {
 
 /** Fits the board on the phone's canvas, so every pin can be tapped. */
 const fit = async (page: Page): Promise<void> => {
-  const before = page.url();
   await tap(page.getByRole("button", { name: "Fit" }));
-  await expect.poll(() => page.url()).not.toBe(before);
+  // Fit may leave the camera as it was, so wait for two URL reads half a second apart to agree.
+  // The URL takes the camera 200 ms after it stops moving (view-sync).
+  let previous: string | undefined = undefined;
+  await expect
+    .poll(
+      () => {
+        const now = page.url();
+        const still = now === previous;
+        previous = now;
+        return still;
+      },
+      { intervals: [SETTLE_MS] },
+    )
+    .toBe(true);
 };
 
 /** Step 2: Half adder, wired with taps and filed into Arithmetic › Adders at its first save. */

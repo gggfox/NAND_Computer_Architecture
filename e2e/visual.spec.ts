@@ -51,7 +51,11 @@ test("demo with the Pins panel open", { tag: "@visual" }, async ({ page }) => {
   await expect(page).toHaveScreenshot("demo-pins-panel.png");
 });
 
+/** Tall enough that the header row leaves Main's "Draft only" badge and reason in view. */
+const TALL_VIEWPORT = { width: 1280, height: 900 };
+
 test("the library open with Arithmetic expanded", { tag: "@visual" }, async ({ page }) => {
+  await page.setViewportSize(TALL_VIEWPORT);
   await importLibrary(page);
   const tree = await openLibrary(page);
   await libraryRow(tree, "Arithmetic").click();
