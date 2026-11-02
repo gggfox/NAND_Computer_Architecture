@@ -3,7 +3,9 @@ import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { z } from "zod";
 
-import { libraryToggle, libraryTree } from "./library-support";
+import { libraryPanel, libraryToggle, libraryTree, tapOpenLibrary } from "./library-support";
+import { click, tap } from "./pins-support";
+import type { Press } from "./pins-support";
 import { canvasHost, createProject, expect, exportedText, spoken } from "./support";
 
 /**
@@ -85,4 +87,45 @@ const DraftsSchema = z.object({ project: z.object({ chips: z.array(ChipSchema) }
 export const draftWireCount = async (page: Page, name: string): Promise<number | undefined> => {
   const file = DraftsSchema.parse(JSON.parse(await exportedText(page)));
   return file.project.chips.find((chip) => chip.name === name)?.draft.wires.length;
+};
+
+/** Makes a folder from the panel's "New folder" (top level) or a row's "New folder inside…". */
+export const makeFolder = async (
+  page: Page,
+  { name, inside }: { readonly name: string; readonly inside?: string },
+  press: Press = click,
+): Promise<void> => {
+  if (inside === undefined) {
+    await press(libraryPanel(page).getByRole("button", { name: "New folder", exact: true }));
+  } else {
+    await press(
+      libraryTree(page).getByRole("button", { name: `Actions for ${inside}`, exact: true }),
+    );
+    await press(page.getByRole("menuitem", { name: "New folder inside…" }));
+  }
+  const dialog = page.getByRole("dialog", { name: "New folder" });
+  await dialog.getByRole("textbox", { name: "Folder name" }).fill(name);
+  await press(dialog.getByRole("button", { name: "Save" }));
+  await expect(dialog).toHaveCount(0);
+};
+
+/** Picks `option` in the dialog's Folder select. */
+export const chooseFolder = async (
+  dialog: Locator,
+  option: string,
+  press: Press = click,
+): Promise<void> => {
+  await press(dialog.getByRole("button", { name: /Folder/u }));
+  await press(dialog.page().getByRole("option", { name: option, exact: true }));
+};
+
+/** New chip from the library sheet, with taps: the sheet closes on the new, empty chip. */
+export const tapNewChip = async (page: Page, name: string): Promise<void> => {
+  await tapOpenLibrary(page);
+  await tap(libraryPanel(page).getByRole("button", { name: "New chip", exact: true }));
+  const dialog = page.getByRole("dialog", { name: "New chip" });
+  await dialog.getByRole("textbox", { name: "Name" }).fill(name);
+  await tap(dialog.getByRole("button", { name: "Save" }));
+  await expect(dialog).toHaveCount(0);
+  await expect(chipPath(page).locator('[aria-current="page"]')).toHaveText(name);
 };

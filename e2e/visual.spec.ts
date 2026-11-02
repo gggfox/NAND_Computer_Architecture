@@ -1,6 +1,14 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { importLibrary, libraryRow, openLibrary } from "./library-support";
 import {
+  chipPath,
+  importSaveFlow,
+  moveNand,
+  openChip,
+  selectOnCanvas,
+  unsavedDot,
+} from "./save-support";
+import {
   createProject,
   expect,
   output,
@@ -64,3 +72,20 @@ test("the quick-add menu", { tag: "@visual" }, async ({ page }) => {
   await expect(menu.getByRole("searchbox", { name: "Search chips" })).toBeFocused();
   await expect(page).toHaveScreenshot("quick-add.png");
 });
+
+test(
+  "the chip header inside Full adder › Half adder, with unsaved changes",
+  { tag: "@visual" },
+  async ({ page }) => {
+    await importSaveFlow(page);
+    await openChip(page, "Full adder");
+    await selectOnCanvas(page, /Half adder 1 selected/u);
+    await page.keyboard.press("Enter");
+    await page.getByRole("menuitem", { name: "Look inside" }).click();
+    await expect(chipPath(page).getByRole("listitem")).toHaveText(["Full adder", "Half adder"]);
+    await moveNand(page);
+    await expect(unsavedDot(page)).toBeAttached();
+    // The header row alone (the breadcrumbs' parent): breadcrumbs, the dot, Save and ⋯.
+    await expect(chipPath(page).locator("..")).toHaveScreenshot("chip-header.png");
+  },
+);

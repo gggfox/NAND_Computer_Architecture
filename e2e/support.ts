@@ -239,7 +239,8 @@ const InstanceSchema = z.object({
 });
 const PinRefSchema = z.object({
   instanceId: z.string(),
-  pin: z.number(),
+  // A built-in's pins are numbered; a custom chip's are its pin ids.
+  pin: z.union([z.number(), z.string()]),
   bit: z.number().optional(),
 });
 const WireSchema = z.object({

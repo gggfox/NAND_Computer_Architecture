@@ -1,11 +1,17 @@
-import type { Locator, Page } from "@playwright/test";
-
-import { libraryRow, libraryToggle, libraryTree, openLibrary } from "./library-support";
+import {
+  libraryPanel,
+  libraryRow,
+  libraryToggle,
+  libraryTree,
+  openLibrary,
+} from "./library-support";
 import { closePins, openPins } from "./pins-support";
 import {
   chipPath,
+  chooseFolder,
   draftWireCount,
   importSaveFlow,
+  makeFolder,
   moreButton,
   moveNand,
   openChip,
@@ -155,39 +161,11 @@ test("on a 320 px phone, long breadcrumbs truncate and the page never scrolls si
   );
 });
 
-/** The library panel or sheet, whichever the width shows. */
-const libraryPanel = (page: Page): Locator =>
-  page
-    .getByRole("region", { name: "Chip library" })
-    .or(page.getByRole("dialog", { name: "Chip library" }));
-
-/** Makes a folder from the panel's "New folder" (top level) or a row's "New folder inside…". */
-const makeFolder = async (page: Page, name: string, inside?: string): Promise<void> => {
-  if (inside === undefined) {
-    await libraryPanel(page).getByRole("button", { name: "New folder", exact: true }).click();
-  } else {
-    await libraryTree(page)
-      .getByRole("button", { name: `Actions for ${inside}`, exact: true })
-      .click();
-    await page.getByRole("menuitem", { name: "New folder inside…" }).click();
-  }
-  const dialog = page.getByRole("dialog", { name: "New folder" });
-  await dialog.getByRole("textbox", { name: "Folder name" }).fill(name);
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(dialog).toHaveCount(0);
-};
-
-/** Picks `option` in the dialog's Folder select. */
-const chooseFolder = async (dialog: Locator, option: string): Promise<void> => {
-  await dialog.getByRole("button", { name: /Folder/u }).click();
-  await dialog.page().getByRole("option", { name: option, exact: true }).click();
-};
-
 test("the first save asks for a folder, files the chip there and saves it", async ({ page }) => {
   await createProject(page);
   await openLibrary(page);
-  await makeFolder(page, "Arithmetic");
-  await makeFolder(page, "Adders", "Arithmetic");
+  await makeFolder(page, { name: "Arithmetic" });
+  await makeFolder(page, { name: "Adders", inside: "Arithmetic" });
 
   await libraryPanel(page).getByRole("button", { name: "New chip", exact: true }).click();
   const created = page.getByRole("dialog", { name: "New chip" });
