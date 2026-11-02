@@ -68,7 +68,7 @@ function ChipMenuOverlay({
     } else if (chip !== undefined && id === "recolor") {
       onDialog({ kind: "recolor", chipId: chip.id, color: chip.color });
     } else if (chip !== undefined) {
-      session.editor.getState().openChip(chip.id);
+      session.editor.getState().lookInside(chip.id);
     }
   };
   return (

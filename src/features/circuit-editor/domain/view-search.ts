@@ -2,7 +2,10 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are the public URL search param names */
 import { z } from "zod";
 
+import { findChip } from "~/features/projects";
+import type { Project } from "~/features/projects";
 import { ChipIdSchema } from "~/shared/ids";
+import type { ChipId } from "~/shared/ids";
 
 export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 4;
@@ -16,3 +19,7 @@ export const EditorSearchSchema = z.object({
 });
 
 export type EditorSearch = z.output<typeof EditorSearchSchema>;
+
+/** The chip the editor opens: `chip` when the project has it, else `lastOpenedChipId` (D8). */
+export const startingChipId = (project: Project, chip: ChipId | undefined): ChipId =>
+  chip !== undefined && findChip(project, chip) !== undefined ? chip : project.lastOpenedChipId;

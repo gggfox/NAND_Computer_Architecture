@@ -83,8 +83,13 @@ export function LibraryRow({ node, isExpanded, isArmed, menu }: LibraryRowProps)
           <span className="visually-hidden">{m.library_filter_starred()}</span>
         </span>
       ) : undefined}
-      {isChip && node.draftOnly ? (
+      {isChip && node.unsaved === "new" ? (
         <span className={styles.badge}>{m.library_draft_only()}</span>
+      ) : undefined}
+      {isChip && node.unsaved === "changed" ? (
+        <span className={styles.dot}>
+          <span className="visually-hidden">{m.chip_unsaved()}</span>
+        </span>
       ) : undefined}
       {isArmed ? <span className={styles.armed}>{m.library_armed()}</span> : undefined}
       <RowMenuButton node={node} menu={menu} />

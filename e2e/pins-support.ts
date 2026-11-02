@@ -93,9 +93,9 @@ export const badgeOf = (row: Locator): Locator =>
 export const savedPinOrder = (file: ExportedFile, chip: number): readonly string[] =>
   file.project.chips[chip]?.saved?.pins.map((pin) => pin.name) ?? [];
 
-/** The world position of the pin piece named `name` in the open chip. */
-export const piecePosition = (file: ExportedFile, name: string) => {
-  const draft = file.project.chips[0]?.draft;
+/** The world position of the pin piece named `name` in chip `chip` (the first by default). */
+export const piecePosition = (file: ExportedFile, name: string, chip = 0) => {
+  const draft = file.project.chips[chip]?.draft;
   const pinId = draft?.pins.find((pin) => pin.name === name)?.id;
   return pinId === undefined
     ? undefined

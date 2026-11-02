@@ -1,8 +1,8 @@
 /* oxlint-disable typescript/prefer-readonly-parameter-types -- projects and nodes carry branded ids (mutable object types); none is mutated */
 import { partName } from "~/features/circuit-editor";
 import type { PlaceableKind } from "~/features/circuit-editor";
-import { EMPTY_CIRCUIT, canPlace } from "~/features/projects";
-import type { Folder, PlaceError, Project } from "~/features/projects";
+import { EMPTY_CIRCUIT, canPlace, unsavedState } from "~/features/projects";
+import type { Folder, PlaceError, Project, UnsavedState } from "~/features/projects";
 import { groupBy } from "~/shared/group-by";
 import type { ChipId, FolderId } from "~/shared/ids";
 import type { Result } from "~/shared/result";
@@ -41,7 +41,7 @@ export type LibraryNode =
       readonly starred: boolean;
       readonly tags: readonly string[];
       readonly path: readonly string[];
-      readonly draftOnly: boolean;
+      readonly unsaved: UnsavedState;
       readonly placeable: Result<void, PlaceError>;
     };
 
@@ -106,7 +106,7 @@ export const libraryTree = (project: Project, openChipId: ChipId): readonly Libr
       starred: chip.starred,
       tags: chip.tags,
       path,
-      draftOnly: chip.saved === undefined,
+      unsaved: unsavedState(chip),
       placeable: canPlace(project, openChipId, chip.id),
     }));
     return [...folders, ...chips];

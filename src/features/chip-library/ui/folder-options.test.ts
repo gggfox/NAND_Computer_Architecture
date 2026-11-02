@@ -75,7 +75,7 @@ describe("currentFolder", () => {
       starred: false,
       tags: [],
       path: ["Logic"],
-      draftOnly: true,
+      unsaved: "new",
       placeable: { ok: false, error: { type: "ChipNotSaved", chipId: main.id } },
     };
     expect(currentFolder(project, chipNode)).toBe(logic.id);

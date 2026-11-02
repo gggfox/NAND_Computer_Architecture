@@ -1,9 +1,10 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are the public URL search param names */
 import { describe, expect, test } from "vitest";
 
+import { newChip, projectWith } from "~/features/projects";
 import { newChipId } from "~/shared/ids";
 
-import { EditorSearchSchema } from "./view-search";
+import { EditorSearchSchema, startingChipId } from "./view-search";
 
 describe("EditorSearchSchema", () => {
   test("defaults", () => {
@@ -22,5 +23,22 @@ describe("EditorSearchSchema", () => {
   test("valid values kept", () => {
     const chip = newChipId();
     expect(EditorSearchSchema.parse({ chip, zoom: 2 })).toMatchObject({ chip, zoom: 2 });
+  });
+});
+
+describe("startingChipId", () => {
+  const first = newChip("a");
+  const second = newChip("b");
+  const project = { ...projectWith("p", [first, second]), lastOpenedChipId: first.id };
+
+  test("a chip the project has is opened", () => {
+    expect(startingChipId(project, second.id)).toBe(second.id);
+  });
+  test("an unknown chip falls back to the last opened one", () => {
+    expect(startingChipId(project, newChipId())).toBe(first.id);
+  });
+  test("no chip falls back to the last opened one", () => {
+    // oxlint-disable-next-line unicorn/no-useless-undefined -- the absent search param is the case under test
+    expect(startingChipId(project, undefined)).toBe(first.id);
   });
 });

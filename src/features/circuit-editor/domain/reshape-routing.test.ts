@@ -6,7 +6,7 @@ import type { Chip, PinRef, Project, Wire } from "~/features/projects";
 import type { ChipId, WireId } from "~/shared/ids";
 import { newWireId } from "~/shared/ids";
 
-import { createRerouteAfterSave } from "./route-edits";
+import { createRerouteAfterSave, createRouteUnrouted } from "./route-edits";
 import { expectClean, link, NAND_A, NAND_OUT, nandAt } from "./routing/routing.fixtures";
 import { applied, draftIn, wireIn } from "./wire-edits.fixtures";
 
@@ -183,5 +183,90 @@ describe("renameChip routing", () => {
     const { child } = growingChild();
     const { project } = parentOf(child);
     expect(applied(project, { type: "renameChip", chipId: child.id, name: " c " })).toBe(project);
+  });
+});
+
+/** The parent with its routed draft saved, the child saved too. */
+const savedParent = () => {
+  const { child } = growingChild();
+  const placed = parentOf(child);
+  // The bystander wire is hand-built, so route it once to make the saved version settled.
+  const routed = createRouteUnrouted()(placed.project);
+  const parent = { ...placed.parent, draft: draftIn(routed, placed.parent.id) };
+  const project = replaceChip(routed, { ...parent, saved: parent.draft });
+  const far = wireIn(project, parent.id, placed.far.id);
+  return { child, project, parent, wireIds: placed.wireIds, far };
+};
+
+describe("discardDraft routing", () => {
+  it("routes the restored draft for a child renamed since the save", () => {
+    const { child, project, parent, wireIds, far } = savedParent();
+    const renamed = applied(project, {
+      type: "renameChip",
+      chipId: child.id,
+      name: "a chip with a very long name",
+    });
+    const discarded = applied(renamed, { type: "discardDraft", chipId: parent.id });
+    const scene = sceneIn(discarded, parent.id);
+    for (const wireId of wireIds) {
+      expectClean(scene, wireId);
+    }
+    expect(wireIn(discarded, parent.id, far.id)).toBe(far);
+  });
+
+  it("makes the draft the saved version when nothing is stale", () => {
+    const { project, parent } = savedParent();
+    const discarded = applied(project, { type: "discardDraft", chipId: parent.id });
+    const chip = discarded.chips.find((item) => item.id === parent.id);
+    expect(chip?.draft).toBe(chip?.saved);
+  });
+
+  it("keeps the waypoints of a hand-bent wire", () => {
+    const { child } = growingChild();
+    const placed = parentOf(child);
+    const bent = handBent(placed.project, placed.parent.id, placed.wireIds[1]);
+    const draft = draftIn(bent, placed.parent.id);
+    const project = replaceChip(bent, { ...placed.parent, draft, saved: draft });
+    const renamed = applied(project, {
+      type: "renameChip",
+      chipId: child.id,
+      name: "long long name",
+    });
+    const discarded = applied(renamed, { type: "discardDraft", chipId: placed.parent.id });
+    expect(wireIn(discarded, placed.parent.id, placed.wireIds[1])).toBe(
+      wireIn(project, placed.parent.id, placed.wireIds[1]),
+    );
+  });
+
+  it("leaves every other chip as it was", () => {
+    const { project, parent } = savedParent();
+    const discarded = applied(project, { type: "discardDraft", chipId: parent.id });
+    for (const chip of project.chips.filter((item) => item.id !== parent.id)) {
+      expect(discarded.chips).toContain(chip);
+    }
+  });
+});
+
+/** A saved parent with the wire into the child and the bystander wire hand-bent, both saved. */
+const bentParent = () => {
+  const { child, grown } = growingChild();
+  const placed = parentOf(child);
+  const [, into] = placed.wireIds;
+  const routed = createRouteUnrouted()(placed.project);
+  const bent = handBent(handBent(routed, placed.parent.id, into), placed.parent.id, placed.far.id);
+  const draft = draftIn(bent, placed.parent.id);
+  const project = replaceChip(bent, { ...placed.parent, draft, saved: draft });
+  return { child, grown, project, parent: placed.parent, into, far: placed.far.id };
+};
+
+describe("discardDraft routing of hand bends", () => {
+  it("routes a hand-bent wire again when a child save leaves its stub diagonal", () => {
+    const { child, grown, project, parent, into, far } = bentParent();
+    // Six inputs saved above `i` move its anchor down, off the line of the wire's last waypoint.
+    const childSaved = applied(replaceChip(project, grown), { type: "saveChip", chipId: child.id });
+    const discarded = applied(childSaved, { type: "discardDraft", chipId: parent.id });
+    expect(wireIn(discarded, parent.id, into).manualWaypoints).toBe(false);
+    expectClean(sceneIn(discarded, parent.id), into);
+    expect(wireIn(discarded, parent.id, far)).toBe(wireIn(project, parent.id, far));
   });
 });

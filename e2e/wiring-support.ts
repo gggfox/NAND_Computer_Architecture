@@ -73,7 +73,8 @@ export const wireInto = (
 export const polylineOf = (file: ExportedFile, wire: ExportedWire): readonly Point[] => {
   const ids = instanceIds(file);
   const anchor = (end: ExportedWire["from"]): Point => {
-    const point = DEMO_PINS[ids.indexOf(end.instanceId)]?.[end.pin];
+    const point =
+      typeof end.pin === "number" ? DEMO_PINS[ids.indexOf(end.instanceId)]?.[end.pin] : undefined;
     if (point === undefined) {
       throw new Error("The wire's end is not a demo pin");
     }

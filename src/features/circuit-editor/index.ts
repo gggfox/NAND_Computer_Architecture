@@ -1,8 +1,10 @@
-export { EditorSearchSchema, type EditorSearch } from "./domain/view-search";
+export { EditorSearchSchema, startingChipId, type EditorSearch } from "./domain/view-search";
 export type { EditorAction, EditorError, PlaceableKind } from "./domain/actions";
 export { createHistory, pushHistory, redo, undo, type History } from "./domain/history";
+export type { Trail } from "./domain/breadcrumbs";
 export { editorErrorMessage } from "./domain/editor-error-messages";
 export { applyAction } from "./domain/reducer";
+export { savePreview, type SaveConsequence, type SavePreview } from "./domain/save-preview";
 export {
   toNetlistSource,
   type Flattened,
@@ -40,6 +42,7 @@ export {
 export { cameraForUrl, type Camera } from "./domain/camera";
 export { CircuitCanvas } from "./ui/CircuitCanvas";
 export { EditorLayout } from "./ui/EditorLayout";
+export { ChipHeader, type FirstSaveContext, type FirstSaveSlot } from "./ui/ChipHeader";
 export { EditorToolbar } from "./ui/EditorToolbar";
 export { PinsPanel } from "./ui/PinsPanel";
 export type { EditorSession } from "./application/editor-session";

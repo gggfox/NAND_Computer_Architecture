@@ -2,6 +2,7 @@ import path from "node:path";
 
 import type { FileChooser, Locator, Page } from "@playwright/test";
 
+import { tap } from "./pins-support";
 import { createProject, expect } from "./support";
 
 /**
@@ -48,3 +49,19 @@ export const openLibrary = async (page: Page): Promise<Locator> => {
 /** The tree row whose name is `name` (rows also hold badges and reasons). */
 export const libraryRow = (tree: Locator, name: string): Locator =>
   tree.getByRole("row").filter({ has: tree.page().getByText(name, { exact: true }) });
+
+/** The library panel or sheet, whichever the width shows. */
+export const libraryPanel = (page: Page): Locator =>
+  page
+    .getByRole("region", { name: "Chip library" })
+    .or(page.getByRole("dialog", { name: "Chip library" }));
+
+/** Opens the library sheet with a tap, unless it is open already. */
+export const tapOpenLibrary = async (page: Page): Promise<Locator> => {
+  const toggle = libraryToggle(page);
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await tap(toggle);
+  }
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  return libraryTree(page);
+};

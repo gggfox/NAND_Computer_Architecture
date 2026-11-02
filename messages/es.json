@@ -256,5 +256,22 @@
   "library_delete_confirm": "Eliminar",
   "library_folder_name": "Nombre de la carpeta",
   "library_rename_folder": "Renombrar carpeta",
-  "library_move_title": "Mover {name}"
+  "library_move_title": "Mover {name}",
+  "chip_path_label": "Ruta del chip",
+  "chip_unsaved": "Cambios sin guardar",
+  "chip_first_save_title": "Guardar {name}",
+  "chip_first_save_body": "Elige su carpeta. Puedes moverlo después.",
+  "chip_save": "Guardar",
+  "chip_more_label": "Más acciones del chip",
+  "chip_discard": "Descartar cambios…",
+  "chip_discard_title": "¿Descartar los cambios de {name}?",
+  "chip_discard_body": "El chip vuelve a su última versión guardada.",
+  "chip_discard_confirm": "Descartar",
+  "chip_save_title": "¿Guardar {name}?",
+  "chip_save_body": "Al guardar se actualizan todos los chips que lo usan:",
+  "chip_save_wires_removed": "Cables eliminados en {chip}: {count}",
+  "chip_save_pin_removed": "Pin {name} eliminado",
+  "chip_save_pin_width": "Pin {name}: {from} → {to} bits",
+  "chip_saved": "{name} guardado",
+  "chip_discarded": "Cambios de {name} descartados"
 }

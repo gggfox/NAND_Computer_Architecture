@@ -9,6 +9,8 @@ import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "../domain/actions";
+import { repairTrail, trailInto, trailTo } from "../domain/breadcrumbs";
+import type { Trail } from "../domain/breadcrumbs";
 import { createHistory, mapHistory, pushHistory, redo, undo } from "../domain/history";
 import type { History } from "../domain/history";
 import { applyAction } from "../domain/reducer";
@@ -22,12 +24,18 @@ export interface EditorState {
   readonly history: History<Project>;
   /** The chip being edited; starts at the project's `lastOpenedChipId`. */
   readonly chipId: ChipId;
+  /** The chips opened with Look inside, outermost first; the last one is always `chipId`. */
+  readonly trail: Trail;
   readonly lastError: LastError;
   /** The value set on each of the open chip's input pins; a missing pin reads as 0. */
   readonly inputs: ReadonlyMap<PinId, number>;
   readonly dispatch: (action: EditorAction) => Result<void, EditorError>;
-  /** Opens another chip for editing. It is not an edit: history is untouched. */
+  /** Opens another chip for editing, starting a fresh trail. Not an edit: history is untouched. */
   readonly openChip: (chipId: ChipId) => Result<void, EditorError>;
+  /** Opens a chip placed in the open one and adds it to the trail. */
+  readonly lookInside: (chipId: ChipId) => Result<void, EditorError>;
+  /** Goes back to the trail item at `index`; no-op out of range or on the last item. */
+  readonly goBack: (index: number) => void;
   readonly undo: () => void;
   readonly redo: () => void;
   /** Sets an input pin of the open chip; any other pin id is ignored. */
@@ -103,7 +111,9 @@ const createCommit = (set: Set, get: Get, repo: ProjectRepository): Commit => {
   };
   return {
     commit: (next, chipId) => {
-      set(chipId === undefined ? { history: next } : { history: next, chipId });
+      const open = chipId ?? get().chipId;
+      const trail = repairTrail(get().trail, next.present, open);
+      set(chipId === undefined ? { history: next, trail } : { history: next, chipId, trail });
       schedule(persist);
     },
     touch: () => {
@@ -199,6 +209,45 @@ const applyEdit = (
   return ok(undefined);
 };
 
+type Navigation = Pick<EditorState, "openChip" | "lookInside" | "goBack">;
+
+/** Opening a chip: they all route the wires it has none for, and none is an edit. */
+const createNavigation = (get: Get, set: Set, touch: () => void): Navigation => {
+  const switchTo = (
+    chipId: ChipId,
+    trailFor: (trail: Trail) => Trail,
+  ): Result<void, EditorError> => {
+    if (findChip(get().history.present, chipId) === undefined) {
+      return err({ type: "ChipNotFound", chipId });
+    }
+    set({
+      chipId,
+      trail: trailFor(get().trail),
+      history: mapHistory(get().history, createRouteUnrouted()),
+    });
+    touch();
+    // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
+    return ok(undefined);
+  };
+  return {
+    openChip: (chipId) => switchTo(chipId, () => [chipId]),
+    lookInside: (chipId) => {
+      const result = switchTo(chipId, (trail) => trailInto(trail, chipId));
+      if (!result.ok) {
+        set({ lastError: result.error });
+      }
+      return result;
+    },
+    goBack: (index) => {
+      const trail = trailTo(get().trail, index);
+      const target = trail.at(-1);
+      if (target !== undefined && trail.length < get().trail.length) {
+        switchTo(target, () => trail);
+      }
+    },
+  };
+};
+
 export const createEditorStore = (project: Project, repo: ProjectRepository): EditorStore =>
   createStore<EditorState>((set, get) => {
     const { commit, touch, flush } = createCommit(set, get, repo);
@@ -208,22 +257,18 @@ export const createEditorStore = (project: Project, repo: ProjectRepository): Ed
         commit(next);
       }
     };
+    const { openChip, lookInside, goBack } = createNavigation(get, set, touch);
     return {
       // Routing wires that have none (files from before the router) is not an edit.
       history: createHistory(createRouteUnrouted()(project)),
       chipId: project.lastOpenedChipId,
+      trail: [project.lastOpenedChipId],
       lastError: NO_ERROR,
       inputs: new Map(),
       dispatch: (action) => applyEdit({ get, set, commit }, action),
-      openChip: (chipId) => {
-        if (findChip(get().history.present, chipId) === undefined) {
-          return err({ type: "ChipNotFound", chipId });
-        }
-        set({ chipId, history: mapHistory(get().history, createRouteUnrouted()) });
-        touch();
-        // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
-        return ok(undefined);
-      },
+      openChip,
+      lookInside,
+      goBack,
       undo: () => {
         step(undo);
       },

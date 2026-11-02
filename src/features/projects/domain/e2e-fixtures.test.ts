@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, test } from "vitest";
 
-import { newChip, pinDef, pinPiece, piece, projectWith } from "./builders";
+import { newChip, pinDef, pinPiece, piece, projectWith, wire } from "./builders";
 import { parseProjectFile, serializeProject } from "./format";
 import type { Project } from "./model";
 
@@ -23,6 +23,7 @@ const BUS_WIDTH = 4;
 const SEED = 7;
 const BUS_IDS = 0x2_00;
 const SAVED_IDS = 0x3_00;
+const SAVE_FLOW_IDS = 0x5_00;
 
 /** A 4-bit input D (its pin at world (40, 80)), a NAND at (160, 40) and an output; no wires. */
 const busProject = (): Project => {
@@ -64,6 +65,51 @@ const savedChipProject = (): Project => {
   return projectWith("Saved chip", [main, inner], SEED);
 };
 
+/**
+ * `Half adder` (open) is saved, with inputs A and B into a NAND (at (160, 40)) and output S.
+ * `Full adder` is saved and places it at (160, 40), wiring its inputs X and Y to A and B, so a
+ * save of Half adder without B drops one wire there. `Scratch` is draft only.
+ */
+const saveFlowProject = (): Project => {
+  const [inA, inB, outS] = [pinDef("A", "input"), pinDef("B", "input"), pinDef("S", "output")];
+  const halfPieces = [
+    pinPiece(inA, { x: 0, y: 0 }),
+    pinPiece(inB, { x: 0, y: 80 }),
+    piece({ type: "nand" }, { x: 160, y: 40 }),
+    pinPiece(outS, { x: 320, y: 40 }),
+  ] as const;
+  const [pieceA, pieceB, nand, pieceS] = halfPieces;
+  const half = newChip(
+    "Half adder",
+    {
+      pins: [inA, inB, outS],
+      instances: halfPieces,
+      wires: [
+        wire({ instanceId: pieceA.id, pin: 0 }, { instanceId: nand.id, pin: 0 }),
+        wire({ instanceId: pieceB.id, pin: 0 }, { instanceId: nand.id, pin: 1 }),
+        wire({ instanceId: nand.id, pin: 2 }, { instanceId: pieceS.id, pin: 0 }),
+      ],
+    },
+    { saved: true, color: "#22c55e" },
+  );
+  const [inX, inY] = [pinDef("X", "input"), pinDef("Y", "input")];
+  const [pieceX, pieceY] = [pinPiece(inX, { x: 0, y: 0 }), pinPiece(inY, { x: 0, y: 80 })];
+  const placed = piece({ type: "custom", chipId: half.id }, { x: 160, y: 40 });
+  const full = newChip(
+    "Full adder",
+    {
+      pins: [inX, inY],
+      instances: [pieceX, pieceY, placed],
+      wires: [
+        wire({ instanceId: pieceX.id, pin: 0 }, { instanceId: placed.id, pin: inA.id }),
+        wire({ instanceId: pieceY.id, pin: 0 }, { instanceId: placed.id, pin: inB.id }),
+      ],
+    },
+    { saved: true, color: "#22c55e" },
+  );
+  return projectWith("Save flow", [half, full, newChip("Scratch")], SEED);
+};
+
 /** Random ids replaced, in order of appearance, by fixed ones from `base`, so a file is reproducible. */
 const withFixedIds = (text: string, base: number): string => {
   const ids = new Map<string, string>();
@@ -81,6 +127,7 @@ const withFixedIds = (text: string, base: number): string => {
 const FIXTURE_CASES = [
   { file: "bus.json", build: busProject, idBase: BUS_IDS },
   { file: "saved-chip.json", build: savedChipProject, idBase: SAVED_IDS },
+  { file: "save-flow.json", build: saveFlowProject, idBase: SAVE_FLOW_IDS },
 ] as const;
 
 describe("the E2E fixtures", () => {
