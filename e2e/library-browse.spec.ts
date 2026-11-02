@@ -43,7 +43,8 @@ test("a draft-only chip is greyed out with the reason it can't be placed", async
   await importLibrary(page);
   const tree = await openLibrary(page);
   const scratch = libraryRow(tree, "Scratch");
-  await expect(scratch).toHaveAttribute("aria-disabled", "true");
+  await expect(scratch).toHaveAttribute("data-unavailable", "true");
+  await expect(scratch).toHaveAccessibleDescription(NOT_SAVED);
   await expect(scratch).toContainText(NOT_SAVED);
   await expect(scratch).toContainText("draft only");
 });
@@ -111,7 +112,7 @@ test("a row that can't be placed takes keyboard focus, and Enter on it places no
   await page.keyboard.press("End");
   const scratch = libraryRow(tree, "Scratch");
   await expect(scratch).toBeFocused();
-  await expect(scratch).toHaveAttribute("aria-disabled", "true");
+  await expect(scratch).toHaveAccessibleDescription(NOT_SAVED);
 
   await page.keyboard.press("Enter");
   await expect(scratch).not.toHaveAttribute("aria-current", "true");

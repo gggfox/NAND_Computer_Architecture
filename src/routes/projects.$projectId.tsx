@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { CircuitSummary } from "~/features/accessibility";
@@ -14,7 +14,7 @@ import {
   useEditorSession,
   useSessionErrors,
 } from "~/features/circuit-editor";
-import type { Camera, EditorSession } from "~/features/circuit-editor";
+import type { Camera, EditorSearch, EditorSession } from "~/features/circuit-editor";
 import {
   getAppProjectRepository,
   persistenceErrorMessage,
@@ -165,12 +165,12 @@ function useNotices(session: EditorSession, failure: ImportFailure | undefined):
   ];
 }
 
-interface EditorProps {
-  readonly project: Project;
-}
-
-function Editor({ project }: EditorProps): ReactNode {
-  const view = Route.useSearch();
+/**
+ * The editor session, linked to the URL (ADR 16): the camera, and the chip being edited. Opening
+ * another chip (from the library, or after a delete) writes it; a URL without one is left alone
+ * until then.
+ */
+function useLinkedSession(project: Project, view: EditorSearch): EditorSession {
   const navigate = Route.useNavigate();
   const write = (camera: Camera): void => {
     void navigate({
@@ -179,6 +179,25 @@ function Editor({ project }: EditorProps): ReactNode {
     });
   };
   const session = useEditorSession(project, getAppProjectRepository(), { camera: view, write });
+  useEffect(
+    () =>
+      session.editor.subscribe((state, previous) => {
+        if (state.chipId !== previous.chipId) {
+          void navigate({ search: (search) => ({ ...search, chip: state.chipId }), replace: true });
+        }
+      }),
+    [session, navigate],
+  );
+  return session;
+}
+
+interface EditorProps {
+  readonly project: Project;
+}
+
+function Editor({ project }: EditorProps): ReactNode {
+  const view = Route.useSearch();
+  const session = useLinkedSession(project, view);
   const { failure, onImport } = useImport(project.id, session.editor);
   const notices = useNotices(session, failure);
   const library = useLibrary(session);

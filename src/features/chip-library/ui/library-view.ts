@@ -1,4 +1,4 @@
-import { chipSwatches } from "~/features/circuit-editor";
+import { chipSwatches, editorErrorMessage } from "~/features/circuit-editor";
 import type { Project } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import type { ChipId } from "~/shared/ids";
@@ -56,18 +56,23 @@ export interface LibraryView {
   readonly tags: readonly string[];
   readonly items: readonly LibraryItem[];
   readonly expanded: ReadonlySet<string>;
-  readonly disabled: ReadonlySet<string>;
+  /** Rows that can't be placed, each with why. */
+  readonly unavailable: ReadonlyMap<string, string>;
   /** The expansion once the tree shows `keys` open. */
   readonly expand: (keys: ReadonlySet<string>) => Expansion;
 }
 
-const disabledKeys = (nodes: readonly LibraryNode[], into: Set<string>): Set<string> => {
+const unavailableRows = (
+  nodes: readonly LibraryNode[],
+  into: Map<string, string>,
+): Map<string, string> => {
   for (const node of nodes) {
-    if (!canPlaceRow(node).ok) {
-      into.add(node.key);
+    const placeable = canPlaceRow(node);
+    if (!placeable.ok) {
+      into.set(node.key, editorErrorMessage(placeable.error));
     }
     if (node.type === "folder" || node.type === "builtins") {
-      disabledKeys(node.children, into);
+      unavailableRows(node.children, into);
     }
   }
   return into;
@@ -89,7 +94,7 @@ export const libraryView = (
       tags,
       items: tree.map((node) => itemOf(node)),
       expanded: prunedKeys(state.open, tree),
-      disabled: disabledKeys(tree, new Set()),
+      unavailable: unavailableRows(tree, new Map()),
       expand: (keys) => ({ ...state, open: keys }),
     };
   }
@@ -99,7 +104,7 @@ export const libraryView = (
     tags,
     items: shown.nodes.map((node) => itemOf(node)),
     expanded: without(shown.expanded, collapsed),
-    disabled: disabledKeys(shown.nodes, new Set()),
+    unavailable: unavailableRows(shown.nodes, new Map()),
     expand: (keys) => ({ ...state, collapse: { filter, keys: without(shown.expanded, keys) } }),
   };
 };

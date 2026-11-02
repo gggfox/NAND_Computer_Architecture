@@ -5,9 +5,9 @@ import type { FileChooser, Locator, Page } from "@playwright/test";
 import { createProject, expect } from "./support";
 
 /**
- * `fixtures/library.json`: folders Arithmetic › Adders and Logic; a saved "Half adder" in Adders;
- * a saved, starred, red "XOR" tagged `gate` in Logic; a draft-only "Scratch" at the top level;
- * and the open chip "Main".
+ * `fixtures/library.json`: folders Arithmetic › Adders and Logic; a saved "Half adder" in Adders,
+ * and a saved "Full adder" there whose saved version places it; a saved, starred, red "XOR" tagged
+ * `gate` in Logic; a draft-only "Scratch" at the top level; and the open chip "Main".
  */
 export const LIBRARY = path.join(import.meta.dirname, "fixtures", "library.json");
 

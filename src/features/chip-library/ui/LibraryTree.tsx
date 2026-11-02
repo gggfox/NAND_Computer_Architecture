@@ -14,6 +14,8 @@ import { isArmed, kindOfNode } from "../domain/placement";
 import { toggleKey } from "../domain/tree-expansion";
 import type { Expansion, LibraryItem, LibraryView } from "./library-view";
 import { LibraryRow } from "./LibraryRow";
+import type { RowCommand } from "./row-menu";
+import { useRowMenus } from "./use-row-menus";
 
 interface LibraryTreeProps {
   readonly session: EditorSession;
@@ -21,6 +23,8 @@ interface LibraryTreeProps {
   readonly onExpand: (expansion: Expansion) => void;
   /** A row was armed by pointer or touch: on phones the sheet gets out of the canvas's way. */
   readonly onArmed: () => void;
+  /** A command picked from a row's menu. */
+  readonly onCommand: (node: LibraryItem["node"], command: RowCommand) => void;
 }
 
 /** The key of the row whose kind is armed, if it is shown. */
@@ -38,10 +42,17 @@ const findArmed = (
 };
 
 /** The library's folder tree: a folder's action opens or closes it; a part's places or arms it. */
-export function LibraryTree({ session, view, onExpand, onArmed }: LibraryTreeProps): ReactNode {
+export function LibraryTree({
+  session,
+  view,
+  onExpand,
+  onArmed,
+  onCommand,
+}: LibraryTreeProps): ReactNode {
   const placing = usePlacing(session);
   const isKeyboard = useKeyboardModality();
   const armed = findArmed(view.items, placing);
+  const menus = useRowMenus(onCommand);
 
   const onAction = (item: LibraryItem): void => {
     const kind = kindOfNode(item.node);
@@ -65,15 +76,17 @@ export function LibraryTree({ session, view, onExpand, onArmed }: LibraryTreePro
       onExpandedChange={(keys) => {
         onExpand(view.expand(keys));
       }}
-      disabledKeys={view.disabled}
+      unavailable={view.unavailable}
       onAction={onAction}
       currentKey={armed}
       emptyText={m.library_no_results()}
+      onRowContextMenu={menus.handleOpenMenu}
       renderRow={(item) => (
         <LibraryRow
           node={item.node}
           isExpanded={view.expanded.has(item.key)}
           isArmed={item.key === armed}
+          menu={menus.menuOf(item)}
         />
       )}
     />
