@@ -17,7 +17,7 @@ interface LibraryTreeProps {
   readonly onExpand: (expansion: Expansion) => void;
   /** A row was armed by pointer or touch, or dropped on the canvas: on phones the sheet goes. */
   readonly onArmed: () => void;
-  /** A drag began (true) or ended (false): on phones the sheet tucks away meanwhile. */
+  /** On phones: whether a row drag has left the sheet, which then tucks away (see `RowDragOptions`). */
   readonly onTuck: (isTucked: boolean) => void;
   /** A command picked from a row's menu. */
   readonly onCommand: Parameters<typeof useRowMenus>[0];

@@ -36,12 +36,16 @@ function GhostView({ ghost }: { readonly ghost: Ghost }): ReactNode {
 }
 
 /**
- * While a row is dragged: the ghost under the pointer, and a "Top level" drop row in place (below
- * the tree, so the rows above don't shift under the pointer). Only this re-renders as it moves.
+ * While a row is dragged: the ghost under the pointer, and a "Top level" drop row below the tree.
+ * The row's space is kept while nothing is dragged, so no row moves under the pointer when a drag
+ * begins; a phone's bottom sheet would otherwise grow and lift every row. Only this re-renders as
+ * the pointer moves.
  */
 export function DragLayer({ store }: { readonly store: StoreApi<GhostState> }): ReactNode {
   const { ghost } = useStore(store);
-  return ghost === undefined ? undefined : (
+  return ghost === undefined ? (
+    <div aria-hidden="true" className={`${styles.root} ${styles.idle}`} />
+  ) : (
     <>
       <div data-drop-folder="" className={styles.root}>
         {m.library_top_level()}

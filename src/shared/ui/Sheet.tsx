@@ -11,7 +11,10 @@ interface SheetProps {
   readonly title: string;
   readonly isOpen: boolean;
   readonly onClose: () => void;
-  /** Hides the sheet without unmounting it, so a pointer drag that began inside it survives. */
+  /**
+   * Hides the sheet without unmounting it, so a pointer drag that began inside it survives. The
+   * sheet's box is marked `data-sheet`, for a drag to tell when it leaves it.
+   */
   readonly isTucked?: boolean;
   readonly children: ReactNode;
 }
@@ -67,7 +70,7 @@ export function Sheet({
         }
       }}
     >
-      <Modal className={isTucked ? `${styles.sheet} ${styles.tucked}` : styles.sheet}>
+      <Modal data-sheet="" className={isTucked ? `${styles.sheet} ${styles.tucked}` : styles.sheet}>
         <SheetBody title={title} onClose={onClose}>
           {children}
         </SheetBody>

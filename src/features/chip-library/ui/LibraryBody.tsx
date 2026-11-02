@@ -25,7 +25,7 @@ interface LibraryBodyProps {
   };
   /** A part was armed, dropped on the canvas or a chip opened: on phones the sheet closes. */
   readonly onOutOfTheWay: () => void;
-  /** A row drag began (true) or ended (false): on phones the sheet tucks away meanwhile. */
+  /** On phones: whether a row drag has left the sheet, which then tucks away (see `RowDragOptions`). */
   readonly onTuck: (isTucked: boolean) => void;
 }
 

@@ -36,7 +36,7 @@ export function LibraryPanel({ session, isOpen, isWide, onClose }: LibraryPanelP
   const headingId = useId();
   /*
    * On phones the sheet gets out of the canvas's way once a part is armed or a chip opened, and
-   * tucks away (still mounted, so the drag goes on) while a row is dragged.
+   * tucks away (still mounted, so the drag goes on) once a row drag leaves it for the canvas.
    */
   const body = (
     <LibraryBody

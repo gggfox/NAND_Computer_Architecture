@@ -1,93 +1,25 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Locator, Page } from "@playwright/test";
-
+import {
+  aboveSheet,
+  centreOf,
+  desktopMouse,
+  LONG_PRESS,
+  longPressDrag,
+  cdpTouch,
+  mainParts,
+  mouseDrag,
+  phoneTouch,
+} from "./library-drag-support";
 import { importLibrary, libraryRow, openLibrary } from "./library-support";
 import { canvasHost, exportedProject, expect, GRID, test, worldToPage } from "./support";
-import type { ExportedFile, Point } from "./support";
+import type { Point } from "./support";
 
 /** The layout's breakpoint: below it the library is a sheet. */
 const WIDE = 640;
-/** Past `LONG_PRESS_MS` (400 ms) in `domain/drag-intent.ts`. */
-const LONG_PRESS = 700;
-const MOVES = 10;
-const HALF = 0.5;
 /** Where the Half adder is dropped, in world units. */
 const DROP_WORLD: Point = { x: 300, y: 200 };
 /** A pinless "Half adder" is 160 × 40 (`bodySize` in `domain/chip-layout.ts`): its centre's offset. */
 const HALF_ADDER_CENTRE: Point = { x: 80, y: 20 };
-
-const centreOf = async (target: Locator): Promise<Point> => {
-  const box = await target.boundingBox();
-  if (box === null) {
-    throw new Error("The element is not visible");
-  }
-  return { x: box.x + box.width * HALF, y: box.y + box.height * HALF };
-};
-
-const between = (from: Point, to: Point, share: number): Point => ({
-  x: from.x + (to.x - from.x) * share,
-  y: from.y + (to.y - from.y) * share,
-});
-
-/** A mouse drag from `from` to `to` in even moves; `beforeRelease` runs with the button still down. */
-const mouseDrag = async (
-  page: Page,
-  { from, to }: { readonly from: Point; readonly to: Point },
-  beforeRelease: () => Promise<void> = async () => {},
-): Promise<void> => {
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  for (let step = 1; step <= MOVES; step += 1) {
-    const at = between(from, to, step / MOVES);
-    await page.mouse.move(at.x, at.y);
-  }
-  await beforeRelease();
-  await page.mouse.up();
-};
-
-/** Real touches through CDP (Chromium only): the synthetic `touch` helper can't drive a list. */
-const cdpTouch = async (page: Page) => {
-  const cdp = await page.context().newCDPSession(page);
-  const send = (type: "touchStart" | "touchMove" | "touchEnd", at?: Point) =>
-    cdp.send("Input.dispatchTouchEvent", {
-      type,
-      touchPoints: at === undefined ? [] : [{ x: at.x, y: at.y }],
-    });
-  return {
-    press: (at: Point) => send("touchStart", at),
-    move: (at: Point) => send("touchMove", at),
-    release: () => send("touchEnd"),
-  };
-};
-
-/** The open chip "Main"'s draft parts. */
-const mainParts = (
-  file: ExportedFile,
-): ExportedFile["project"]["chips"][number]["draft"]["instances"] => {
-  const main = file.project.chips.find((chip) => chip.name === "Main");
-  if (main === undefined) {
-    throw new Error("The project has no Main chip");
-  }
-  return main.draft.instances;
-};
-
-const desktopMouse = ({ isMobile }: { readonly isMobile: boolean }): void => {
-  test.skip(isMobile, "Mouse drags run on desktop");
-};
-
-const phoneTouch = ({
-  browserName,
-  isMobile,
-}: {
-  readonly browserName: string;
-  readonly isMobile: boolean;
-}): void => {
-  test.skip(!isMobile, "Touch drags run on phones");
-  test.skip(
-    browserName !== "chromium",
-    "Playwright's WebKit can't inject real touches (no CDP); checked by hand on iOS",
-  );
-};
 
 test("a chip dragged onto the canvas is placed where it was dropped", async ({
   page,
@@ -153,7 +85,7 @@ test("a folder dragged onto its own subfolder is refused, and nothing moves", as
   await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
 });
 
-test("a long-press drags NAND out of the tucked sheet onto the canvas", async ({
+test("a long-press drags NAND up out of the sheet, which tucks away, onto the canvas", async ({
   page,
   browserName,
   isMobile,
@@ -165,12 +97,8 @@ test("a long-press drags NAND out of the tucked sheet onto the canvas", async ({
   const tree = await openLibrary(page);
   await libraryRow(tree, "Built-in").click();
   const from = await centreOf(libraryRow(tree, "NAND"));
-  const finger = await cdpTouch(page);
-  await finger.press(from);
-  await page.waitForTimeout(LONG_PRESS);
-  for (let step = 1; step <= MOVES; step += 1) {
-    await finger.move(between(from, to, step / MOVES));
-  }
+  const via = await aboveSheet(page, from.x);
+  const finger = await longPressDrag(page, { from, via, to });
   const sheet = page.getByRole("dialog", { name: "Chip library" });
   await expect(sheet).toBeHidden();
   await finger.release();
@@ -207,14 +135,10 @@ test("a touch drag dropped off the canvas brings the sheet back", async ({
   const tree = await openLibrary(page);
   await libraryRow(tree, "Built-in").click();
   const from = await centreOf(libraryRow(tree, "NAND"));
-  // Above the canvas: the toolbar, which takes no drop.
+  // Up out of the sheet, then onto the toolbar above the canvas, which takes no drop.
   const to = { x: from.x, y: Math.max(1, (canvas?.y ?? 0) - 1) };
-  const finger = await cdpTouch(page);
-  await finger.press(from);
-  await page.waitForTimeout(LONG_PRESS);
-  for (let step = 1; step <= MOVES; step += 1) {
-    await finger.move(between(from, to, step / MOVES));
-  }
+  const via = await aboveSheet(page, from.x);
+  const finger = await longPressDrag(page, { from, via, to });
   const sheet = page.getByRole("dialog", { name: "Chip library" });
   await expect(sheet).toBeHidden();
   await finger.release();
@@ -238,12 +162,8 @@ test("a drag cut short when the tree goes away leaves the sheet untucked", async
   const tree = await openLibrary(page);
   await libraryRow(tree, "Built-in").click();
   const from = await centreOf(libraryRow(tree, "NAND"));
-  const finger = await cdpTouch(page);
-  await finger.press(from);
-  await page.waitForTimeout(LONG_PRESS);
-  for (let step = 1; step <= MOVES; step += 1) {
-    await finger.move(between(from, to, step / MOVES));
-  }
+  const via = await aboveSheet(page, from.x);
+  const finger = await longPressDrag(page, { from, via, to });
   const sheet = page.getByRole("dialog", { name: "Chip library" });
   await expect(sheet).toBeHidden();
   // Crossing 640 px swaps the sheet for the column, which unmounts the dragged row's tree.
@@ -260,4 +180,35 @@ test("a drag cut short when the tree goes away leaves the sheet untucked", async
   await expect(libraryRow(tree, "NAND")).toBeVisible();
   await page.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toHaveCount(0);
+});
+
+test("on a phone, a long-press drags XOR onto a folder row in the open sheet", async ({
+  page,
+  browserName,
+  isMobile,
+}) => {
+  phoneTouch({ browserName, isMobile });
+  await importLibrary(page);
+  const tree = await openLibrary(page);
+  await libraryRow(tree, "Logic").click();
+  const arithmetic = libraryRow(tree, "Arithmetic");
+  const finger = await longPressDrag(page, {
+    from: await centreOf(libraryRow(tree, "XOR")),
+    to: await centreOf(arithmetic),
+  });
+  // Over the sheet, the sheet stays in view so its folder rows can take the drop.
+  const sheet = page.getByRole("dialog", { name: "Chip library" });
+  await expect(sheet).toBeVisible();
+  await finger.release();
+
+  await expect(sheet).toBeVisible();
+  await expect(libraryRow(tree, "XOR")).toHaveCount(0);
+  await expect(async () => {
+    if ((await arithmetic.getAttribute("aria-expanded")) !== "true") {
+      await arithmetic.click();
+    }
+    await expect(libraryRow(tree, "XOR")).toHaveAttribute("aria-level", "2", { timeout: 500 });
+  }).toPass();
+  await page.getByRole("button", { name: "Close" }).click();
+  expect(mainParts(await exportedProject(page))).toHaveLength(0);
 });
