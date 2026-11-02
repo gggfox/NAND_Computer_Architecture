@@ -105,14 +105,25 @@ describe("libraryTree", () => {
     const project = projectWith("p", [open, draft, parent, saved("Fine")]);
     const tree = libraryTree(project, open.id);
     const draftNode = chipNode(tree, "Draft");
-    expect(draftNode.draftOnly).toBe(true);
+    expect(draftNode.unsaved).toBe("new");
     expect(!draftNode.placeable.ok && draftNode.placeable.error.type).toBe("ChipNotSaved");
     const openNode = chipNode(tree, "Open");
-    expect(openNode.draftOnly).toBe(false);
+    expect(openNode.unsaved).toBe("saved");
     expect(!openNode.placeable.ok && openNode.placeable.error.type).toBe("WouldContainItself");
     const parentNode = chipNode(tree, "Parent");
     expect(!parentNode.placeable.ok && parentNode.placeable.error.type).toBe("WouldContainItself");
     expect(chipNode(tree, "Fine").placeable.ok).toBe(true);
+  });
+
+  it("marks a saved chip whose draft was edited as changed", () => {
+    const open = saved("Open");
+    const edited: Chip = {
+      ...saved("Edited"),
+      draft: { ...EMPTY_CIRCUIT, instances: [piece({ type: "nand" })] },
+    };
+    const tree = libraryTree(projectWith("p", [open, edited]), open.id);
+    expect(chipNode(tree, "Edited").unsaved).toBe("changed");
+    expect(chipNode(tree, "Open").unsaved).toBe("saved");
   });
 
   it("reports ChipNotFound for every chip when the open chip is unknown", () => {

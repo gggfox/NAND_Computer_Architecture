@@ -3,11 +3,12 @@ import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
 import { cancelPlacement, usePlacing } from "~/features/circuit-editor";
-import type { CanvasMenuContext, EditorSession } from "~/features/circuit-editor";
+import type { CanvasMenuContext, EditorSession, FirstSaveSlot } from "~/features/circuit-editor";
 import { m } from "~/i18n/paraglide/messages";
 import { Button, useMediaQuery } from "~/shared/ui";
 
 import { isStalePlacement } from "../domain/placement";
+import { FirstSaveDialog } from "./FirstSaveDialog";
 import { LibraryPanel } from "./LibraryPanel";
 import { QuickAdd } from "./QuickAdd";
 
@@ -34,6 +35,8 @@ export interface Library {
   readonly panel: ReactNode;
   /** `CircuitCanvas`'s `canvasMenu` slot: the quick-add menu. */
   readonly quickAdd: (context: CanvasMenuContext) => ReactNode;
+  /** `ChipHeader`'s `firstSave` slot: the folder dialog a never-saved chip's first save opens. */
+  readonly firstSave: FirstSaveSlot;
 }
 
 /** The chip library for one editor session. It starts closed on every width (D14). */
@@ -65,5 +68,8 @@ export const useLibrary = (session: EditorSession): Library => {
   const quickAdd = (context: CanvasMenuContext): ReactNode => (
     <QuickAdd session={session} context={context} />
   );
-  return { toggle, panel, quickAdd };
+  const firstSave: FirstSaveSlot = (context) => (
+    <FirstSaveDialog session={session} context={context} />
+  );
+  return { toggle, panel, quickAdd, firstSave };
 };

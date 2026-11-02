@@ -259,6 +259,8 @@
   "library_move_title": "Move {name}",
   "chip_path_label": "Chip path",
   "chip_unsaved": "Unsaved changes",
+  "chip_first_save_title": "Save {name}",
+  "chip_first_save_body": "Pick its folder. You can move it later.",
   "chip_save": "Save",
   "chip_more_label": "More chip actions",
   "chip_discard": "Discard changes…",

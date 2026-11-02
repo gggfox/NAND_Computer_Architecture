@@ -56,3 +56,12 @@
   background-color: var(--color-accent);
   border-color: var(--color-accent);
 }
+
+/* A saved chip with unsaved changes (D10): the same dot as the chip header's. */
+.dot {
+  flex: none;
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  background-color: var(--color-accent);
+  border-radius: 50%;
+}

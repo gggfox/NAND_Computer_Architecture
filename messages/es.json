@@ -259,6 +259,8 @@
   "library_move_title": "Mover {name}",
   "chip_path_label": "Ruta del chip",
   "chip_unsaved": "Cambios sin guardar",
+  "chip_first_save_title": "Guardar {name}",
+  "chip_first_save_body": "Elige su carpeta. Puedes moverlo después.",
   "chip_save": "Guardar",
   "chip_more_label": "Más acciones del chip",
   "chip_discard": "Descartar cambios…",

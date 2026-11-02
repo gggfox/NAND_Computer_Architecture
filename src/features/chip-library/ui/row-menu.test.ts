@@ -15,7 +15,7 @@ const chip = (starred: boolean): LibraryNode => ({
   starred,
   tags: [],
   path: [],
-  draftOnly: false,
+  unsaved: "saved",
   // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
   placeable: ok(undefined),
 });

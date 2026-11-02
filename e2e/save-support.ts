@@ -32,9 +32,9 @@ export const chipPath = (page: Page): Locator =>
 export const saveButton = (page: Page): Locator =>
   page.getByRole("button", { name: "Save", exact: true });
 
-/** The dot's visually hidden text, there while the open chip has unsaved changes. */
+/** The header's dot text, there while the open chip has unsaved changes (not the library rows'). */
 export const unsavedDot = (page: Page): Locator =>
-  page.getByText("Unsaved changes", { exact: true });
+  page.getByText("Unsaved changes", { exact: true }).and(page.locator(":not([role=treegrid] *)"));
 
 /** The header's ⋯ menu button, there only while it has an entry. */
 export const moreButton = (page: Page): Locator =>
