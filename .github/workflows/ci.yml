@@ -12,9 +12,32 @@ permissions:
   contents: read
 
 jobs:
+  # Docs-only changes (code == 'false') skip the tests. Skipped jobs still satisfy the required checks.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!LICENSE'
+
   # Job names are required status checks (ADR 35): keep them exactly check, e2e, visual.
   check:
     name: check
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -29,7 +52,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - if: needs.changes.outputs.code != 'false'
+        run: pnpm check
+      - if: needs.changes.outputs.code == 'false'
+        run: pnpm format:check && pnpm spell
       # Runs after a failed check too, as long as the tests got far enough to write a report.
       # Fork PRs get a read-only token, so they skip the comment; the coverage table stays in the log.
       - uses: davelosert/vitest-coverage-report-action@v2
@@ -44,6 +70,9 @@ jobs:
   # One runner per Playwright project: run serially on one 2-vCPU runner they hit the 30 min timeout.
   e2e-project:
     name: e2e (${{ matrix.project }})
+    needs: changes
+    # Fail-safe: only a positive docs-only result skips; a failed changes job still runs everything.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -79,11 +108,14 @@ jobs:
     needs: e2e-project
     runs-on: ubuntu-latest
     steps:
-      - if: needs.e2e-project.result != 'success'
+      - if: contains(fromJSON('["failure", "cancelled"]'), needs.e2e-project.result)
         run: exit 1
 
   visual:
     name: visual
+    needs: changes
+    # Fail-safe: only a positive docs-only result skips; a failed changes job still runs everything.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
