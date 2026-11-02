@@ -97,3 +97,14 @@ describe("wiring keys", () => {
     ]);
   });
 });
+
+describe("rename key", () => {
+  it("F2 renames the focused piece; with nothing focused it is the browser's", () => {
+    const { state, pieceA } = wiring();
+    expect(commandForKey(press("F2"), { armed: false, focus: pieceA.id })).toEqual({
+      type: "startRename",
+      instanceId: pieceA.id,
+    });
+    expect(commandForKey(press("F2"), { armed: false, focus: state.focus })).toBeUndefined();
+  });
+});

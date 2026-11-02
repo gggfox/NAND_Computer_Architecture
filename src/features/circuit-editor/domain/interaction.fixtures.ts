@@ -43,6 +43,7 @@ export const setup = (tool: Tool = "select") => {
     viewport: { width: 800, height: 600 },
     index: () => buildIndex(scene),
     newWireId: () => WIRE_ID,
+    inputs: new Map(),
   };
   const [pieceA, pieceB, nand, pieceOut] = circuit.instances;
   assert(pieceA && pieceB && nand && pieceOut);

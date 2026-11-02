@@ -102,3 +102,10 @@ export const instanceLevel = (
   known: KnownLevels,
   instance: ChipInstance,
 ): Level | undefined => levelOf(circuit, known, instance.id);
+
+/**
+ * The value on a pin piece's body, any width: an input's set value (0 until set), an output's last
+ * reported value (none until reported).
+ */
+export const pieceValue = (known: KnownLevels, pin: PinDef): number | undefined =>
+  pin.direction === "input" ? (known.inputs.get(pin.id) ?? 0) : known.outputs.get(pin.id);

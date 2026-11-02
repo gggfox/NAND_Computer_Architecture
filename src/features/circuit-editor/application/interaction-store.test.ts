@@ -103,6 +103,19 @@ describe("createInteractionStore", () => {
   });
 });
 
+describe("createInteractionStore pins", () => {
+  it("tapping input A toggles it through the editor, both ways", () => {
+    const { send, editor } = setup();
+    const [pieceA] = openCircuit(editor.getState()).instances;
+    assert(pieceA?.kind.type === "pin");
+    const { pinId } = pieceA.kind;
+    send({ type: "tap", point: at(20, 20), kind: "mouse", modifiers: NONE });
+    expect(editor.getState().inputs.get(pinId)).toBe(1);
+    send({ type: "tap", point: at(20, 20), kind: "mouse", modifiers: NONE });
+    expect(editor.getState().inputs.get(pinId)).toBe(0);
+  });
+});
+
 describe("createInteractionStore camera", () => {
   it("mirrors camera moves to the URL and settles at the end of a pan", () => {
     const { send, view, store } = setup("pan");

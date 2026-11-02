@@ -24,6 +24,8 @@ const CHAR_WIDTH = 8;
 const TITLE_CHAR_WIDTH = 10;
 /** Space between the chip edge and a pin label, past the half of the pin tab inside the chip. */
 const LABEL_INSET = 8;
+/** Space between a pin piece's body and its name, which sits outside the body. */
+const NAME_GAP = 8;
 /** Space between a label column and the title. */
 const TITLE_GAP = 4;
 /** The fewest cells a side may take: one 1-bit pin. */
@@ -65,6 +67,8 @@ export interface ChipLayout {
   readonly title: string;
   /** Left side top to bottom, then right side top to bottom. */
   readonly pins: readonly PinLayout[];
+  /** A pin piece's name: outside the body, on the side away from its pin. Other parts have none. */
+  readonly name?: Rect;
 }
 
 /** What laying out an instance depends on besides the instance itself. */
@@ -189,6 +193,13 @@ const placeSide = (rect: Rect, pins: readonly PinSpec[]): readonly PinLayout[] =
   });
 };
 
+/** Where a pin piece's name goes: one cell high, centred beside the body, away from its pin. */
+const nameRect = (rect: Rect, title: string, pinSide: Side | undefined): Rect => {
+  const width = title.length * CHAR_WIDTH;
+  const x = pinSide === "left" ? rect.x + rect.width + NAME_GAP : rect.x - NAME_GAP - width;
+  return { x, y: rect.y + (rect.height - PIN_CELL) * HALF, width, height: PIN_CELL };
+};
+
 /**
  * The body, title and pins of a part of `kind` at `position` (spec §5.1): inputs on the left and outputs on the right,
  * each pin in a slot of 2, 3, 4 or 5 half-grid cells by width, slack spread evenly, the height
@@ -206,8 +217,12 @@ export const layoutOfKind = (
     right: specs.filter((pin) => pin.side === "right"),
   };
   const title = partName(source.project, source.circuit, kind);
-  const rect = { ...position, ...bodySize(sides, title, kind.type === "pin") };
-  return { rect, title, pins: [...placeSide(rect, sides.left), ...placeSide(rect, sides.right)] };
+  const isPiece = kind.type === "pin";
+  const rect = { ...position, ...bodySize(sides, title, isPiece) };
+  const pins = [...placeSide(rect, sides.left), ...placeSide(rect, sides.right)];
+  return isPiece
+    ? { rect, title, pins, name: nameRect(rect, title, specs[0]?.side) }
+    : { rect, title, pins };
 };
 
 export const layoutOf = (source: LayoutSource, instance: ChipInstance): ChipLayout =>

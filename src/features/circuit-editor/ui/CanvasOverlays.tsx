@@ -9,6 +9,7 @@ import type { OverlayDialog } from "./CanvasMenus";
 import { KeyboardHelp } from "./KeyboardHelp";
 import { OverlayDialogView } from "./OverlayDialogView";
 import { PinCard } from "./PinCard";
+import { PinRenamePopover } from "./PinRenamePopover";
 
 import styles from "./CircuitCanvas.module.css";
 
@@ -42,7 +43,29 @@ function RefusalNotice({ session }: { readonly session: EditorSession }): ReactN
   );
 }
 
-/** The refusal notice, menus, bit picker, pin card, dialogs and keyboard help, over the canvas. */
+/** The rename popover, while a pin piece's name is being edited; one per piece, so it starts fresh. */
+function RenameOverlay({
+  session,
+  hostRef,
+}: {
+  readonly session: EditorSession;
+  readonly hostRef: RefObject<HTMLElement | null>;
+}): ReactNode {
+  const renaming = useStore(session.interaction.store, (state) => state.renaming);
+  return renaming === undefined ? undefined : (
+    <PinRenamePopover
+      key={renaming.instanceId}
+      session={session}
+      renaming={renaming}
+      hostRef={hostRef}
+    />
+  );
+}
+
+/**
+ * The refusal notice, menus, bit picker, pin card, rename popover, dialogs and keyboard help, over
+ * the canvas.
+ */
 export function CanvasOverlays({
   session,
   hostRef,
@@ -63,6 +86,7 @@ export function CanvasOverlays({
       <RefusalNotice session={session} />
       <CanvasMenus session={session} onDialog={setDialog} />
       {card === undefined ? undefined : <PinCard session={session} card={card} />}
+      <RenameOverlay session={session} hostRef={hostRef} />
       {dialog === undefined ? undefined : (
         <OverlayDialogView session={session} dialog={dialog} onClose={close} />
       )}

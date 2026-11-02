@@ -61,6 +61,27 @@ describe("hitTest priority and reach", () => {
   });
 });
 
+describe("hitTest on a pin piece's name", () => {
+  it("the name left of input A is its label; zoomed out it still reaches 12 screen px", () => {
+    const { index, pieceA } = demo();
+    // A's name "A" is drawn right-aligned 8 px left of its body, centred at y = 20.
+    expect(hitTest(index, { x: -12, y: 20 }, 1)).toEqual({
+      type: "label",
+      instanceId: pieceA.id,
+    });
+    expect(hitTest(index, { x: -12, y: 4 }, 0.5)).toEqual({
+      type: "label",
+      instanceId: pieceA.id,
+    });
+    expect(hitTest(index, { x: -40, y: 20 }, 1)).toEqual({ type: "empty" });
+  });
+
+  it("the body beats the label", () => {
+    const { index, pieceA } = demo();
+    expect(hitTest(index, { x: 2, y: 20 }, 1)).toEqual({ type: "chip", instanceId: pieceA.id });
+  });
+});
+
 describe("hitTest scenes", () => {
   it("hits a dragged chip at its preview position", () => {
     const { scene, nand } = demo();

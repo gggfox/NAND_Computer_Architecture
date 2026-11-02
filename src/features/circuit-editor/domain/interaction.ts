@@ -1,5 +1,5 @@
 import type { ConnectionError, PinKey, PinRef, Point, WireColor } from "~/features/projects";
-import type { ChipId, InstanceId, WireId } from "~/shared/ids";
+import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
 
 import type { EditorAction } from "./actions";
 import type { Camera } from "./camera";
@@ -84,6 +84,12 @@ export type Menu =
   | { readonly kind: "wire"; readonly wireId: WireId; readonly screen: Point }
   | { readonly kind: "canvas"; readonly screen: Point };
 
+/** A pin piece's name being edited in place; the popover opens at `screen` (screen pixels). */
+export interface Renaming {
+  readonly instanceId: InstanceId;
+  readonly screen: Point;
+}
+
 /** Everything the canvas shows that is not the circuit. None of it is an edit (ADR 8, 22). */
 export interface InteractionState {
   readonly tool: Tool;
@@ -108,6 +114,7 @@ export interface InteractionState {
   readonly help?: true;
   /** Why the last connection was refused, shown over the canvas until the next gesture or command. */
   readonly notice?: ConnectionError;
+  readonly renaming?: Renaming;
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -151,7 +158,12 @@ export type InteractionCommand =
   /** Arms the wire's source, in its colour, for a new wire. */
   | { readonly type: "branch"; readonly wireId: WireId }
   /** Enters bend mode for the wire. */
-  | { readonly type: "editBends"; readonly wireId: WireId };
+  | { readonly type: "editBends"; readonly wireId: WireId }
+  /** Selects pin pieces (the Pins panel), focusing the first. */
+  | { readonly type: "selectPieces"; readonly instanceIds: readonly InstanceId[] }
+  /** Opens the rename popover at a pin piece's name; `endRename` closes it. */
+  | { readonly type: "startRename"; readonly instanceId: InstanceId }
+  | { readonly type: "endRename" };
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -186,6 +198,8 @@ export type Effect =
   | { readonly type: "undo" | "redo" }
   /** A camera gesture ended: write the camera to the URL now. */
   | { readonly type: "cameraSettled" }
+  /** Sets an input pin of the open chip, as the Pins panel does. */
+  | { readonly type: "setInput"; readonly pinId: PinId; readonly value: number }
   | { readonly type: "announce"; readonly announcement: Announcement };
 
 /** What interpreting an input reads; `index` is built lazily, only when a hit-test needs it. */
@@ -196,6 +210,8 @@ export interface InteractionContext {
   readonly index: () => SpatialIndex;
   /** The id a new wire gets. */
   readonly newWireId: () => WireId;
+  /** The input values set so far; a missing one is 0. */
+  readonly inputs: ReadonlyMap<PinId, number>;
 }
 
 export interface Interpreted {
@@ -221,9 +237,9 @@ export const movePreviewOf = (state: InteractionState, scene: Scene): DragPrevie
 export const previewOf = (state: InteractionState, scene: Scene): ReadonlyMap<InstanceId, Point> =>
   movePreviewOf(state, scene).positions;
 
-/** The state with the menu, pin card and bit picker closed; an armed pin stays armed. */
+/** The state with the menu, pin card, bit picker and rename closed; an armed pin stays armed. */
 export const withoutOverlays = (state: InteractionState): InteractionState => {
-  const { menu: _menu, card: _card, bitPick: _bitPick, ...rest } = state;
+  const { menu: _menu, card: _card, bitPick: _bitPick, renaming: _renaming, ...rest } = state;
   return rest;
 };
 

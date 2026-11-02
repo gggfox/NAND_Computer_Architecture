@@ -5,7 +5,7 @@ import type { Circuit, Wire } from "~/features/projects";
 import type { PinId } from "~/shared/ids";
 import { newInstanceId, newWireId } from "~/shared/ids";
 
-import { instanceLevel, pinLevelKey, pinValue, wireDash, wireLevel } from "./signals";
+import { instanceLevel, pieceValue, pinLevelKey, pinValue, wireDash, wireLevel } from "./signals";
 import type { KnownLevels } from "./signals";
 
 const demo = (): Circuit => createDemoProject("x").chips[0]?.draft ?? EMPTY_CIRCUIT;
@@ -139,5 +139,18 @@ describe("wireDash", () => {
   it("draws high and unknown wires solid", () => {
     expect(wireDash(1)).toEqual([]);
     expect(wireDash()).toEqual([]);
+  });
+});
+
+describe("pieceValue", () => {
+  it("is an input's set value (0 until set) and an output's reported one", () => {
+    const circuit = demo();
+    const [pinA, pinB, pinOut] = circuit.pins;
+    assert(pinA && pinB && pinOut);
+    const known = levels(circuit, [200, 0]);
+    expect(pieceValue(known, pinA)).toBe(200);
+    expect(pieceValue({ ...known, inputs: new Map() }, pinB)).toBe(0);
+    expect(pieceValue(known, pinOut)).toBeUndefined();
+    expect(pieceValue(levels(circuit, [0, 0], 255), pinOut)).toBe(255);
   });
 });

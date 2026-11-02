@@ -1,0 +1,13 @@
+/* Renames a pin piece in place: a small non-modal form just below its name. */
+.popover {
+  position: absolute;
+  z-index: var(--z-overlay);
+  inline-size: 12rem;
+  max-inline-size: calc(100% - 1rem);
+  padding: 0.5rem 0.75rem;
+  margin-block-start: 0.25rem;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-radius: 0.5rem;
+}

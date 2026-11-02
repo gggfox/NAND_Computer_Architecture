@@ -12,6 +12,6 @@ export const toWorld = (state: InteractionState, screen: Point): Point =>
 export const hitAt = (state: InteractionState, context: InteractionContext, screen: Point): Hit =>
   hitTest(context.index(), toWorld(state, screen), state.camera.zoom);
 
-/** The chip a hit belongs to: a pin counts as its chip. */
+/** The chip a hit belongs to: a pin, or a pin piece's name, counts as its chip. */
 export const chipOf = (hit: Hit): InstanceId | undefined =>
-  hit.type === "pin" || hit.type === "chip" ? hit.instanceId : undefined;
+  hit.type === "pin" || hit.type === "chip" || hit.type === "label" ? hit.instanceId : undefined;

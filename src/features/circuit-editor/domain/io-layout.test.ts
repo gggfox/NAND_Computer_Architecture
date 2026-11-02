@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { pinDef, pinPiece } from "~/features/projects";
 import type { Circuit } from "~/features/projects";
 
-import { ioLayout, packInputs, unpackOutputs } from "./io-layout";
+import { ioLayout, packInputs, panelNumber, unpackOutputs } from "./io-layout";
 
 const NIBBLE = 4;
 const pinA = pinDef("A", "input");
@@ -56,5 +56,12 @@ describe("unpackOutputs", () => {
         [pinQ.id, 0],
       ]),
     );
+  });
+});
+
+describe("panelNumber", () => {
+  it("counts from 1 within each direction, in Pins-panel order; an unknown pin has none", () => {
+    expect(pins.map((pin) => panelNumber(pins, pin.id))).toEqual([1, 2, 1, 2]);
+    expect(panelNumber(pins, pinDef("Z", "input").id)).toBe(0);
   });
 });

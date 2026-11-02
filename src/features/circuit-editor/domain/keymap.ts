@@ -1,3 +1,5 @@
+import type { InstanceId } from "~/shared/ids";
+
 import type { InteractionCommand } from "./interaction";
 
 /** The parts of a `KeyboardEvent` the canvas reads. */
@@ -48,10 +50,18 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
   ["N", () => ({ type: "nextWire", backwards: true })],
 ]);
 
-/** What the map reads from the canvas: `Enter` wires an armed pin instead of opening a menu. */
+/**
+ * What the map reads from the canvas: `Enter` wires an armed pin instead of opening a menu, and
+ * `F2` renames the focused pin piece.
+ */
 interface KeyContext {
   readonly armed: boolean;
+  readonly focus?: InstanceId | undefined;
 }
+
+/** `F2` renames the focused chip when it is a pin piece; with nothing focused it is the browser's. */
+const f2 = (context?: KeyContext): InteractionCommand | undefined =>
+  context?.focus === undefined ? undefined : { type: "startRename", instanceId: context.focus };
 
 const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined =>
   press.key === "Enter" && context?.armed === true
@@ -80,6 +90,13 @@ const withCtrl = ({ key, shift }: KeyPress): InteractionCommand | undefined => {
 const shiftF10 = (press: KeyPress): InteractionCommand | undefined =>
   press.shift ? { type: "openMenu" } : undefined;
 
+type KeyRead = (press: KeyPress, context?: KeyContext) => InteractionCommand | undefined;
+
+const FUNCTION_KEYS: ReadonlyMap<string, KeyRead> = new Map<string, KeyRead>([
+  ["F2", (_press, context) => f2(context)],
+  ["F10", shiftF10],
+]);
+
 /**
  * The canvas keyboard map (Phase 2 plan, "Keyboard map"). `undefined` means the key is not the
  * canvas's: it is left to the browser, so Tab always moves focus on and nothing traps it.
@@ -99,5 +116,5 @@ export const commandForKey = (
     const step = press.shift ? BIG_STEP : 1;
     return { type: "nudge", columns: arrow[0] * step, rows: arrow[1] * step };
   }
-  return press.key === "F10" ? shiftF10(press) : plainKey(press, context);
+  return (FUNCTION_KEYS.get(press.key) ?? plainKey)(press, context);
 };

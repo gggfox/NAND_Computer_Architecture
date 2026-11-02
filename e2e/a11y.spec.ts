@@ -69,6 +69,26 @@ for (const theme of THEMES) {
   });
 }
 
+for (const theme of THEMES) {
+  test(`the pin rename popover, with its error, has no WCAG violations in the ${theme} theme`, async ({
+    page,
+  }) => {
+    await createProject(page);
+    await pickTheme(page, theme);
+    await canvasHost(page).focus();
+    // Input A is first in canvas order: `]` focuses it and F2 renames it.
+    await page.keyboard.press("]");
+    await page.keyboard.press("F2");
+    const field = page.getByRole("textbox", { name: "Pin name" });
+    await expect(field).toBeFocused();
+    expect(await violations(page)).toEqual([]);
+    await field.fill("");
+    await field.press("Enter");
+    await expect(field).toHaveAccessibleDescription("A name can't be empty.");
+    expect(await violations(page)).toEqual([]);
+  });
+}
+
 /** The middle of the demo's straight wire from Input B into the NAND's b, in world units. */
 const WIRE_INTO_B = { x: 100, y: 100 };
 /** In `bus.json`: the NAND's a and the 4-bit input D's pin. */
