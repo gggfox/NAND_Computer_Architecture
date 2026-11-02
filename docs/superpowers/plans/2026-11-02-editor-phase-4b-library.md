@@ -1,5 +1,47 @@
 # Editor Phase 4b: Library Implementation Plan
 
+## Status
+
+Tasks 1-12 are done. The decisions, and the calls made while building, are recorded in [ADR 46](../../adr/0046-chip-library-and-placement.md).
+
+What shipped:
+
+- Nested folders and stars in the file format (additive, no version bump), with folder tree and filing logic in `projects/domain/folders.ts`.
+- Library edits as editor actions and undo steps; deleting a chip resets the history and opens another chip.
+- The `chip-library` feature: tree view model, search tiers and filters, the panel (a column from 640 px) and the phone sheet, row menus, the New chip, New folder, Rename, Colour, Tags, Move to… and Delete dialogs.
+- Placing: armed placement with the placing banner, keyboard placing at the centre of the view, long-press and mouse drag to the canvas and between folders, and the quick-add menu through the `canvasMenu` slot.
+- E2E for the phone tap path, the keyboard path and D6; axe on every new surface in every theme; `library-panel` and `quick-add` visual baselines.
+
+Rulings made while building:
+
+- Drops hit-test the canvas by its rectangle (`clientToCanvas`), not `elementFromPoint`, because an open sheet makes the rest of the page inert.
+- The WebKit touch drag test is skipped: Playwright's WebKit can't inject real touches. The tap path is tested there.
+- The drag sends a clock tick before every release, so a held press is never read as a tap.
+- Tasks 5 and 6 were built and reviewed as one dispatch.
+- A deleted armed chip, or a change of open chip, cancels placement in the UI; Recent shows only kinds that can still be placed.
+- The `getBoundingClientRect` read per input is checked by the perf gate (Task 12).
+- Rows that can't be placed stay focusable and keep their menu; they use `data-unavailable` and a description of the reason instead of `aria-disabled`, and Enter or a tap places nothing.
+- The route writes `?chip=` when the open chip changes; reading it on load moves to 4c.
+- Three extra message keys (Tags dialog title, Rename folder title, the "Colour…" label) were accepted.
+- A long-press on empty canvas opens the quick-add with the Pan tool; with Select it keeps starting the lasso.
+- On phones the quick-add search field takes focus on open (the keyboard appears); kept for owner feedback.
+
+Known follow-ups:
+
+- **Before merge:** check long-press drag by hand on iOS Safari (a device or the simulator). If iOS cancels the drag, add the grip handle from the Task 1 brief.
+- **Before merge:** PR #23 merges first; then rebase this branch onto `main` and re-run `pnpm check`, `pnpm e2e` and the visual baselines.
+- Drag: a no-op drop (same folder, or Top level for a top-level item) adds an empty undo step; focus goes to the body after a folder drop on wide screens; the "Top level" row may be out of reach in a long library (no auto-scroll); `track-press.ts` and `row-drag.ts` have no unit tests; the 500 ms press suppression after a menu or drop can swallow a keyboard Enter.
+- Search: `allTags` is case-sensitive while the filter is not ("Gate" and "gate" show twice); empty folders vanish while searching; `prunedKeys` scans every top-level key per key.
+- Dialogs: Move to… swallows a refusal error; Rename and Colour close on a refusal (the reason shows only in the status line); the delete error is plain text.
+- Quick-add: no "no results" message; the search field is controlled twice; the section label is read twice (`aria-label` and header).
+- Interaction: `armPlacement` leaves bend mode on; adding a pin from the quick-add announces nothing; rename `WIRING_COMMANDS`, which now carries placement commands.
+- A draft-only open chip shows `ChipNotSaved`, not `WouldContainItself`; the UI doesn't assume the latter.
+- Tests to add: folder-issue paths below a cycle, `deleteFolder` re-parenting through three levels, `tagChip` with an unknown chip, `runRowCommand`, library-view expansion state, tag filter chips in e2e, `isTucked`.
+- Small cleanups: `reopenAfterDelete` sets `chipId` directly (check it matches `openChip`); define `CanvasMenuSlot` in `library-bridge`; drop the `PlaceableKind` re-export kept only for a test; detach the CDP session in the drag spec; hover style on unavailable rows.
+- Keyboard modality: `useFocusVisible` stands in for React Aria's interaction modality, so a screen reader's click on a part may arm it rather than place it at the centre; document or fix.
+- Test hygiene: a garbled test name at `placement.test.ts:697`, a duplicated quick-add test name, `Parameters<typeof isArmed>[1]` where `PlaceableKind` is meant, file-wide lint disables in the drag-intent test, quick-add styles living in `shared` rather than a `QuickAdd.module.css`.
+- Firefox did not launch on the Task 12 machine ("Could not find profile folder"), so the new specs ran on Chromium, WebKit, mobile Chrome, mobile Safari and tablet Safari only; CI runs Firefox.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A chip library with nested folders, search and filters, where chips are filed, moved, starred, tagged and deleted, and placed on the canvas by tap, by drag, from the keyboard or from the quick-add menu.

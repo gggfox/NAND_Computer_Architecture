@@ -16,7 +16,9 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Fork**: a copy of a shared project that becomes the recipient's own. _Avoid_: clone, duplicate.
 - **Theme**: a named set of design tokens (colors, etc.) applied to both UI and canvas.
 - **Action**: a typed, named description of one edit to a project (place chip, connect wire, rename...). The only way state changes. _Avoid_: command, mutation, event.
-- **Folder** / **Tag**: user-defined ways to organise chips in the chip library.
+- **Folder** / **Tag**: user-defined ways to organise chips in the chip library. Folders nest to any depth; a chip is in at most one folder, and a chip whose folder is missing shows at the top level. A tag is free text, and a chip can have several.
+- **Built-in folder**: the fixed first folder of the library, listing the built-in parts (NAND, Split, Merge). It can't be renamed, moved or deleted.
+- **Move to…**: the row menu item that files a chip or moves a folder by picking a folder from a list. The keyboard and screen-reader way to do what a drag does.
 - **Seed**: the number that decides how races resolve. Saved with the project; same seed + same inputs = same result. _Avoid_: random state.
 - **Race**: two or more gates changing on the same tick in a way where the outcome depends on which "wins".
 - **Saved version** / **Draft**: a chip's published circuit (what users of the chip run) and its in-progress edits. _Avoid_: published/unpublished, version 2.
@@ -28,6 +30,8 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Step (clock)**: one toggle of the clock followed by a settle.
 - **Split** / **Merge**: built-in parts converting between one n-bit pin and n 1-bit pins.
 - **Library**: the browsable sheet/panel of chips (search, starred, folders, tags). **Quick-add menu**: the long-press/right-click menu that places a chip at the press point.
+- **Armed placement** (placing): a chip or part picked in the library so that every tap on the canvas places a copy, until Escape, a tap on its row, or "Done" in the placing banner. Arming it disarms an armed pin, and the other way round. Not an edit; each part placed is one. _Avoid_: stamp mode.
+- **Recent**: the last five kinds placed in this session, offered first in the quick-add menu. Not saved.
 - **Tool**: what a one-finger drag on empty canvas does: Pan or Select. A session preference, not an edit. A drag on a chip always moves it.
 - **Selection**: the chips (and the wires between them) the user has picked on the canvas. Not an edit, so undo skips it.
 - **Marquee**: the box or lasso being drawn to select chips. A chip is picked when its centre is inside.
