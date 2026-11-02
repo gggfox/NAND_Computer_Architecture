@@ -2,6 +2,34 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Status
+
+Tasks 1-10 are done. Controller rulings that changed the plan:
+
+- Tidy anchors each column at its first pin's current position and stacks the rest below; the new-column rule applies only when no piece of that direction exists.
+- Task 6 (shared UI) and Task 7 (Pins panel) were built and reviewed as one dispatch.
+- Tapping an input piece toggles it; existing e2e specs that tapped input pieces were updated in Task 5.
+- The WidthMismatch test uses a 4-bit and an 8-bit bus pin (4-bit to 1-bit always offers a bit).
+- Implementers verified UI through Playwright, not the browser pane.
+- Pin stacking keeps grid snapping, so the gap below a piece is at least `PIN_ROW_GAP`, not exactly it.
+- The refusal notice survives mouse hover and is cleared by every other gesture and command.
+- `endRename` is its own interaction command, so closing the popover does not clear the selection.
+- `ReorderList` takes `selectedKeys`/`onSelect(keys)`/`getText`; the extra shared/ui pieces stay.
+- A drag in the Pins panel moves only the dragged row.
+- Stale visual baselines were regenerated in Task 9.
+- The phone fit-zoom problem stays a follow-up for the owner (spec §5.1 hit priority).
+
+Known follow-ups:
+
+- Phones: at fit zoom (0.25) a pin's 24 px target covers its 10 px piece, so a tap arms the pin instead of toggling the input (Ruling 11); zoom in to toggle. A canvas tap near the right edge did not select OUT.
+- Focus: typing within about 2 frames after the Add dialog closes can lose a name (double-rAF race). Deleting the last pin drops focus to the body; focus "Add inputs..." instead.
+- Panel selection follows focus, which may re-announce noisily. With several pieces selected, extra rows have no `aria-selected`, and Ctrl/Shift no longer extend the selection there.
+- Tests: 6 Linux-WebKit `createProject` flakes (retry-green); harden it. The phone spec reads results through Export.
+- Pin placement: stored off-grid pieces make the guide off-grid; a slot snap can overlap a piece already there; a drop after a mid-drag Escape can show a refusal.
+- Canvas: a tap on an input body while a pin is armed cancels wiring and also flips the input. The rename popover goes stale on resize or undo.
+- Tidy with 0 or more than 1 piece per pin is untested.
+- Small cleanups: share the `Edit<Type>` alias; cache `pieceHeight` by width; `CircuitSummary` empty-name fallback when a pin def is missing.
+
 **Goal:** Let the owner add, name, order, line up and use a chip's input and output pins quickly, on every device, and say why an illegal connection is refused.
 
 **Architecture:**
