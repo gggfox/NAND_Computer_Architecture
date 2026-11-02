@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
+import { cancelPlacement, usePlacing } from "~/features/circuit-editor";
 import type { EditorSession } from "~/features/circuit-editor";
+import { EscapeScope } from "~/shared/ui";
 
 import type { LibraryFilter } from "../domain/library-search";
 import { libraryView } from "./library-view";
@@ -40,8 +42,19 @@ export function LibraryBody({
   const [expansion, setExpansion] = state.expansion;
   const view = libraryView({ project, openChipId }, filter, expansion);
   const dialogs = useLibraryDialogs(session, onOutOfTheWay);
+  const placing = usePlacing(session);
   return (
-    <div className={styles.body}>
+    // Escape anywhere in the library stops a placement (D6), as it does on the canvas.
+    <EscapeScope
+      className={styles.body}
+      onEscape={
+        placing === undefined
+          ? undefined
+          : () => {
+              cancelPlacement(session);
+            }
+      }
+    >
       <LibraryActions
         onOpen={(dialog) => {
           dialogs.open(dialog);
@@ -59,6 +72,6 @@ export function LibraryBody({
         }}
       />
       {dialogs.view}
-    </div>
+    </EscapeScope>
   );
 }

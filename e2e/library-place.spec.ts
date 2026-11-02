@@ -140,3 +140,21 @@ test("arming a wire pin stops placing XOR", async ({ page, browserName, isMobile
   await expect(spoken(page)).toHaveText(/ready to wire/u);
   await expect(placingBanner(page, "XOR")).toHaveCount(0);
 });
+
+test("Escape in the library stops a placement armed by a click", async ({
+  page,
+  browserName,
+  isMobile,
+}) => {
+  keyboardOnly({ browserName, isMobile });
+  await importLibrary(page);
+  const tree = await openLibrary(page);
+  await libraryRow(tree, "Logic").click();
+  await libraryRow(tree, "XOR").click();
+  await expect(placingBanner(page, "XOR")).toBeVisible();
+  // Focus stays on the row the click armed, in the library column.
+  await expect(libraryRow(tree, "XOR")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(placingBanner(page, "XOR")).toHaveCount(0);
+  await expect(libraryToggle(page)).toHaveAttribute("aria-expanded", "true");
+});

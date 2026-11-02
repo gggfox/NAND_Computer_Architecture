@@ -1,4 +1,5 @@
 export { Button } from "./Button";
+export { EscapeScope } from "./EscapeScope";
 export { FileButton } from "./FileButton";
 export { LanguagePicker } from "./LanguagePicker";
 export { LocaleProvider } from "./LocaleProvider";
