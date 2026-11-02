@@ -27,7 +27,7 @@
   outline-offset: -3px;
 }
 
-.item[data-disabled] {
+.item[aria-disabled="true"] {
   color: var(--color-text-muted);
   cursor: default;
 }

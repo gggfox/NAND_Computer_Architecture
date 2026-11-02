@@ -90,3 +90,33 @@ test("a press on a part arms it, and a press on the armed row disarms it", async
   await expect(nand).not.toHaveAttribute("aria-current", "true");
   await expect(nand).not.toContainText("Armed");
 });
+
+const MAX_TABS = 6;
+
+test("a row that can't be placed takes keyboard focus, and Enter on it places nothing", async ({
+  page,
+}) => {
+  await importLibrary(page);
+  const tree = await openLibrary(page);
+  await page.getByRole("searchbox", { name: "Search chips" }).focus();
+  const firstRow = tree.getByRole("row").first();
+  for (let step = 0; step < MAX_TABS; step += 1) {
+    if (await firstRow.evaluate((row) => row === document.activeElement)) {
+      break;
+    }
+    await page.keyboard.press("Tab");
+  }
+  await expect(firstRow).toBeFocused();
+  // Built-in, Arithmetic, Logic, Main, then Scratch.
+  await page.keyboard.press("End");
+  const scratch = libraryRow(tree, "Scratch");
+  await expect(scratch).toBeFocused();
+  await expect(scratch).toHaveAttribute("aria-disabled", "true");
+
+  await page.keyboard.press("Enter");
+  await expect(scratch).not.toHaveAttribute("aria-current", "true");
+  await expect(tree.getByText("Armed", { exact: true })).toHaveCount(0);
+  // Placing a part is an undo step; nothing was placed.
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await expect(scratch).toBeFocused();
+});

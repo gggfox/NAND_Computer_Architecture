@@ -23,21 +23,28 @@ interface TreeViewProps<Node extends OwnNode<Node>> {
   /** Enter, a click or a tap on a row that isn't disabled. */
   readonly onAction: (node: Node) => void;
   readonly renderRow: (node: Node) => ReactNode;
-  /** Rows that are greyed out, marked `aria-disabled` and take no action. */
+  /**
+   * Rows that are greyed out, marked `aria-disabled` and take no action. They stay focusable, so
+   * their own controls and text remain reachable from the keyboard.
+   */
   readonly disabledKeys?: ReadonlySet<string>;
   /** Shown in place of the rows when there are none. */
   readonly emptyText?: string;
-  /** The row marked `aria-current` (RAC's rows don't pass ARIA props through, so it is set here). */
+  /** The row marked `aria-current`. */
   readonly currentKey?: string | undefined;
 }
 
 const NONE: ReadonlySet<string> = new Set();
 
-const markCurrent = (element: HTMLDivElement | null, isCurrent: boolean): void => {
-  if (isCurrent) {
-    element?.setAttribute("aria-current", "true");
+/**
+ * RAC rows don't pass ARIA props through, and RAC's own disabled rows can't take focus, so these
+ * states are set on the row element here.
+ */
+const mark = (element: HTMLDivElement | null, name: string, isOn: boolean): void => {
+  if (isOn) {
+    element?.setAttribute(name, "true");
   } else {
-    element?.removeAttribute("aria-current");
+    element?.removeAttribute(name);
   }
 };
 
@@ -55,22 +62,25 @@ const indexed = <Node extends OwnNode<Node>>(
 interface RowRenderer<Node> {
   readonly renderRow: (node: Node) => ReactNode;
   readonly currentKey: string | undefined;
+  readonly disabledKeys: ReadonlySet<string>;
 }
 
 /** Renders one node and, through RAC's `Collection`, its children; indented by level. */
 const itemRenderer = <Node extends OwnNode<Node>>({
   renderRow,
   currentKey,
+  disabledKeys,
 }: RowRenderer<Node>): ((node: Node) => ReactNode) => {
   // RAC re-renders a cached row only when its item or these change.
-  const dependencies = [renderRow, currentKey];
+  const dependencies = [renderRow, currentKey, disabledKeys];
   const renderItem = (node: Node): ReactNode => (
     <TreeItem
       id={node.key}
       textValue={node.textValue}
       className={styles.item}
       ref={(element: HTMLDivElement | null) => {
-        markCurrent(element, node.key === currentKey);
+        mark(element, "aria-current", node.key === currentKey);
+        mark(element, "aria-disabled", disabledKeys.has(node.key));
       }}
     >
       <TreeItemContent>
@@ -109,15 +119,14 @@ export function TreeView<Node extends OwnNode<Node>>({
       aria-label={label}
       className={styles.tree}
       items={items}
-      dependencies={[renderRow, currentKey]}
+      dependencies={[renderRow, currentKey, disabledKeys]}
       expandedKeys={expandedKeys}
       onExpandedChange={(keys) => {
         onExpandedChange(new Set([...keys].map(String)));
       }}
-      disabledKeys={disabledKeys}
       onAction={(key: Key) => {
         const node = byKey.get(String(key));
-        if (node !== undefined) {
+        if (node !== undefined && !disabledKeys.has(node.key)) {
           onAction(node);
         }
       }}
@@ -125,7 +134,7 @@ export function TreeView<Node extends OwnNode<Node>>({
         ? {}
         : { renderEmptyState: () => <p className={styles.empty}>{emptyText}</p> })}
     >
-      {itemRenderer({ renderRow, currentKey })}
+      {itemRenderer({ renderRow, currentKey, disabledKeys })}
     </Tree>
   );
 }
