@@ -3,6 +3,7 @@ export type { EditorAction, EditorError, PlaceableKind } from "./domain/actions"
 export { createHistory, pushHistory, redo, undo, type History } from "./domain/history";
 export { editorErrorMessage } from "./domain/editor-error-messages";
 export { applyAction } from "./domain/reducer";
+export { savePreview, type SaveConsequence, type SavePreview } from "./domain/save-preview";
 export {
   toNetlistSource,
   type Flattened,
