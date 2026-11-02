@@ -29,7 +29,7 @@ const itemOf = (node: LibraryNode): LibraryItem =>
       };
 
 /** A colour's translated swatch name ("red"), for searching by colour (D8). */
-const colorName = (hex: string): string | undefined =>
+export const colorName = (hex: string): string | undefined =>
   chipSwatches().find((swatch) => swatch.color.toLowerCase() === hex.toLowerCase())?.label;
 
 const NONE: ReadonlySet<string> = new Set();

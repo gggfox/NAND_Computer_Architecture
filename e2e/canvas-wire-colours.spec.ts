@@ -96,14 +96,14 @@ test("the wire and canvas menus give focus back to the canvas when they close", 
   // Escape again clears the selection, so Enter opens the canvas menu.
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
-  const canvasMenu = page.getByRole("menu", { name: "Canvas actions" });
-  await expect(canvasMenu.getByRole("menuitem", { name: "Tidy wires" })).toBeFocused();
+  const canvasMenu = page.getByRole("dialog", { name: "Add to canvas" });
+  await expect(canvasMenu.getByRole("searchbox", { name: "Search chips" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(canvasMenu).toHaveCount(0);
   await expect(host).toBeFocused();
 
   await page.keyboard.press("Enter");
-  await canvasMenu.getByRole("menuitem", { name: "Tidy wires" }).click();
+  await canvasMenu.getByRole("option", { name: "Tidy wires" }).click();
   await expect(canvasMenu).toHaveCount(0);
   await expect(host).toBeFocused();
 });

@@ -73,8 +73,13 @@ const onLongPress = (
   if (hit.type === "wire") {
     return openWireMenu(state, hit.wireId, gesture.point);
   }
-  // Long-press on empty canvas arms the lasso; the canvas menu is a right-click or `Enter`.
-  return done({ ...withoutOverlays(state), lassoArmed: state.tool === "select" });
+  /*
+   * Long-press on empty canvas: in Select it arms the lasso (a drag after it draws one); in Pan,
+   * where a drag only pans, it opens the canvas menu (the quick-add), as a right-click does.
+   */
+  return state.tool === "select"
+    ? done({ ...withoutOverlays(state), lassoArmed: true })
+    : openCanvasMenu(state, gesture.point);
 };
 
 /** A right-click: the chip menu on a chip or pin, the wire menu on a wire, else the canvas menu. */

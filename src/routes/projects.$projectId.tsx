@@ -220,7 +220,7 @@ function Editor({ project }: EditorProps): ReactNode {
       <EditorLayout
         toolbar={toolbar}
         status={<StatusMessages messages={notices} />}
-        canvas={<CircuitCanvas session={session} view={view} />}
+        canvas={<CircuitCanvas session={session} view={view} canvasMenu={library.quickAdd} />}
         panel={panel}
         library={library.panel}
       />

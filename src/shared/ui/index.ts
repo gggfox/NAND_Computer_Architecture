@@ -9,6 +9,8 @@ export { Toolbar } from "./Toolbar";
 export { UpdateBanner } from "./UpdateBanner";
 export { ModalDialog } from "./ModalDialog";
 export { PointMenu, type MenuEntry } from "./PointMenu";
+export { PointPopover } from "./PointPopover";
+export { SearchList, type ListSection } from "./SearchList";
 export { SegmentedControl, type SegmentOption } from "./SegmentedControl";
 export { SwatchPicker, type Swatch } from "./SwatchPicker";
 export { TextInput } from "./TextInput";

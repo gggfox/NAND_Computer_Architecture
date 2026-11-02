@@ -172,4 +172,16 @@ describe("addPinAt", () => {
     expect(pins).toHaveLength(1);
     expect(pins[0]?.pin).toMatchObject({ direction: "output", width: 1 });
   });
+
+  it("says which pin it added", () => {
+    const { context, state } = setup();
+    const result = command(state, context, {
+      type: "addPinAt",
+      direction: "input",
+      screen: { x: 400, y: 300 },
+    });
+    const [action] = dispatched(result);
+    const name = action?.type === "addPins" ? action.pins[0]?.pin.name : undefined;
+    expect(announced(result)).toEqual([{ type: "pinAdded", direction: "input", name }]);
+  });
 });

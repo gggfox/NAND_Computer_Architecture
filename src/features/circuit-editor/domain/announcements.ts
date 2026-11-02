@@ -166,6 +166,10 @@ export const announcementText = (
     : plainText(scene, known, announcement);
 };
 
+/** A pin of the open chip added from the quick-add menu. */
+const pinAddedText = ({ direction, name }: Extract<Announcement, { type: "pinAdded" }>): string =>
+  direction === "input" ? m.announce_input_added({ name }) : m.announce_output_added({ name });
+
 /** The selection, move, delete, tool and pin announcements. */
 const plainText = (
   scene: Scene,
@@ -190,6 +194,9 @@ const plainText = (
     }
     case "pin": {
       return pinText(scene, known, announcement);
+    }
+    case "pinAdded": {
+      return pinAddedText(announcement);
     }
     default: {
       return assertNever(announcement);

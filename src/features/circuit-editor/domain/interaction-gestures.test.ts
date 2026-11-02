@@ -119,14 +119,6 @@ describe("long-press and context menu", () => {
     expect([...wire.state.selection.wires]).toEqual([circuit.wires[0]?.id]);
   });
 
-  it("on empty canvas arms the lasso in the Select tool only", () => {
-    const empty = { type: "longPress", point: screen(600, 400), kind: "touch" } as const;
-    const select = setup();
-    expect(gesture(select.state, select.context, empty).state.lassoArmed).toBe(true);
-    const pan = setup("pan");
-    expect(gesture(pan.state, pan.context, empty).state.lassoArmed).toBe(false);
-  });
-
   it("a context menu off any chip closes the chip menu for the canvas menu", () => {
     const { context, state } = setup();
     const opened = gesture(state, context, { type: "contextMenu", point: screen(220, 80) }).state;
@@ -149,5 +141,20 @@ describe("pinch", () => {
     expect(result.state.menu).toBeUndefined();
     expect(result.state.camera).toEqual({ zoom: 2, x: -5, y: 0 });
     expect(result.effects).toEqual([{ type: "cameraSettled" }]);
+  });
+});
+
+describe("long-press on empty canvas", () => {
+  it("on empty canvas arms the lasso in the Select tool, and opens the canvas menu in Pan", () => {
+    const empty = { type: "longPress", point: screen(600, 400), kind: "touch" } as const;
+    const select = setup();
+    const lasso = gesture(select.state, select.context, empty).state;
+    expect([lasso.lassoArmed, lasso.menu]).toEqual([true, undefined]);
+    const pan = setup("pan");
+    const { lassoArmed, menu } = gesture(pan.state, pan.context, empty).state;
+    expect({ lassoArmed, menu }).toEqual({
+      lassoArmed: false,
+      menu: { kind: "canvas", screen: screen(600, 400) },
+    });
   });
 });

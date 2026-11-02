@@ -123,8 +123,8 @@ for (const theme of THEMES) {
     // Escape clears the wire selection, so Enter opens the canvas menu.
     await page.keyboard.press("Escape");
     await page.keyboard.press("Enter");
-    const canvasMenu = page.getByRole("menu", { name: "Canvas actions" });
-    await expect(canvasMenu.getByRole("menuitem").first()).toBeFocused();
+    const canvasMenu = page.getByRole("dialog", { name: "Add to canvas" });
+    await expect(canvasMenu.getByRole("searchbox", { name: "Search chips" })).toBeFocused();
     expect(await violations(page)).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(host).toBeFocused();

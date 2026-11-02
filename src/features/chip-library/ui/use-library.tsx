@@ -9,6 +9,7 @@ import { Button, useMediaQuery } from "~/shared/ui";
 
 import { isStalePlacement } from "../domain/placement";
 import { LibraryPanel } from "./LibraryPanel";
+import { QuickAdd } from "./QuickAdd";
 
 /** The layout's own breakpoint: from here the library is a column beside the canvas. */
 const WIDE = "(min-width: 640px)";
@@ -31,11 +32,9 @@ export interface Library {
   readonly toggle: ReactNode;
   /** `EditorLayout`'s `library` slot. */
   readonly panel: ReactNode;
-  /** The canvas's quick-add menu (Task 11); nothing yet. */
+  /** `CircuitCanvas`'s `canvasMenu` slot: the quick-add menu. */
   readonly quickAdd: (context: CanvasMenuContext) => ReactNode;
 }
-
-const noQuickAdd = (): ReactNode => undefined;
 
 /** The chip library for one editor session. It starts closed on every width (D14). */
 export const useLibrary = (session: EditorSession): Library => {
@@ -63,5 +62,8 @@ export const useLibrary = (session: EditorSession): Library => {
       }}
     />
   );
-  return { toggle, panel, quickAdd: noQuickAdd };
+  const quickAdd = (context: CanvasMenuContext): ReactNode => (
+    <QuickAdd session={session} context={context} />
+  );
+  return { toggle, panel, quickAdd };
 };

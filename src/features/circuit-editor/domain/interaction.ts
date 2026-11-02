@@ -213,7 +213,8 @@ export type Announcement =
   | { readonly type: "bends"; readonly active: boolean }
   /** Placement was armed (`kind`) or cancelled (no `kind`). */
   | { readonly type: "placing"; readonly kind: PlaceableKind | undefined }
-  | { readonly type: "placed"; readonly kind: PlaceableKind };
+  | { readonly type: "placed"; readonly kind: PlaceableKind }
+  | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string };
 
 export type Effect =
   | { readonly type: "dispatch"; readonly action: EditorAction }

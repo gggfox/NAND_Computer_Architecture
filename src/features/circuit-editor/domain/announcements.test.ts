@@ -124,3 +124,15 @@ describe("the wire selected announcement", () => {
     );
   });
 });
+
+describe("announcementText for the quick-add", () => {
+  it("names a pin added from the quick-add", () => {
+    const { scene } = demo();
+    expect(
+      announcementText(scene, known, { type: "pinAdded", direction: "input", name: "B" }),
+    ).toBe("Added input B.");
+    expect(
+      announcementText(scene, known, { type: "pinAdded", direction: "output", name: "OUT2" }),
+    ).toBe("Added output OUT2.");
+  });
+});

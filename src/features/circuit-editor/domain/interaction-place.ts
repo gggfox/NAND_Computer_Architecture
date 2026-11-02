@@ -82,10 +82,12 @@ const addPinAt = (
 ): Interpreted => {
   const world = screenToWorld(state.camera, command.screen);
   const added = pinAt(context.scene.circuit, command.direction, world);
-  return done(withoutOverlays(state), {
-    type: "dispatch",
-    action: { type: "addPins", chipId: context.chipId, pins: [added] },
-  });
+  const { direction, name } = added.pin;
+  return done(
+    withoutOverlays(state),
+    { type: "dispatch", action: { type: "addPins", chipId: context.chipId, pins: [added] } },
+    { type: "announce", announcement: { type: "pinAdded", direction, name } },
+  );
 };
 
 /** A tap while placing places a copy wherever it lands, even on a pin or a chip (D6). */
