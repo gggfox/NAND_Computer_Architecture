@@ -43,11 +43,13 @@ export type EditorAction =
       readonly instanceIds: readonly InstanceId[];
       readonly wireIds: readonly WireId[];
     }
-  /** Adds parts and the wires between them as one undo step (a paste). */
+  /** Adds parts, pins and the wires between them as one undo step (a paste). */
   | {
       readonly type: "pasteItems";
       readonly chipId: ChipId;
-      readonly instances: readonly PlaceableInstance[];
+      /** Parts and pin pieces; each pin piece's definition is in `pins`. */
+      readonly instances: readonly ChipInstance[];
+      readonly pins: readonly PinDef[];
       readonly wires: readonly Wire[];
     }
   | {

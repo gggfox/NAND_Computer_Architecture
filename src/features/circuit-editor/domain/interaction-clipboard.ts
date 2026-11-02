@@ -67,7 +67,7 @@ const pasteDelta = (
   return snap({ x: stepped.x + middle.x - centre.x, y: stepped.y + middle.y - centre.y });
 };
 
-/** Ctrl+C: copies the selected parts and the wires between them; a paste lands a step away. */
+/** Ctrl+C: copies the selected parts and pins and the wires between them; a paste lands a step away. */
 const copy = (state: InteractionState, context: InteractionContext): Interpreted => {
   const clipboard = copyOf(context.scene.circuit, state.selection, 1);
   if (clipboard === undefined) {
@@ -111,7 +111,11 @@ const paste = (state: InteractionState, context: InteractionContext): Interprete
     return done(state);
   }
   const delta = pasteDelta(state, clipboard, context);
-  const { instances, wires } = pastedFrom(clipboard, delta, context.newWireId);
+  const { instances, pins, wires } = pastedFrom(clipboard, {
+    delta,
+    target: context.scene.circuit,
+    newWireId: context.newWireId,
+  });
   const selection = {
     instances: new Set(instances.map((item) => item.id)),
     wires: new Set(wires.map((item) => item.id)),
@@ -123,7 +127,10 @@ const paste = (state: InteractionState, context: InteractionContext): Interprete
   );
   return done(
     result.state,
-    { type: "dispatch", action: { type: "pasteItems", chipId: context.chipId, instances, wires } },
+    {
+      type: "dispatch",
+      action: { type: "pasteItems", chipId: context.chipId, instances, pins, wires },
+    },
     {
       type: "announce",
       announcement: { type: "clipboard", did: "paste", count: instances.length },

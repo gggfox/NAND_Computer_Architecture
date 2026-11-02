@@ -7,6 +7,7 @@ import type { Result } from "~/shared/result";
 import type { EditorAction, EditorError } from "./actions";
 import { editDraft, withoutInstance } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
+import { withPin } from "./pin-batch-edits";
 import { blockedRerouted, reshaped } from "./route-edits";
 
 const missingInstance = (
@@ -102,29 +103,56 @@ const refusedPart = (
   return undefined;
 };
 
+/** The first of `items` whose id `known` already holds. */
+const firstKnown = <Id, Item extends { readonly id: Id }>(
+  known: readonly { readonly id: Id }[],
+  items: readonly Item[],
+): Item | undefined => {
+  const ids = new Set(known.map((item) => item.id));
+  return items.find((item) => ids.has(item.id));
+};
+
 const duplicateOf = (
   circuit: Circuit,
   action: Extract<EditorAction, { type: "pasteItems" }>,
 ): EditorError | undefined => {
-  const instanceIds = new Set(circuit.instances.map((item) => item.id));
-  const instance = action.instances.find((item) => instanceIds.has(item.id));
+  const instance = firstKnown(circuit.instances, action.instances);
   if (instance !== undefined) {
     return { type: "DuplicateInstance", instanceId: instance.id };
   }
-  const wireIds = new Set(circuit.wires.map((item) => item.id));
-  const wire = action.wires.find((item) => wireIds.has(item.id));
+  const pin = firstKnown(circuit.pins, action.pins);
+  if (pin !== undefined) {
+    return { type: "DuplicatePin", pinId: pin.id };
+  }
+  const wire = firstKnown(circuit.wires, action.wires);
   return wire === undefined ? undefined : { type: "DuplicateWire", wireId: wire.id };
 };
 
+/** A pasted pin piece without its definition, or a definition without its piece. */
+const unmatchedPin = (
+  action: Extract<EditorAction, { type: "pasteItems" }>,
+): EditorError | undefined => {
+  const pieces = action.instances.flatMap((item) =>
+    item.kind.type === "pin" ? [item.kind.pinId] : [],
+  );
+  const defined = new Set(action.pins.map((pin) => pin.id));
+  const placed = new Set(pieces);
+  const missing =
+    pieces.find((pinId) => !defined.has(pinId)) ??
+    action.pins.find((pin) => !placed.has(pin.id))?.id;
+  return missing === undefined ? undefined : { type: "PinNotFound", pinId: missing };
+};
+
 /**
- * Adds the parts and their wires, then re-routes the automatic wires the new parts now cover. A
- * wire must join two of the pasted parts, so nothing pasted can drive a pin already driven.
+ * Adds the pieces, pin definitions and wires, then re-routes the automatic wires the new pieces
+ * now cover. A wire must join two of the pasted pieces, so nothing pasted can drive a pin already
+ * driven.
  */
 export const pasteItems: Edit<"pasteItems"> = (project, action) => {
   if (action.instances.length === 0) {
     return err({ type: "NothingToAdd" });
   }
-  const refused = refusedPart(project, action);
+  const refused = refusedPart(project, action) ?? unmatchedPin(action);
   if (refused !== undefined) {
     return err(refused);
   }
@@ -141,7 +169,7 @@ export const pasteItems: Edit<"pasteItems"> = (project, action) => {
       return err({ type: "WireNotFound", wireId: stray.id });
     }
     const after: Circuit = {
-      ...circuit,
+      pins: action.pins.reduce(withPin, circuit.pins),
       instances: [...circuit.instances, ...action.instances],
       wires: [...circuit.wires, ...action.wires],
     };

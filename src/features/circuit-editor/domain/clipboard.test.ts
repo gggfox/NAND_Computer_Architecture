@@ -2,13 +2,12 @@
 import { assert, describe, expect, it } from "vitest";
 
 import { newChip, projectWith, replaceChip, wire } from "~/features/projects";
-import type { Circuit, Project } from "~/features/projects";
-import type { ChipId } from "~/shared/ids";
-import { newWireId } from "~/shared/ids";
+import type { Circuit } from "~/features/projects";
 
 import type { EditorAction } from "./actions";
 import { customPiece, draftOf, nandPiece, twoChips } from "./circuit-edits.fixtures";
 import { copyOf, pastedFrom } from "./clipboard";
+import { chipWith, pasteAll, pastedAll, targetOf } from "./clipboard.fixtures";
 import type { Effect } from "./interaction";
 import { command, setup } from "./interaction.fixtures";
 import { applyAction } from "./reducer";
@@ -38,17 +37,6 @@ const pasteAction = (effects: readonly Effect[]) => {
   return action;
 };
 
-/** All of `circuit`, copied and moved by `delta`. */
-const pastedAll = (circuit: Circuit, delta: { x: number; y: number }) => {
-  const clipboard = copyOf(circuit, selectInstances(circuit.instances.map((item) => item.id)), 1);
-  assert(clipboard !== undefined);
-  return pastedFrom(clipboard, delta, newWireId);
-};
-
-/** Pastes all of `circuit` into `chipId`, 400 units down. */
-const pasteAll = (project: Project, chipId: ChipId, circuit: Circuit) =>
-  applyAction(project, { type: "pasteItems", chipId, ...pastedAll(circuit, { x: 0, y: 400 }) });
-
 /** The demo with only its NAND selected, copied. */
 const copiedNand = () => {
   const { context, state, nand } = setup();
@@ -59,17 +47,18 @@ const copiedNand = () => {
 };
 
 describe("copyOf", () => {
-  it("copies the selected parts and the wires between them, never pin pieces", () => {
+  it("copies the selected pieces, their pin definitions and the wires between them", () => {
     const { circuit, pieceA, nand } = setup();
     const clipboard = copyOf(circuit, selectInstances([pieceA.id, nand.id]), 1);
-    expect(clipboard?.instances).toEqual([nand]);
-    // Every demo wire touches a pin piece, so none comes along.
-    expect(clipboard?.wires).toEqual([]);
+    expect(clipboard?.instances).toEqual([pieceA, nand]);
+    expect(clipboard?.pins.map((pin) => pin.name)).toEqual(["A"]);
+    // Only A→a joins two copied pieces.
+    expect(clipboard?.wires).toHaveLength(1);
   });
 
-  it("is undefined when only pin pieces are selected", () => {
-    const { circuit, pieceA } = setup();
-    expect(copyOf(circuit, selectInstances([pieceA.id]), 1)).toBeUndefined();
+  it("is undefined when nothing is selected", () => {
+    const { circuit } = setup();
+    expect(copyOf(circuit, selectInstances([]), 1)).toBeUndefined();
   });
 });
 
@@ -122,24 +111,19 @@ describe("pasteItems", () => {
       type: "pasteItems",
       chipId: host.id,
       instances: [],
+      pins: [],
       wires: [],
     });
     expect(result).toMatchObject({ ok: false, error: { type: "NothingToAdd" } });
   });
 });
 
-/** A project with one chip whose draft is `circuit`. */
-const chipWith = (circuit: Circuit) => {
-  const chip = newChip("P", circuit);
-  return { project: projectWith("p", [chip]), chipId: chip.id };
-};
-
 describe("pasteItems refusals", () => {
   it("refuses parts or wires already in the chip", () => {
     const parts = pairParts();
     const circuit: Circuit = { pins: [], ...parts };
     const { project, chipId } = chipWith(circuit);
-    const again = { type: "pasteItems", chipId, wires: [] } as const;
+    const again = { type: "pasteItems", chipId, pins: [], wires: [] } as const;
     expect(applyAction(project, { ...again, instances: parts.instances })).toMatchObject({
       ok: false,
       error: { type: "DuplicateInstance" },
@@ -158,8 +142,8 @@ describe("pasteItems refusals", () => {
     const [first] = parts.instances;
     assert(first !== undefined);
     // A wire whose other end was not copied keeps its old end, and the paste refuses it.
-    const clipboard = { instances: [first], wires: circuit.wires, offset: 1 };
-    const pasted = pastedFrom(clipboard, { x: 0, y: 400 }, newWireId);
+    const clipboard = { instances: [first], pins: [], wires: circuit.wires, offset: 1 };
+    const pasted = pastedFrom(clipboard, targetOf(circuit, { x: 0, y: 400 }));
     expect(applyAction(project, { type: "pasteItems", chipId, ...pasted })).toMatchObject({
       ok: false,
       error: { type: "WireNotFound" },
@@ -216,7 +200,7 @@ describe("copy and paste commands", () => {
 });
 
 describe("cut command", () => {
-  it("removes the parts it copied, leaving pin pieces", () => {
+  it("removes what it copied, pin pieces included", () => {
     const { context, state, pieceA, nand } = setup();
     const cut = command({ ...state, selection: selectInstances([pieceA.id, nand.id]) }, context, {
       type: "cut",
@@ -224,7 +208,7 @@ describe("cut command", () => {
     expect(dispatched(cut.effects)).toEqual({
       type: "removeItems",
       chipId: context.chipId,
-      instanceIds: [nand.id],
+      instanceIds: [pieceA.id, nand.id],
       wireIds: [],
     });
     expect(cut.state.selection.instances.size).toBe(0);

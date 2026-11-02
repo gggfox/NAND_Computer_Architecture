@@ -12,7 +12,8 @@ type Edit<Type extends EditorAction["type"]> = (
   action: Extract<EditorAction, { type: Type }>,
 ) => Result<Project, EditorError>;
 
-const withPin = (pins: readonly PinDef[], added: PinDef): readonly PinDef[] => {
+/** `pins` with `added` after the last pin of its direction. */
+export const withPin = (pins: readonly PinDef[], added: PinDef): readonly PinDef[] => {
   const at = insertionIndex(pins, added);
   return [...pins.slice(0, at), added, ...pins.slice(at)];
 };

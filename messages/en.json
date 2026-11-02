@@ -143,7 +143,7 @@
   "help_keys_delete": "Delete or Backspace",
   "help_delete": "Delete the selection",
   "help_keys_clipboard": "Ctrl+C, Ctrl+X, Ctrl+V",
-  "help_clipboard": "Copy, cut or paste the selected chips (not pins)",
+  "help_clipboard": "Copy, cut or paste the selection",
   "help_keys_undo": "Ctrl+Z, Ctrl+Shift+Z",
   "help_undo": "Undo, redo",
   "help_keys_zoom": "+, − and 0",

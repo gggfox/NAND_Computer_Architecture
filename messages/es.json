@@ -143,7 +143,7 @@
   "help_keys_delete": "Supr o Retroceso",
   "help_delete": "Elimina la selección",
   "help_keys_clipboard": "Ctrl+C, Ctrl+X, Ctrl+V",
-  "help_clipboard": "Copia, corta o pega los chips seleccionados (no los pines)",
+  "help_clipboard": "Copia, corta o pega la selección",
   "help_keys_undo": "Ctrl+Z, Ctrl+Mayús+Z",
   "help_undo": "Deshacer, rehacer",
   "help_keys_zoom": "+, − y 0",
