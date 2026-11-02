@@ -1,7 +1,9 @@
 import type {
   BitWidth,
+  CatalogError,
   ChipInstance,
   ConnectionError,
+  FolderError,
   InstanceKind,
   PinDef,
   PinRef,
@@ -10,7 +12,7 @@ import type {
   SaveError,
   WireColor,
 } from "~/features/projects";
-import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
+import type { ChipId, FolderId, InstanceId, PinId, WireId } from "~/shared/ids";
 
 import type { Move } from "./move";
 
@@ -18,6 +20,9 @@ import type { Move } from "./move";
 export type PlaceableInstance = ChipInstance & {
   readonly kind: Exclude<InstanceKind, { readonly type: "pin" }>;
 };
+
+/** What the library places: a built-in part or a saved chip, never a pin piece. */
+export type PlaceableKind = PlaceableInstance["kind"];
 
 export type EditorAction =
   | { readonly type: "placeChip"; readonly chipId: ChipId; readonly instance: PlaceableInstance }
@@ -102,11 +107,29 @@ export type EditorAction =
       readonly chipId: ChipId;
       readonly name: string;
       readonly color: string;
+      /** Missing files the chip at the top level. */
+      readonly folderId?: FolderId;
     }
   | { readonly type: "renameChip"; readonly chipId: ChipId; readonly name: string }
   | { readonly type: "recolorChip"; readonly chipId: ChipId; readonly color: string }
   | { readonly type: "saveChip"; readonly chipId: ChipId }
-  | { readonly type: "discardDraft"; readonly chipId: ChipId };
+  | { readonly type: "discardDraft"; readonly chipId: ChipId }
+  | {
+      readonly type: "createFolder";
+      readonly folderId: FolderId;
+      readonly name: string;
+      readonly parentId?: FolderId;
+    }
+  | { readonly type: "renameFolder"; readonly folderId: FolderId; readonly name: string }
+  /** No `parentId` moves the folder to the top level. */
+  | { readonly type: "moveFolder"; readonly folderId: FolderId; readonly parentId?: FolderId }
+  | { readonly type: "deleteFolder"; readonly folderId: FolderId }
+  /** No `folderId` files the chip at the top level. */
+  | { readonly type: "fileChip"; readonly chipId: ChipId; readonly folderId?: FolderId }
+  | { readonly type: "starChip"; readonly chipId: ChipId; readonly starred: boolean }
+  | { readonly type: "tagChip"; readonly chipId: ChipId; readonly tags: readonly string[] }
+  /** Resets undo history: a later save could otherwise place a chip deleted in another snapshot. */
+  | { readonly type: "deleteChip"; readonly chipId: ChipId };
 
 export type EditorError =
   | { readonly type: "InstanceNotFound"; readonly instanceId: InstanceId }
@@ -126,4 +149,6 @@ export type EditorError =
   | { readonly type: "NothingToAdd" }
   | PlaceError
   | SaveError
-  | ConnectionError;
+  | ConnectionError
+  | FolderError
+  | CatalogError;

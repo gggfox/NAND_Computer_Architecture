@@ -15,10 +15,12 @@ export type PinId = z.infer<typeof PinIdSchema>;
 export const WireIdSchema = z.uuid().brand<"WireId">();
 export type WireId = z.infer<typeof WireIdSchema>;
 
+export const FolderIdSchema = z.uuid().brand<"FolderId">();
+export type FolderId = z.infer<typeof FolderIdSchema>;
+
 export const newProjectId = (): ProjectId => ProjectIdSchema.parse(crypto.randomUUID());
 export const newChipId = (): ChipId => ChipIdSchema.parse(crypto.randomUUID());
+export const newFolderId = (): FolderId => FolderIdSchema.parse(crypto.randomUUID());
 export const newInstanceId = (): InstanceId => InstanceIdSchema.parse(crypto.randomUUID());
 export const newPinId = (): PinId => PinIdSchema.parse(crypto.randomUUID());
 export const newWireId = (): WireId => WireIdSchema.parse(crypto.randomUUID());
-
-export const FolderIdSchema = z.uuid().brand<"FolderId">();

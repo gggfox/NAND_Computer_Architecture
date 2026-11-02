@@ -40,6 +40,32 @@
   border-radius: 0.5rem;
 }
 
+/* Armed placement: what a tap does, and Done, at the top of the canvas; taps elsewhere still place. */
+.placing {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline: 0.5rem;
+  z-index: var(--z-overlay);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 1rem);
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  margin: 0 auto;
+  font-size: var(--font-size-small);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-focus-ring);
+  border-radius: 0.5rem;
+}
+
+.prompt {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* A pointer shortcut in the bottom-right corner; too cramped on a narrow canvas. */
 .minimap {
   position: absolute;

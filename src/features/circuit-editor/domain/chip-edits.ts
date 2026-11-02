@@ -5,12 +5,15 @@ import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
+import { LIBRARY_HANDLERS } from "./library-edits";
 import { rerouteReshaped } from "./route-edits";
 
 type Edit<Type extends EditorAction["type"]> = (
   project: Project,
   action: Extract<EditorAction, { type: Type }>,
 ) => Result<Project, EditorError>;
+
+type CreateChip = Extract<EditorAction, { type: "createChip" }>;
 
 const editChip = (
   project: Project,
@@ -25,23 +28,36 @@ const editChip = (
   return edited.ok ? ok(replaceChip(project, edited.value)) : edited;
 };
 
-export const createChip: Edit<"createChip"> = (project, action) => {
-  const name = action.name.trim();
+const newChipFailure = (project: Project, action: CreateChip): EditorError | undefined => {
+  const { folderId } = action;
   if (findChip(project, action.chipId) !== undefined) {
-    return err({ type: "DuplicateChip", chipId: action.chipId });
+    return { type: "DuplicateChip", chipId: action.chipId };
   }
-  if (name === "") {
-    return err({ type: "EmptyName" });
+  if (action.name.trim() === "") {
+    return { type: "EmptyName" };
   }
   if (!isHexColor(action.color)) {
-    return err({ type: "InvalidColor", color: action.color });
+    return { type: "InvalidColor", color: action.color };
   }
+  return folderId !== undefined && !project.folders.some((folder) => folder.id === folderId)
+    ? { type: "FolderNotFound", folderId }
+    : undefined;
+};
+
+export const createChip: Edit<"createChip"> = (project, action) => {
+  const failure = newChipFailure(project, action);
+  if (failure !== undefined) {
+    return err(failure);
+  }
+  const { folderId } = action;
   const chip: Chip = {
     id: action.chipId,
-    name,
+    name: action.name.trim(),
     color: action.color,
     draft: EMPTY_CIRCUIT,
     tags: [],
+    starred: false,
+    ...(folderId === undefined ? {} : { folderId }),
   };
   return ok({ ...project, chips: [...project.chips, chip] });
 };
@@ -82,3 +98,13 @@ export const discardDraft: Edit<"discardDraft"> = (project, action) =>
       ? err({ type: "ChipNotSaved", chipId: chip.id })
       : ok({ ...chip, draft: chip.saved }),
   );
+
+/** Every chip-level handler, the catalog ones (folders, filing, stars, tags, delete) included. */
+export const CHIP_HANDLERS = {
+  createChip,
+  renameChip,
+  recolorChip,
+  saveChip,
+  discardDraft,
+  ...LIBRARY_HANDLERS,
+};

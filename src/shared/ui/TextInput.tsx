@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { FieldError, Input, Label, TextField } from "react-aria-components";
+import { FieldError, Input, Label, Text, TextField } from "react-aria-components";
 
 import styles from "./TextInput.module.css";
 
@@ -10,6 +10,8 @@ interface TextInputProps {
   readonly onChange: (value: string) => void;
   /** Takes focus when it appears, for a field that opens on its own (an in-place rename). */
   readonly focusOnMount?: boolean;
+  /** A hint under the field, read out with it. */
+  readonly description?: string | undefined;
   /** Shown under the field, which is then marked invalid. */
   readonly errorMessage?: string | undefined;
   /** Escape in the field: cancel whatever it edits. */
@@ -34,11 +36,29 @@ const handlerFor = (
   return key === "Enter" ? onEnter : undefined;
 };
 
+/** The hint and the error under the field. */
+function FieldNotes({
+  description,
+  errorMessage,
+}: Pick<TextInputProps, "description" | "errorMessage">): ReactNode {
+  return (
+    <>
+      {description === undefined ? undefined : (
+        <Text slot="description" className={styles.description}>
+          {description}
+        </Text>
+      )}
+      <FieldError className={styles.error}>{errorMessage}</FieldError>
+    </>
+  );
+}
+
 export function TextInput({
   label,
   value,
   onChange,
   focusOnMount = false,
+  description,
   errorMessage,
   onEscape,
   onEnter,
@@ -76,7 +96,7 @@ export function TextInput({
         }}
         className={styles.input}
       />
-      <FieldError className={styles.error}>{errorMessage}</FieldError>
+      <FieldNotes description={description} errorMessage={errorMessage} />
     </TextField>
   );
 }

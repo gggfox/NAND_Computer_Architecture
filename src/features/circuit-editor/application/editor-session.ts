@@ -1,5 +1,6 @@
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import type { ProjectRepository } from "~/features/persistence";
-import type { Project } from "~/features/projects";
+import type { Point, Project } from "~/features/projects";
 
 import type { Camera } from "../domain/camera";
 import type { Size } from "../domain/chip-layout";
@@ -13,6 +14,9 @@ import type { ClockControls, SimulationStore } from "./simulation-bridge";
 import { createViewSync } from "./view-sync";
 import type { ViewSync } from "./view-sync";
 
+/** The canvas's size and where it sits in the window, in CSS pixels. */
+type ViewportBox = Size & { readonly left: number; readonly top: number };
+
 export interface EditorSession {
   readonly editor: EditorStore;
   readonly simulation: SimulationStore;
@@ -20,8 +24,10 @@ export interface EditorSession {
   readonly clock: ClockControls;
   /** Selection, camera, tool and overlays on the canvas (spec §5.3). */
   readonly interaction: InteractionHandle;
-  /** The mounted canvas tells the session how to read its size; returns the detach. */
-  readonly attachViewport: (read: () => Size) => () => void;
+  /** The mounted canvas tells the session how to read its box; returns the detach. */
+  readonly attachViewport: (read: () => ViewportBox) => () => void;
+  /** A window (client) point in canvas pixels; `undefined` when it is not over the canvas. */
+  readonly clientToCanvas: (client: Point) => Point | undefined;
 }
 
 /** Where the editor's camera comes from and goes to: the URL (ADR 16). */
@@ -31,7 +37,14 @@ export interface ViewLink {
   readonly write: (camera: Camera) => void;
 }
 
-const NO_SIZE: Size = { width: 0, height: 0 };
+const NO_BOX: ViewportBox = { width: 0, height: 0, left: 0, top: 0 };
+
+/** `client` relative to the box's top-left corner, when it is inside the box. */
+const inBox = (box: ViewportBox, client: Point): Point | undefined => {
+  const local = { x: client.x - box.left, y: client.y - box.top };
+  const inside = local.x >= 0 && local.y >= 0 && local.x < box.width && local.y < box.height;
+  return inside ? local : undefined;
+};
 
 const noop = (): void => {
   // No worker is connected (pre-render, or after unmount).
@@ -91,7 +104,7 @@ export const createEditorSession = (
   const sync = createViewSync((camera) => {
     target.write(camera);
   });
-  const viewport: { read: () => Size } = { read: () => NO_SIZE };
+  const viewport: { read: () => ViewportBox } = { read: () => NO_BOX };
   const interaction = createInteractionStore({
     editor,
     camera: view.camera,
@@ -107,9 +120,10 @@ export const createEditorSession = (
     attachViewport: (read) => {
       viewport.read = read;
       return () => {
-        viewport.read = () => NO_SIZE;
+        viewport.read = () => NO_BOX;
       };
     },
+    clientToCanvas: (client) => inBox(viewport.read(), client),
   };
   return {
     session,

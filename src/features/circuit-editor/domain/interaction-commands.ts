@@ -93,7 +93,8 @@ const selectAll = (state: InteractionState, context: InteractionContext): Interp
 };
 
 /**
- * Escape closes the topmost thing: the bit picker, then a menu, then an armed pin, then a card,
+ * Escape closes the topmost thing: the bit picker, then a menu, then a placement or an armed pin
+ * (both in `cancelWiring`), then a card,
  * then (in `bendKey`) bend mode, then an armed lasso, then the selection. A menu opened while a
  * pin is armed closes alone, so the pin stays armed for what the menu does; a pin card is how the
  * keyboard aims a wire, so it stays while Escape cancels the wire.

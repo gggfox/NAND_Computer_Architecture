@@ -69,6 +69,7 @@ export const newChip = (
   ...(options.saved === true ? { saved: draft } : {}),
   draft,
   tags: [],
+  starred: false,
 });
 
 /** A project that opens on its first chip. */

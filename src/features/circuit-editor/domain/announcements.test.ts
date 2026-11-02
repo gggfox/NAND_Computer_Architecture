@@ -109,4 +109,30 @@ describe("the wire selected announcement", () => {
     const broken: Scene = { ...scene, circuit: { ...scene.circuit, wires: [dangling] } };
     expect(announcementText(broken, known, { type: "wireSelected", wireId: intoA.id })).toBe("");
   });
+
+  it("says when placing starts, stops and places a part", () => {
+    const { scene } = demo();
+    const split = { type: "split", width: 4 } as const;
+    expect(announcementText(scene, known, { type: "placing", kind: split })).toBe(
+      "Placing Split 4. Tap or press Escape to stop.",
+    );
+    expect(announcementText(scene, known, { type: "placing", kind: undefined })).toBe(
+      "Stopped placing.",
+    );
+    expect(announcementText(scene, known, { type: "placed", kind: { type: "nand" } })).toBe(
+      "Placed NAND.",
+    );
+  });
+});
+
+describe("announcementText for the quick-add", () => {
+  it("names a pin added from the quick-add", () => {
+    const { scene } = demo();
+    expect(
+      announcementText(scene, known, { type: "pinAdded", direction: "input", name: "B" }),
+    ).toBe("Added input B.");
+    expect(
+      announcementText(scene, known, { type: "pinAdded", direction: "output", name: "OUT2" }),
+    ).toBe("Added output OUT2.");
+  });
 });

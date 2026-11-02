@@ -1,0 +1,59 @@
+/* Follows the pointer above everything, the open sheet included; it never takes the pointer. */
+.ghost {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: calc(var(--z-modal) + 1);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  max-inline-size: 14rem;
+  padding: 0.375rem 0.625rem;
+  color: var(--color-text);
+  pointer-events: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 25%);
+}
+
+/* No drop here: the target would refuse it. */
+.refused {
+  border-color: var(--color-wire);
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.swatch {
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  border: 1px solid var(--color-wire);
+  border-radius: 0.25rem;
+}
+
+.name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.refused .name {
+  text-decoration: line-through;
+}
+
+/* The top level as a drop target, shown below the tree while a row is dragged. */
+.root {
+  display: grid;
+  place-items: center;
+  min-block-size: 2.75rem;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-wire);
+  border-radius: 0.375rem;
+}
+
+/* Nothing is dragged: the row keeps its space but shows nothing. */
+.idle {
+  visibility: hidden;
+}

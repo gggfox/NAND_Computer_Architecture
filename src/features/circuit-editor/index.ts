@@ -1,5 +1,5 @@
 export { EditorSearchSchema, type EditorSearch } from "./domain/view-search";
-export type { EditorAction, EditorError } from "./domain/actions";
+export type { EditorAction, EditorError, PlaceableKind } from "./domain/actions";
 export { createHistory, pushHistory, redo, undo, type History } from "./domain/history";
 export { editorErrorMessage } from "./domain/editor-error-messages";
 export { applyAction } from "./domain/reducer";
@@ -44,3 +44,20 @@ export { EditorToolbar } from "./ui/EditorToolbar";
 export { PinsPanel } from "./ui/PinsPanel";
 export type { EditorSession } from "./application/editor-session";
 export { useEditorSession } from "./ui/use-editor-session";
+export { useSessionErrors } from "./ui/use-session-errors";
+export {
+  armPlacement,
+  cancelPlacement,
+  placeAtCentre,
+  placeAtClient,
+  usePlacing,
+  useRecentPlacements,
+  type CanvasMenuContext,
+} from "./application/library-bridge";
+export {
+  chipSwatches,
+  DialogActions,
+  DialogForm,
+  RecolorChipDialog,
+  RenameChipDialog,
+} from "./ui/ChipDialogs";

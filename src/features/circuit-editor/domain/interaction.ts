@@ -1,7 +1,14 @@
-import type { ConnectionError, PinKey, PinRef, Point, WireColor } from "~/features/projects";
+import type {
+  ConnectionError,
+  PinDirection,
+  PinKey,
+  PinRef,
+  Point,
+  WireColor,
+} from "~/features/projects";
 import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
 
-import type { EditorAction } from "./actions";
+import type { EditorAction, PlaceableKind } from "./actions";
 import type { Camera } from "./camera";
 import type { Size } from "./chip-layout";
 import type { Scene } from "./geometry";
@@ -115,6 +122,10 @@ export interface InteractionState {
   /** Why the last connection was refused, shown over the canvas until the next gesture or command. */
   readonly notice?: ConnectionError;
   readonly renaming?: Renaming;
+  /** Armed placement: every tap on the canvas places a copy of this part until cancelled (D6). */
+  readonly placing?: PlaceableKind;
+  /** The last kinds placed this session, newest first, without repeats (D9). */
+  readonly recent: readonly PlaceableKind[];
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -122,6 +133,7 @@ export const initialInteraction = (camera: Camera, tool: Tool): InteractionState
   selection: EMPTY_SELECTION,
   camera,
   lassoArmed: false,
+  recent: [],
 });
 
 export type InteractionCommand =
@@ -163,7 +175,14 @@ export type InteractionCommand =
   | { readonly type: "selectPieces"; readonly instanceIds: readonly InstanceId[] }
   /** Opens the rename popover at a pin piece's name; `endRename` closes it. */
   | { readonly type: "startRename"; readonly instanceId: InstanceId }
-  | { readonly type: "endRename" };
+  | { readonly type: "endRename" }
+  /** Arms placement of `kind`; arming the armed kind again cancels it. */
+  | { readonly type: "armPlacement"; readonly kind: PlaceableKind }
+  | { readonly type: "cancelPlacement" }
+  /** Places one `kind` centred on `screen`, or on the viewport's centre without one. */
+  | { readonly type: "placeAt"; readonly kind: PlaceableKind; readonly screen?: Point }
+  /** Adds one 1-bit pin of the open chip, its piece centred on `screen`. */
+  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point };
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -191,7 +210,11 @@ export type Announcement =
   /** A wire was selected from the keyboard: its ends are named. */
   | { readonly type: "wireSelected"; readonly wireId: WireId }
   /** Bend mode began (`active`) or ended. */
-  | { readonly type: "bends"; readonly active: boolean };
+  | { readonly type: "bends"; readonly active: boolean }
+  /** Placement was armed (`kind`) or cancelled (no `kind`). */
+  | { readonly type: "placing"; readonly kind: PlaceableKind | undefined }
+  | { readonly type: "placed"; readonly kind: PlaceableKind }
+  | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string };
 
 export type Effect =
   | { readonly type: "dispatch"; readonly action: EditorAction }

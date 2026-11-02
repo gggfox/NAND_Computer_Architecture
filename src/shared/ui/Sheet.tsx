@@ -11,6 +11,11 @@ interface SheetProps {
   readonly title: string;
   readonly isOpen: boolean;
   readonly onClose: () => void;
+  /**
+   * Hides the sheet without unmounting it, so a pointer drag that began inside it survives. The
+   * sheet's box is marked `data-sheet`, for a drag to tell when it leaves it.
+   */
+  readonly isTucked?: boolean;
   readonly children: ReactNode;
 }
 
@@ -30,7 +35,11 @@ function SheetHeader({
   );
 }
 
-function SheetBody({ title, onClose, children }: Readonly<Omit<SheetProps, "isOpen">>): ReactNode {
+function SheetBody({
+  title,
+  onClose,
+  children,
+}: Readonly<Omit<SheetProps, "isOpen" | "isTucked">>): ReactNode {
   return (
     <Dialog className={styles.dialog}>
       <SheetHeader title={title} onClose={onClose} />
@@ -43,10 +52,16 @@ function SheetBody({ title, onClose, children }: Readonly<Omit<SheetProps, "isOp
  * A modal panel that rises from the bottom edge, for phones. Focus stays inside while it is open;
  * Escape, a tap outside or its Close button calls `onClose`, and focus goes back to the opener.
  */
-export function Sheet({ title, isOpen, onClose, children }: Readonly<SheetProps>): ReactNode {
+export function Sheet({
+  title,
+  isOpen,
+  onClose,
+  isTucked = false,
+  children,
+}: Readonly<SheetProps>): ReactNode {
   return (
     <ModalOverlay
-      className={styles.overlay}
+      className={isTucked ? `${styles.overlay} ${styles.tucked}` : styles.overlay}
       isOpen={isOpen}
       isDismissable
       onOpenChange={(open) => {
@@ -55,7 +70,7 @@ export function Sheet({ title, isOpen, onClose, children }: Readonly<SheetProps>
         }
       }}
     >
-      <Modal className={styles.sheet}>
+      <Modal data-sheet="" className={isTucked ? `${styles.sheet} ${styles.tucked}` : styles.sheet}>
         <SheetBody title={title} onClose={onClose}>
           {children}
         </SheetBody>

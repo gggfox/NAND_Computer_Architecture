@@ -4,7 +4,7 @@ import type { Result } from "~/shared/result";
 
 import type { EditorAction, EditorError } from "./actions";
 import { moveChips, removeItems } from "./batch-edits";
-import { createChip, discardDraft, recolorChip, renameChip, saveChip } from "./chip-edits";
+import { CHIP_HANDLERS } from "./chip-edits";
 import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { addPins } from "./pin-batch-edits";
 import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
@@ -37,11 +37,7 @@ const HANDLERS: Handlers = {
   renamePin,
   setPinWidth,
   reorderPin,
-  createChip,
-  renameChip,
-  recolorChip,
-  saveChip,
-  discardDraft,
+  ...CHIP_HANDLERS,
 };
 
 // The false branch narrows to `never`, so an unknown action at runtime reaches `assertNever`.

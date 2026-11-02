@@ -7,14 +7,29 @@ interface EditorLayoutProps {
   readonly status: ReactNode;
   readonly canvas: ReactNode;
   readonly panel: ReactNode;
+  /**
+   * The chip library: a column left of the canvas from 640 px, as wide as what it renders (none
+   * while closed). On phones it renders its own sheet and takes no grid area.
+   */
+  readonly library?: ReactNode;
 }
 
-/** Phones (< 640 px): full-width canvas with the panel below it. Wider: the panel sits beside it. */
-export function EditorLayout({ toolbar, status, canvas, panel }: EditorLayoutProps): ReactNode {
+/**
+ * Phones (< 640 px): full-width canvas with the panel below it. Wider: the library, the canvas and
+ * the panel side by side.
+ */
+export function EditorLayout({
+  toolbar,
+  status,
+  canvas,
+  panel,
+  library,
+}: EditorLayoutProps): ReactNode {
   return (
     <div className={styles.layout}>
       <div className={styles.toolbar}>{toolbar}</div>
       <div className={styles.status}>{status}</div>
+      <div className={styles.library}>{library}</div>
       <div className={styles.canvas}>{canvas}</div>
       <aside className={styles.panel}>{panel}</aside>
     </div>

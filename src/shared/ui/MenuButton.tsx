@@ -11,6 +11,9 @@ interface MenuButtonProps {
   readonly entries: readonly MenuEntry[];
   readonly disabledIds?: readonly string[];
   readonly onAction: (id: string) => void;
+  /** Opens the menu from elsewhere too (a right-click on its row); leave out for a plain button. */
+  readonly isOpen?: boolean | undefined;
+  readonly onOpenChange?: ((isOpen: boolean) => void) | undefined;
 }
 
 const NONE: readonly string[] = [];
@@ -20,7 +23,7 @@ function Entries({
   entries,
   disabledIds = NONE,
   onAction,
-}: Readonly<MenuButtonProps>): ReactNode {
+}: Readonly<Omit<MenuButtonProps, "isOpen" | "onOpenChange">>): ReactNode {
   return (
     <Menu
       aria-label={label}
@@ -40,9 +43,18 @@ function Entries({
 }
 
 /** A "more" button (⋯) that opens a menu of actions; focus goes back to it when the menu closes. */
-export function MenuButton(props: Readonly<MenuButtonProps>): ReactNode {
+export function MenuButton({
+  isOpen,
+  onOpenChange,
+  ...props
+}: Readonly<MenuButtonProps>): ReactNode {
+  // With exactOptionalPropertyTypes, React Aria props reject explicit `undefined`, so spread only what is set.
+  const controlled = {
+    ...(isOpen === undefined ? {} : { isOpen }),
+    ...(onOpenChange === undefined ? {} : { onOpenChange }),
+  };
   return (
-    <MenuTrigger>
+    <MenuTrigger {...controlled}>
       <AriaButton aria-label={props.label} className={styles.button}>
         <span aria-hidden="true" className={styles.dots} />
       </AriaButton>
