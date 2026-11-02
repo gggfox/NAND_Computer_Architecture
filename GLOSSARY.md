@@ -22,6 +22,9 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Seed**: the number that decides how races resolve. Saved with the project; same seed + same inputs = same result. _Avoid_: random state.
 - **Race**: two or more gates changing on the same tick in a way where the outcome depends on which "wins".
 - **Saved version** / **Draft**: a chip's published circuit (what users of the chip run) and its in-progress edits. _Avoid_: published/unpublished, version 2.
+- **Unsaved changes**: a draft that differs from its saved version in its pins, parts, wire ends, wire colours or hand bends; automatic routes don't count. Shown by a dot in the chip header and on the chip's library row. A never-saved chip shows its "draft only" badge instead. _Avoid_: dirty.
+- **Save confirmation**: the dialog a save opens when it would drop wires in the chips that use the chip, listing the wires removed in each and the pins that caused it. A save that drops no wire saves at once. Not the same as the first save's folder dialog.
+- **Breadcrumb trail**: the chip path in the chip header, from the chip first opened down through each "Look inside" to the open chip. Tapping an earlier chip goes back to it without saving. A reload keeps only the open chip. _Avoid_: stack, history.
 - **Pins panel**: the list of a chip's inputs and outputs where names, widths and order are edited. Its order is the only pin order. A side panel on wide screens, a bottom sheet on phones.
 - **Bit tap**: a wire end attached to one bit of a multi-bit pin.
 - **Pin piece**: the canvas piece of one of the chip's own input or output pins.

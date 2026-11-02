@@ -1,5 +1,43 @@
 # Editor Phase 4c: Save Flow Implementation Plan
 
+## Status
+
+Tasks 1-8 are done, pending the before-merge items below: the fix for the `?chip=` regression, the final review, and the rebase onto `main` after PR #24. The decisions, and the calls made while building, are recorded in [ADR 47](../../adr/0047-save-flow-and-breadcrumbs.md).
+
+What shipped:
+
+- `unsavedState` and `hasUnsavedChanges` in `projects/domain/unsaved.ts`, which ignore automatic routes (D1).
+- Discard routes the restored draft (D2) and stays an undo step (D3).
+- `savePreview`, the save confirmation's list: each parent's dropped wires and the pins that caused them (D4, D5).
+- The breadcrumb trail in the editor store, with `lookInside` and `goBack` (D7), and "Look inside" in the chip menu.
+- `?chip=` read back on load, and corrected when it names no chip (D8).
+- The chip header: breadcrumbs, the unsaved dot, Save, the "⋯" menu with "Discard changes…", the save and discard confirmations, and a polite status for the outcome (D9, D11).
+- The library: the dot on rows of saved chips with unsaved changes (D10), and the "Save {name}" folder dialog at a chip's first save, through the `firstSave` slot (D6).
+- E2E: the save flow, the first save, the library dot, and the Done-when journey on phones with taps only (`full-adder-phone.spec.ts`, D13); axe on the header, the ⋯ menu, both confirmations and the first-save dialog in every theme (`a11y-save.spec.ts`); a `chip-header` visual baseline, with the editor baselines re-taken for the header row.
+
+Rulings made while building:
+
+- Task 3's store tests went into a new `editor-store-save.test.ts`, since the chips test file would have passed 300 lines.
+- The save-flow specs use a new `e2e/fixtures/save-flow.json`, because `library.json`'s Half adder has no pins.
+- `ChipHeader.tsx` stayed under ~150 lines, so the breadcrumbs weren't split into their own file.
+- A save or discard is announced once: the outcome is tied to the `history.present` and `trail` from right after it, so returning to the chip or a redo doesn't repeat it.
+- `library-drag.spec.ts` scrolls its row into view, since the header row shortens the canvas row.
+- The chip-url spec checks one-level breadcrumbs after a reload, deferred from Task 5 to Task 6.
+- Three e2e tests that leave and reopen a project were first ruled pre-existing flakes; a clean bisect then showed they fail every time since 4fc4a0f (`?chip=` read back). The ruling was withdrawn: they are a regression, fixed separately, and the Done-when journey doesn't reopen a project or import a file.
+- The Done-when journey's step 6 finds COUT "unknown", not 0: with CARRY unwired, the full adder can't be simulated ("A chip has an unconnected input…"). The test checks that message as well.
+- Task 8 moved the phone tap helpers to `e2e/adder-support.ts` (shared by both adder specs), and the folder and New chip helpers to `save-support.ts` and `library-support.ts`. The new axe test has its own file, since `a11y.spec.ts` would pass 300 lines.
+
+Known follow-ups:
+
+- **Before merge:** fix the `?chip=` regression (`persistence.spec.ts` "survives leaving and reopening", `pins-panel.spec.ts` "a reorder inside a saved chip…", `half-adder-phone.spec.ts`), then run `pnpm e2e` on every project.
+- **Before merge:** rebase onto `main` once PR #24 merges, and re-run `pnpm check`, `pnpm e2e` and the visual baselines.
+- Ctrl/Cmd+S (D12).
+- The confirmation lists every removed or resized pin when any wire drops, even pins no parent wired.
+- Unreachable branches: `"chipId" in kind` in `unsaved.ts` (coverage sits at exactly 95 %), `chip === undefined` and a second `findChip` in `discardDraft`.
+- Errors: `openChip` leaves `lastError` null on an unknown chip while `lookInside` sets `ChipNotFound`; `goBack` drops a `switchTo` error silently.
+- UI cleanups: `SaveDialogs` keys items by their text and imports `ChipHeader.module.css`; dialog titles read the open chip's live name; a silent `chip?.name ?? ""`; `useLinkedSession` has two effects.
+- Tests to add: `saveStep`; `FirstSaveDialog`'s unchanged-folder and refused-`fileChip` branches; a chip is placeable right after its first save; "new stays new with edits"; a save-preview dedupe test that can fail; trail tests for undo, redo and routing on `lookInside` and `goBack`; a chip-url reload test that tells the URL from the last-opened fallback.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Save updates a chip everywhere it is used, asking first only when the save drops wires; Discard returns a draft to its saved version; Look inside and breadcrumbs move between a chip and the chips inside it; a dot marks unsaved changes; and a reload reopens the chip in `?chip=`.
