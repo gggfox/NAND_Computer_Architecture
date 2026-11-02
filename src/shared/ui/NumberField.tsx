@@ -15,6 +15,8 @@ interface NumberFieldProps {
   readonly minValue: number;
   readonly maxValue: number;
   readonly onChange: (value: number) => void;
+  /** The label is still read out but not shown, where the field's place says what it is. */
+  readonly isLabelHidden?: boolean;
 }
 
 /** Whole numbers only, without grouping, so 65535 reads as typed. */
@@ -38,6 +40,7 @@ export function NumberField({
   minValue,
   maxValue,
   onChange,
+  isLabelHidden = false,
 }: Readonly<NumberFieldProps>): ReactNode {
   return (
     <AriaNumberField
@@ -52,7 +55,7 @@ export function NumberField({
         }
       }}
     >
-      <Label className={styles.label}>{label}</Label>
+      <Label className={isLabelHidden ? "visually-hidden" : styles.label}>{label}</Label>
       <Group className={styles.group}>
         <Stepper slot="decrement" />
         <Input className={styles.input} />

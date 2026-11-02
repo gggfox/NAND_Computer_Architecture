@@ -11,6 +11,7 @@ import {
   EditorSearchSchema,
   EditorToolbar,
   editorStoreErrorMessage,
+  PinsPanel,
   simulationErrorMessage,
   useEditorSession,
 } from "~/features/circuit-editor";
@@ -190,6 +191,12 @@ function Editor({ project }: EditorProps): ReactNode {
       <EditorToolbar session={session} onImport={onImport} />
     </>
   );
+  const panel = (
+    <>
+      <PinsPanel session={session} />
+      <CircuitSummary session={session} />
+    </>
+  );
   return (
     <main>
       <h1 className="visually-hidden">{project.name}</h1>
@@ -197,7 +204,7 @@ function Editor({ project }: EditorProps): ReactNode {
         toolbar={toolbar}
         status={<StatusMessages messages={notices} />}
         canvas={<CircuitCanvas session={session} view={view} />}
-        panel={<CircuitSummary session={session} />}
+        panel={panel}
       />
     </main>
   );

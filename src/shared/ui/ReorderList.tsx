@@ -20,8 +20,9 @@ interface ReorderListProps<Item> {
   readonly renderRow: (item: Item) => ReactNode;
   /** A row was dropped at `toIndex` in the list as it would be without it. */
   readonly onMove: (key: string, toIndex: number) => void;
-  readonly selectedKey: string | undefined;
-  readonly onSelect: (key: string) => void;
+  readonly selectedKeys: readonly string[];
+  /** The user picked these rows (a press replaces the selection; Ctrl or Shift extends it). */
+  readonly onSelect: (keys: readonly string[]) => void;
 }
 
 /** Where `moved` lands, counted in the list without it. */
@@ -36,13 +37,8 @@ const toIndexOf = (
   return from < at ? at - 1 : at;
 };
 
-const firstKey = (selection: Selection): string | undefined => {
-  if (selection === "all") {
-    return undefined;
-  }
-  const [key] = selection;
-  return key === undefined ? undefined : String(key);
-};
+const keysOf = (selection: Selection, all: readonly string[]): readonly string[] =>
+  selection === "all" ? all : [...selection].map(String);
 
 interface RowProps {
   readonly id: string;
@@ -73,7 +69,7 @@ export function ReorderList<Item>({
   getText,
   renderRow,
   onMove,
-  selectedKey,
+  selectedKeys,
   onSelect,
 }: Readonly<ReorderListProps<Item>>): ReactNode {
   const keys = items.map((item) => getKey(item));
@@ -92,13 +88,11 @@ export function ReorderList<Item>({
       aria-label={label}
       className={styles.list}
       keyboardNavigationBehavior="tab"
-      selectionMode="single"
-      selectedKeys={selectedKey === undefined ? [] : [selectedKey]}
+      selectionMode="multiple"
+      selectionBehavior="replace"
+      selectedKeys={selectedKeys}
       onSelectionChange={(selection) => {
-        const key = firstKey(selection);
-        if (key !== undefined) {
-          onSelect(key);
-        }
+        onSelect(keysOf(selection, keys));
       }}
       dragAndDropHooks={dragAndDropHooks}
     >

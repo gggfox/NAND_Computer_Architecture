@@ -22,6 +22,8 @@ interface SelectProps {
   readonly value: string;
   readonly onChange: (key: string) => void;
   readonly isDisabled?: boolean | undefined;
+  /** The label is still read out but not shown, where the field's place says what it is. */
+  readonly isLabelHidden?: boolean;
 }
 
 function Options({ options }: Readonly<{ options: readonly SelectOption[] }>): ReactNode {
@@ -44,6 +46,7 @@ export function Select({
   value,
   onChange,
   isDisabled = false,
+  isLabelHidden = false,
 }: Readonly<SelectProps>): ReactNode {
   return (
     <AriaSelect
@@ -56,7 +59,7 @@ export function Select({
         }
       }}
     >
-      <Label className={styles.label}>{label}</Label>
+      <Label className={isLabelHidden ? "visually-hidden" : styles.label}>{label}</Label>
       <AriaButton className={styles.trigger}>
         <SelectValue />
         <span aria-hidden="true" className={styles.chevron} />

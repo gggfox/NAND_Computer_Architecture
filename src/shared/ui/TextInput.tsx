@@ -13,8 +13,26 @@ interface TextInputProps {
   /** Shown under the field, which is then marked invalid. */
   readonly errorMessage?: string | undefined;
   /** Escape in the field: cancel whatever it edits. */
-  readonly onEscape?: () => void;
+  readonly onEscape?: (() => void) | undefined;
+  /** Enter in the field, for a field outside a form (a list row's name). */
+  readonly onEnter?: (() => void) | undefined;
+  readonly onBlur?: () => void;
+  /** Receives the input element, so a list can move focus between its fields. */
+  readonly inputRef?: (element: HTMLInputElement | null) => void;
+  /** The label is still read out but not shown, where the field's place says what it is. */
+  readonly isLabelHidden?: boolean;
 }
+
+/** The handler for a key the field acts on itself, if `key` is one. */
+const handlerFor = (
+  key: string,
+  { onEscape, onEnter }: Pick<TextInputProps, "onEscape" | "onEnter">,
+): (() => void) | undefined => {
+  if (key === "Escape") {
+    return onEscape;
+  }
+  return key === "Enter" ? onEnter : undefined;
+};
 
 export function TextInput({
   label,
@@ -23,11 +41,15 @@ export function TextInput({
   focusOnMount = false,
   errorMessage,
   onEscape,
+  onEnter,
+  onBlur,
+  inputRef,
+  isLabelHidden = false,
 }: Readonly<TextInputProps>): ReactNode {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const ownRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (focusOnMount) {
-      inputRef.current?.focus();
+      ownRef.current?.focus();
     }
   }, [focusOnMount]);
   return (
@@ -36,16 +58,24 @@ export function TextInput({
       value={value}
       onChange={onChange}
       isInvalid={errorMessage !== undefined}
+      {...(onBlur === undefined ? {} : { onBlur })}
       onKeyDown={(event) => {
-        if (event.key === "Escape" && onEscape !== undefined) {
-          onEscape();
+        const handler = handlerFor(event.key, { onEscape, onEnter });
+        if (handler === undefined) {
+          event.continuePropagation();
           return;
         }
-        event.continuePropagation();
+        handler();
       }}
     >
-      <Label className={styles.label}>{label}</Label>
-      <Input ref={inputRef} className={styles.input} />
+      <Label className={isLabelHidden ? "visually-hidden" : styles.label}>{label}</Label>
+      <Input
+        ref={(element) => {
+          ownRef.current = element;
+          inputRef?.(element);
+        }}
+        className={styles.input}
+      />
       <FieldError className={styles.error}>{errorMessage}</FieldError>
     </TextField>
   );

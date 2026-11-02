@@ -143,3 +143,30 @@ for (const theme of THEMES) {
     expect(await violations(page)).toEqual([]);
   });
 }
+
+for (const theme of THEMES) {
+  test(`the Pins panel, its row menu and the Add dialog have no WCAG violations in the ${theme} theme`, async ({
+    page,
+  }) => {
+    await createProject(page);
+    await pickTheme(page, theme);
+    // Inline and open from 640 px; on phones the button opens it in a sheet.
+    const toggle = page.getByRole("button", { name: "Pins 3" });
+    if ((await toggle.getAttribute("aria-expanded")) === "false") {
+      await toggle.click();
+      await expect(page.getByRole("dialog", { name: "Pins 3" })).toBeVisible();
+    }
+    const inputs = page.getByRole("grid", { name: "Inputs" });
+    await expect(inputs.getByRole("row", { name: "B" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+
+    await page.getByRole("button", { name: "Actions for A" }).click();
+    await expect(page.getByRole("menuitem", { name: "Move down" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: "Add inputs…" }).click();
+    await expect(page.getByRole("dialog", { name: "Add inputs" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+}
