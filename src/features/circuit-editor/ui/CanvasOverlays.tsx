@@ -2,64 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { useStore } from "zustand";
 
-import { m } from "~/i18n/paraglide/messages";
-
 import type { EditorSession } from "../application/editor-session";
+import { editorErrorMessage } from "../domain/editor-error-messages";
 import { CanvasMenus } from "./CanvasMenus";
 import type { OverlayDialog } from "./CanvasMenus";
-import { RecolorChipDialog, RenameChipDialog } from "./ChipDialogs";
 import { KeyboardHelp } from "./KeyboardHelp";
+import { OverlayDialogView } from "./OverlayDialogView";
 import { PinCard } from "./PinCard";
-import { WireColorDialog } from "./WireDialogs";
 
-interface DialogProps {
-  readonly session: EditorSession;
-  readonly dialog: OverlayDialog;
-  readonly onClose: () => void;
-}
-
-/** The open dialog; each saves as one edit (ADR 8) and closes. */
-function Dialog({ session, dialog, onClose }: DialogProps): ReactNode {
-  const { dispatch } = session.editor.getState();
-  if (dialog.kind === "rename") {
-    return (
-      <RenameChipDialog
-        dialog={dialog}
-        onClose={onClose}
-        onSave={(name) => {
-          dispatch({ type: "renameChip", chipId: dialog.chipId, name });
-          onClose();
-        }}
-      />
-    );
-  }
-  if (dialog.kind === "recolor") {
-    return (
-      <RecolorChipDialog
-        dialog={dialog}
-        onClose={onClose}
-        onSave={(color) => {
-          dispatch({ type: "recolorChip", chipId: dialog.chipId, color });
-          onClose();
-        }}
-      />
-    );
-  }
-  return (
-    <WireColorDialog
-      title={m.wire_color_title()}
-      color={dialog.color}
-      onClose={onClose}
-      onSave={(color) => {
-        session.interaction.store.getState().send({
-          type: "command",
-          command: { type: "recolorSelection", ...(color === undefined ? {} : { color }) },
-        });
-        onClose();
-      }}
-    />
-  );
-}
+import styles from "./CircuitCanvas.module.css";
 
 /**
  * A dialog opened from a menu has no trigger left to give focus back to once it closes (the menu
@@ -78,7 +29,20 @@ const useFocusHostOnClose = (
   }, [dialog, hostRef]);
 };
 
-/** The menus, bit picker, pin card, dialogs and keyboard help, laid over the canvas. */
+/**
+ * Why the last connection was refused, until the next gesture or command. The live region
+ * already speaks it, so this line is hidden from assistive technology.
+ */
+function RefusalNotice({ session }: { readonly session: EditorSession }): ReactNode {
+  const notice = useStore(session.interaction.store, (state) => state.notice);
+  return notice === undefined ? undefined : (
+    <p className={styles.notice} aria-hidden="true">
+      {editorErrorMessage(notice)}
+    </p>
+  );
+}
+
+/** The refusal notice, menus, bit picker, pin card, dialogs and keyboard help, over the canvas. */
 export function CanvasOverlays({
   session,
   hostRef,
@@ -96,10 +60,11 @@ export function CanvasOverlays({
   };
   return (
     <>
+      <RefusalNotice session={session} />
       <CanvasMenus session={session} onDialog={setDialog} />
       {card === undefined ? undefined : <PinCard session={session} card={card} />}
       {dialog === undefined ? undefined : (
-        <Dialog session={session} dialog={dialog} onClose={close} />
+        <OverlayDialogView session={session} dialog={dialog} onClose={close} />
       )}
       {help === true ? (
         <KeyboardHelp

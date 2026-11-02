@@ -76,6 +76,30 @@ describe("legalTargets", () => {
   });
 });
 
+describe("completionFor says why a pin is illegal", () => {
+  it("output to output", () => {
+    const first = nandAt(0, 0);
+    const second = nandAt(300, 0);
+    const scene = sceneWith([], [first, second]);
+    expect(completionFor(scene, ref(first, NAND_OUT), ref(second, NAND_OUT))).toEqual({
+      type: "illegal",
+      reason: { type: "OutputToOutput" },
+    });
+  });
+
+  it("an input already driven", () => {
+    const first = nandAt(0, 0);
+    const second = nandAt(300, 0);
+    const third = nandAt(600, 0);
+    const driven = wire(ref(first, NAND_OUT), ref(third, NAND_A));
+    const scene = sceneWith([], [first, second, third], [driven]);
+    expect(completionFor(scene, ref(second, NAND_OUT), ref(third, NAND_A))).toEqual({
+      type: "illegal",
+      reason: { type: "InputAlreadyDriven", instanceId: third.id },
+    });
+  });
+});
+
 describe("completionFor with a bus target", () => {
   it("a 1-bit armed pin finds a 4-bit pin legal and asks for a bit", () => {
     const source = nandAt(0, 0);
@@ -107,8 +131,10 @@ describe("completionFor with a bus target", () => {
     const out = bus("q", "output");
     const full = [0, 1, 2, 3].map((bit) => wire(ref(source, NAND_OUT), ref(out.piece, 0, bit)));
     const scene = sceneWith([out.def], [source, out.piece], full);
+    // The bit fallback failed, so the reason is the original width mismatch.
     expect(completionFor(scene, ref(source, NAND_OUT), ref(out.piece, 0))).toEqual({
       type: "illegal",
+      reason: { type: "WidthMismatch", from: 1, to: 4 },
     });
   });
 });
@@ -125,6 +151,7 @@ describe("completionFor with bus ends", () => {
     expect(completionFor(scene, ref(input.piece, 0), ref(same.piece, 0)).type).toBe("connect");
     expect(completionFor(scene, ref(input.piece, 0), ref(other.piece, 0))).toEqual({
       type: "illegal",
+      reason: { type: "WidthMismatch", from: 4, to: 8 },
     });
   });
 
@@ -168,6 +195,7 @@ describe("completionFor with missing pins", () => {
     const scene = sceneWith([], [source]);
     expect(completionFor(scene, ref(source, NAND_OUT), ref(source, 9))).toEqual({
       type: "illegal",
+      reason: { type: "InvalidEndpoint", instanceId: source.id, pin: 9 },
     });
     const stranger = ref(nandAt(5, 5), NAND_OUT);
     expect(completionFor(scene, stranger, ref(source, NAND_A)).type).toBe("illegal");

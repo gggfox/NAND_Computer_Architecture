@@ -22,6 +22,24 @@
   -webkit-touch-callout: none;
 }
 
+/* Why the last connection was refused: a non-modal line at the top of the canvas. */
+.notice {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline: 0.5rem;
+  z-index: var(--z-overlay);
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 1rem);
+  padding: 0.375rem 0.75rem;
+  margin: 0 auto;
+  font-size: var(--font-size-small);
+  color: var(--color-text);
+  pointer-events: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire-red);
+  border-radius: 0.5rem;
+}
+
 /* A pointer shortcut in the bottom-right corner; too cramped on a narrow canvas. */
 .minimap {
   position: absolute;

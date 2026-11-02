@@ -2,6 +2,7 @@
 import { assert, describe, expect, it } from "vitest";
 
 import { createDemoProject, EMPTY_CIRCUIT, piece } from "~/features/projects";
+import { m } from "~/i18n/paraglide/messages";
 import type { PinId } from "~/shared/ids";
 import { newInstanceId, newWireId } from "~/shared/ids";
 
@@ -80,6 +81,16 @@ describe("announcementText", () => {
     /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */
     const bogus = JSON.parse('{"type":"bogus"}') as never;
     expect(() => announcementText(scene, known, bogus)).toThrow("Unexpected value");
+  });
+});
+
+describe("the refused announcement", () => {
+  it("says why a connection was refused", () => {
+    const { scene, nand } = demo();
+    const reason = { type: "InputAlreadyDriven", instanceId: nand.id } as const;
+    expect(announcementText(scene, known, { type: "refused", reason })).toBe(
+      m.editor_error_input_already_driven(),
+    );
   });
 });
 

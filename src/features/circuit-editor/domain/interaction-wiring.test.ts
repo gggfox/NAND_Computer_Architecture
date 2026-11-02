@@ -10,9 +10,20 @@ import {
   NAND_BODY,
   NAND_OUT,
   PIN_A_OUT,
+  PIN_B_OUT,
   wiring,
+  withBuses,
 } from "./interaction-wiring.fixtures";
-import { command, drag, gesture, gestures, screen, tap, WIRE_ID } from "./interaction.fixtures";
+import {
+  command,
+  drag,
+  gesture,
+  gestures,
+  screen,
+  setup,
+  tap,
+  WIRE_ID,
+} from "./interaction.fixtures";
 import { pinLevelKey } from "./signals";
 
 describe("arming by tap", () => {
@@ -221,5 +232,42 @@ describe("what keeps the armed pin", () => {
         moves: [{ instanceId: nand.id, position: { x: 240, y: 40 } }],
       },
     ]);
+  });
+});
+
+describe("a refused connection", () => {
+  it("tapping an already-driven input says why, and arms the tapped pin", () => {
+    const { context, state, pieceB } = setup();
+    const result = gestures(state, context, [tap(NAND_A), tap(PIN_B_OUT)]);
+    expect(result.state.notice?.type).toBe("InputAlreadyDriven");
+    expect(result.state.armed?.end).toEqual({ instanceId: pieceB.id, pin: 0 });
+    expect(dispatched(result.effects)).toEqual([]);
+    expect(result.effects.at(-1)).toEqual({
+      type: "announce",
+      announcement: { type: "refused", reason: result.state.notice },
+    });
+  });
+
+  it("output to output is refused", () => {
+    const { context, state } = wiring();
+    const result = gestures(state, context, [tap(NAND_OUT), tap(PIN_A_OUT)]);
+    expect(result.state.notice).toEqual({ type: "OutputToOutput" });
+  });
+
+  it("a 4-bit bus to an 8-bit bus is a width mismatch", () => {
+    const { context, state, d, q } = withBuses();
+    const result = gestures(state, context, [tap(d), tap(q)]);
+    expect(result.state.notice).toEqual({ type: "WidthMismatch", from: 4, to: 8 });
+  });
+
+  it("the next tap clears the notice", () => {
+    const { context, state } = setup();
+    const refused = gestures(state, context, [tap(NAND_A), tap(PIN_B_OUT)]).state;
+    expect(refused.notice).toBeDefined();
+    expect(gesture(refused, context, tap(EMPTY)).state.notice).toBeUndefined();
+    expect(command(refused, context, { type: "escape" }).state.notice).toBeUndefined();
+    // Moving the mouse does not hide it.
+    const hovered = gesture(refused, context, { type: "hover", point: EMPTY });
+    expect(hovered.state.notice).toEqual(refused.notice);
   });
 });

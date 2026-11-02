@@ -1,4 +1,4 @@
-import type { PinKey, PinRef, Point, WireColor } from "~/features/projects";
+import type { ConnectionError, PinKey, PinRef, Point, WireColor } from "~/features/projects";
 import type { ChipId, InstanceId, WireId } from "~/shared/ids";
 
 import type { EditorAction } from "./actions";
@@ -106,6 +106,8 @@ export interface InteractionState {
   readonly wireColor?: WireColor;
   /** The keyboard help dialog is open. */
   readonly help?: true;
+  /** Why the last connection was refused, shown over the canvas until the next gesture or command. */
+  readonly notice?: ConnectionError;
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -172,6 +174,8 @@ export type Announcement =
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "wired" }
   | { readonly type: "disarmed" }
+  /** A connection was refused: `reason` says why. */
+  | { readonly type: "refused"; readonly reason: ConnectionError }
   /** A wire was selected from the keyboard: its ends are named. */
   | { readonly type: "wireSelected"; readonly wireId: WireId }
   /** Bend mode began (`active`) or ended. */
