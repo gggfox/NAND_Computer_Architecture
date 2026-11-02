@@ -6,7 +6,7 @@ import {
   GridListItem,
   useDragAndDrop,
 } from "react-aria-components";
-import type { DroppableCollectionReorderEvent, Selection } from "react-aria-components";
+import type { DroppableCollectionReorderEvent, Key, Selection } from "react-aria-components";
 
 import styles from "./ReorderList.module.css";
 
@@ -20,8 +20,9 @@ interface ReorderListProps<Item> {
   readonly renderRow: (item: Item) => ReactNode;
   /** A row was dropped at `toIndex` in the list as it would be without it. */
   readonly onMove: (key: string, toIndex: number) => void;
+  /** Rows to highlight. One alone is also the list's selection; several are only highlighted. */
   readonly selectedKeys: readonly string[];
-  /** The user picked these rows (a press replaces the selection; Ctrl or Shift extends it). */
+  /** The user picked a row (or, with Escape, none). */
   readonly onSelect: (keys: readonly string[]) => void;
 }
 
@@ -40,15 +41,24 @@ const toIndexOf = (
 const keysOf = (selection: Selection, all: readonly string[]): readonly string[] =>
   selection === "all" ? all : [...selection].map(String);
 
+/** Only the dragged row moves: a drag never carries other rows along. */
+const draggedOnly = (dragged: ReadonlySet<Key>): readonly string[] =>
+  [...dragged].slice(0, 1).map(String);
+
 interface RowProps {
   readonly id: string;
   readonly text: string;
+  readonly highlighted: boolean;
   readonly children: ReactNode;
 }
 
-function Row({ id, text, children }: Readonly<RowProps>): ReactNode {
+function Row({ id, text, highlighted, children }: Readonly<RowProps>): ReactNode {
   return (
-    <GridListItem id={id} textValue={text} className={styles.row}>
+    <GridListItem
+      id={id}
+      textValue={text}
+      className={highlighted ? `${styles.row} ${styles.highlighted}` : styles.row}
+    >
       <AriaButton slot="drag" className={styles.handle}>
         <span aria-hidden="true" className={styles.grip} />
       </AriaButton>
@@ -74,11 +84,10 @@ export function ReorderList<Item>({
 }: Readonly<ReorderListProps<Item>>): ReactNode {
   const keys = items.map((item) => getKey(item));
   const { dragAndDropHooks } = useDragAndDrop({
-    getItems: (dragged) => [...dragged].map((key) => ({ "text/plain": String(key) })),
+    getItems: (dragged) => draggedOnly(dragged).map((key) => ({ "text/plain": key })),
     onReorder: (event) => {
-      const [moved] = event.keys;
-      if (moved !== undefined) {
-        onMove(String(moved), toIndexOf(keys, String(moved), event));
+      for (const moved of draggedOnly(event.keys)) {
+        onMove(moved, toIndexOf(keys, moved, event));
       }
     },
     renderDropIndicator: (target) => <DropIndicator target={target} className={styles.drop} />,
@@ -88,16 +97,25 @@ export function ReorderList<Item>({
       aria-label={label}
       className={styles.list}
       keyboardNavigationBehavior="tab"
-      selectionMode="multiple"
+      /*
+       * Single selection: RAC drags every selected row with the dragged one, so several selected
+       * rows would travel together. Several highlighted rows are styled, not selected.
+       */
+      selectionMode="single"
       selectionBehavior="replace"
-      selectedKeys={selectedKeys}
+      selectedKeys={selectedKeys.length === 1 ? selectedKeys : []}
       onSelectionChange={(selection) => {
         onSelect(keysOf(selection, keys));
       }}
       dragAndDropHooks={dragAndDropHooks}
     >
       {items.map((item) => (
-        <Row key={getKey(item)} id={getKey(item)} text={getText(item)}>
+        <Row
+          key={getKey(item)}
+          id={getKey(item)}
+          text={getText(item)}
+          highlighted={selectedKeys.includes(getKey(item))}
+        >
           {renderRow(item)}
         </Row>
       ))}
