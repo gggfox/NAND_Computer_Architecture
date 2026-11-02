@@ -1,4 +1,15 @@
-import { createProject, expect, output, pickTheme, setInputs, test, THEMES } from "./support";
+/* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+import { importLibrary, libraryRow, openLibrary } from "./library-support";
+import {
+  createProject,
+  expect,
+  output,
+  pickTheme,
+  setInputs,
+  test,
+  THEMES,
+  worldToPage,
+} from "./support";
 
 const slug = (theme: string): string => theme.toLowerCase().replaceAll(" ", "-");
 
@@ -30,4 +41,26 @@ test("demo with the Pins panel open", { tag: "@visual" }, async ({ page }) => {
   );
   // The whole editor: the canvas, its pin badges and the panel beside it.
   await expect(page).toHaveScreenshot("demo-pins-panel.png");
+});
+
+test("the library open with Arithmetic expanded", { tag: "@visual" }, async ({ page }) => {
+  await importLibrary(page);
+  const tree = await openLibrary(page);
+  await libraryRow(tree, "Arithmetic").click();
+  await expect(libraryRow(tree, "Adders")).toBeVisible();
+  // The pointer would leave a hover style on the row it clicked.
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot("library-panel.png");
+});
+
+/** Empty canvas where the quick-add opens, in world units. */
+const QUICK_ADD_AT = { x: 400, y: 240 };
+
+test("the quick-add menu", { tag: "@visual" }, async ({ page }) => {
+  await importLibrary(page);
+  const at = await worldToPage(page, QUICK_ADD_AT);
+  await page.mouse.click(at.x, at.y, { button: "right" });
+  const menu = page.getByRole("dialog", { name: "Add to canvas" });
+  await expect(menu.getByRole("searchbox", { name: "Search chips" })).toBeFocused();
+  await expect(page).toHaveScreenshot("quick-add.png");
 });

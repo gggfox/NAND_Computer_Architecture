@@ -1,7 +1,14 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import { AxeBuilder } from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
+import {
+  importLibrary,
+  libraryRow,
+  libraryToggle,
+  openLibrary,
+  placingBanner,
+} from "./library-support";
 import {
   canvasHost,
   createProject,
@@ -177,6 +184,80 @@ for (const theme of THEMES) {
     await name.fill("");
     await name.press("Enter");
     await expect(name).toHaveAccessibleDescription("A name can't be empty.");
+    expect(await violations(page)).toEqual([]);
+  });
+}
+
+/** Opens the library again if a dialog closed its sheet; on wide screens it stays open. */
+const libraryOpen = async (page: Page): Promise<Locator> =>
+  (await libraryToggle(page).getAttribute("aria-expanded")) === "true"
+    ? page.getByRole("treegrid", { name: "Chips" })
+    : openLibrary(page);
+
+/** Opens a dialog with `open`, checks it with axe, and cancels it. */
+const checkDialog = async (
+  page: Page,
+  { name, open }: { readonly name: string; readonly open: () => Promise<void> },
+): Promise<void> => {
+  await open();
+  const dialog = page.getByRole("dialog", { name });
+  await expect(dialog).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toHaveCount(0);
+};
+
+/** Picks `item` from the "⋯" menu of the row `row`. */
+const fromRowMenu = async (page: Page, row: string, item: string): Promise<void> => {
+  const tree = await libraryOpen(page);
+  await tree.getByRole("button", { name: `Actions for ${row}`, exact: true }).click();
+  await page.getByRole("menuitem", { name: item }).click();
+};
+
+const ROW_DIALOGS = [
+  { item: "Tags…", name: "Tags for Scratch" },
+  { item: "Move to…", name: "Move Scratch" },
+  { item: "Delete", name: "Delete Scratch?" },
+] as const;
+
+const TOOL_DIALOGS = [
+  { button: "New chip", name: "New chip" },
+  { button: "New folder", name: "New folder" },
+] as const;
+
+for (const theme of THEMES) {
+  test(`the library, its row menu, dialogs and placing banner have no WCAG violations in the ${theme} theme`, async ({
+    page,
+  }) => {
+    await importLibrary(page);
+    await pickTheme(page, theme);
+    // A column on wide screens, a sheet on phones.
+    const tree = await openLibrary(page);
+    expect(await violations(page)).toEqual([]);
+
+    await tree.getByRole("button", { name: "Actions for Scratch", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "Move to…" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menuitem", { name: "Move to…" })).toHaveCount(0);
+
+    for (const { item, name } of ROW_DIALOGS) {
+      await checkDialog(page, { name, open: () => fromRowMenu(page, "Scratch", item) });
+    }
+    for (const { button, name } of TOOL_DIALOGS) {
+      await checkDialog(page, {
+        name,
+        open: async () => {
+          await libraryOpen(page);
+          await page.getByRole("button", { name: button, exact: true }).click();
+        },
+      });
+    }
+
+    const open = await libraryOpen(page);
+    await libraryRow(open, "Built-in").click();
+    await libraryRow(open, "NAND").click();
+    await expect(placingBanner(page, "NAND")).toBeVisible();
     expect(await violations(page)).toEqual([]);
   });
 }

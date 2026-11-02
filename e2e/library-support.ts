@@ -27,9 +27,17 @@ export const importLibrary = async (
 /** The library's folder tree. */
 export const libraryTree = (page: Page): Locator => page.getByRole("treegrid", { name: "Chips" });
 
+/** The toolbar button that opens and closes the library. */
+export const libraryToggle = (page: Page): Locator =>
+  page.getByRole("button", { name: "Library", exact: true });
+
+/** The placing banner over the canvas while `name` is armed (D6). */
+export const placingBanner = (page: Page, name: string): Locator =>
+  page.getByText(`Tap the canvas to place ${name}`, { exact: true });
+
 /** Opens the library from the toolbar: a column on wide screens, a sheet on phones. */
 export const openLibrary = async (page: Page): Promise<Locator> => {
-  const toggle = page.getByRole("button", { name: "Library", exact: true });
+  const toggle = libraryToggle(page);
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   const tree = libraryTree(page);
