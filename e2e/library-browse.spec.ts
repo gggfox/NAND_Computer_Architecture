@@ -8,6 +8,8 @@ const LONG_NAME_LENGTH = 60;
 const PHONE = { width: 320, height: 640 };
 /** The layout's breakpoint: below it the library is a sheet. */
 const WIDE = 640;
+/** A drawing buffer far taller than any canvas box. */
+const BIG_BUFFER = 5000;
 
 test("the library lists the built-ins first and opens folders", async ({ page }) => {
   await importLibrary(page);
@@ -139,4 +141,26 @@ test("a long library scrolls in its column and leaves the canvas height alone", 
   const after = await canvas.boundingBox();
   expect(after?.height).toBe(before?.height);
   expect(await pageHeight()).toBe(heightBefore);
+});
+
+/*
+ * The drawing buffer follows the canvas's box, so the box must not follow the buffer. When it did,
+ * a window whose scrollbar comes and goes (a desktop with classic scrollbars) grew the canvas
+ * without end with the library open. Headless scrollbars overlay the page, so this pins the cause:
+ * a bigger buffer leaves the layout alone.
+ */
+test("the canvas's drawing size never changes the layout", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < WIDE, "On phones the library is a sheet.");
+  await importLibrary(page);
+  await openLibrary(page);
+  const canvas = canvasHost(page);
+  const before = await canvas.boundingBox();
+  await canvas
+    .locator("canvas")
+    .first()
+    .evaluate((element: HTMLCanvasElement, height: number) => {
+      element.height = height;
+    }, BIG_BUFFER);
+  const after = await canvas.boundingBox();
+  expect(after?.height).toBe(before?.height);
 });
