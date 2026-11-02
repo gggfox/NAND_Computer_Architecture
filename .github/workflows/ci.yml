@@ -41,10 +41,15 @@ jobs:
         with:
           vite-config-path: vitest.config.ts
 
-  e2e:
-    name: e2e
+  # One runner per Playwright project: run serially on one 2-vCPU runner they hit the 30 min timeout.
+  e2e-project:
+    name: e2e (${{ matrix.project }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-chrome, mobile-safari, tablet-safari]
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --ipc=host
@@ -58,15 +63,24 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # All 6 Playwright projects (chromium, firefox, webkit, mobile-chrome, mobile-safari, tablet-safari).
-      - run: pnpm e2e
+      - run: pnpm e2e --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-e2e
+          name: playwright-report-e2e-${{ matrix.project }}
           path: playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+
+  # The required status check (ADR 35) is named e2e, so this job gathers the matrix into it.
+  e2e:
+    name: e2e
+    if: always()
+    needs: e2e-project
+    runs-on: ubuntu-latest
+    steps:
+      - if: needs.e2e-project.result != 'success'
+        run: exit 1
 
   visual:
     name: visual
