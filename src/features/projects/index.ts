@@ -9,10 +9,27 @@ export {
   projectWith,
   wire,
 } from "./domain/builders";
+export {
+  deleteChip,
+  fileChip,
+  normalizeTags,
+  setStarred,
+  setTags,
+  type CatalogError,
+} from "./domain/chip-catalog";
 export { chipsUsing, findChip, replaceChip } from "./domain/chips";
 export { canPlace, containsChip, type PlaceError } from "./domain/containment";
 export { createDemoProject } from "./domain/demo";
 export { importErrorMessage, type ImportError } from "./domain/errors";
+export {
+  createFolder,
+  deleteFolder,
+  folderPath,
+  isWithin,
+  moveFolder,
+  renameFolder,
+  type FolderError,
+} from "./domain/folders";
 export {
   CURRENT_FORMAT_VERSION,
   MAX_IMPORT_BYTES,
