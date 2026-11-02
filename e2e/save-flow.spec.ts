@@ -28,6 +28,12 @@ test("a save that drops no wire saves at once", async ({ page }) => {
   await expect(unsavedDot(page)).toHaveCount(0);
   await expect(outcome(page, "Saved Half adder")).toBeAttached();
   await expect(saveButton(page)).toBeDisabled();
+
+  // Spoken once: coming back to the chip does not announce the old save again.
+  await openChip(page, "Full adder");
+  await expect(outcome(page, "Saved Half adder")).toHaveCount(0);
+  await openChip(page, "Half adder");
+  await expect(outcome(page, "Saved Half adder")).toHaveCount(0);
 });
 
 test("a save that drops a parent's wire asks first, and Cancel keeps the parent", async ({
@@ -83,6 +89,11 @@ test("Discard restores the saved version, and Undo brings the edit back", async 
   await page.keyboard.press("ControlOrMeta+z");
   await expect(unsavedDot(page)).toBeAttached();
   await expect(saveButton(page)).toBeEnabled();
+  await expect(outcome(page, "Changes to Half adder discarded")).toHaveCount(0);
+  // Redo restores the discarded state, but the discard is not announced again.
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  await expect(unsavedDot(page)).toHaveCount(0);
+  await expect(outcome(page, "Changes to Half adder discarded")).toHaveCount(0);
 });
 
 test("a never-saved chip has Save and no Discard", async ({ page }) => {
