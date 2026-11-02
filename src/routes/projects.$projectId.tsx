@@ -11,6 +11,7 @@ import {
   EditorSearchSchema,
   EditorToolbar,
   PinsPanel,
+  startingChipId,
   useEditorSession,
   useSessionErrors,
 } from "~/features/circuit-editor";
@@ -167,18 +168,30 @@ function useNotices(session: EditorSession, failure: ImportFailure | undefined):
 
 /**
  * The editor session, linked to the URL (ADR 16): the camera, and the chip being edited. Opening
- * another chip (from the library, or after a delete) writes it; a URL without one is left alone
- * until then.
+ * another chip (from the library, or after a delete) writes it. On load the URL's chip is opened
+ * when the project has it; otherwise the last opened chip is, and the URL is corrected.
  */
 function useLinkedSession(project: Project, view: EditorSearch): EditorSession {
   const navigate = Route.useNavigate();
+  const startingChip = startingChipId(project, view.chip);
   const write = (camera: Camera): void => {
     void navigate({
       search: (previous) => ({ ...previous, ...cameraForUrl(camera) }),
       replace: true,
     });
   };
-  const session = useEditorSession(project, getAppProjectRepository(), { camera: view, write });
+  const session = useEditorSession(
+    { ...project, lastOpenedChipId: startingChip },
+    getAppProjectRepository(),
+    { camera: view, write },
+  );
+  // A missing, unknown or malformed `?chip=` is corrected once, on mount (D8).
+  useEffect(() => {
+    if (view.chip !== startingChip) {
+      void navigate({ search: (search) => ({ ...search, chip: startingChip }), replace: true });
+    }
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- mount only; later chip changes are written by the subscription below
+  }, []);
   useEffect(
     () =>
       session.editor.subscribe((state, previous) => {

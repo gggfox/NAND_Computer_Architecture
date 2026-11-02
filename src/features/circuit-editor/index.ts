@@ -1,4 +1,4 @@
-export { EditorSearchSchema, type EditorSearch } from "./domain/view-search";
+export { EditorSearchSchema, startingChipId, type EditorSearch } from "./domain/view-search";
 export type { EditorAction, EditorError, PlaceableKind } from "./domain/actions";
 export { createHistory, pushHistory, redo, undo, type History } from "./domain/history";
 export type { Trail } from "./domain/breadcrumbs";
