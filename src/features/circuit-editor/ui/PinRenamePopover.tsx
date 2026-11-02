@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ReactNode, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useStore } from "zustand";
 
 import type { PinDef } from "~/features/projects";
@@ -12,9 +12,6 @@ import type { Renaming } from "../domain/interaction";
 import { pieceDef } from "../domain/interaction-pins";
 
 import styles from "./PinRenamePopover.module.css";
-
-/** Keeps the popover's start edge on the canvas when a name sits at its left edge. */
-const MIN_INSET_PX = 8;
 
 interface PinRenamePopoverProps {
   readonly session: EditorSession;
@@ -65,10 +62,15 @@ function RenameForm({
   const [error, setError] = useState<string>();
   const { close, save } = useRename(props, def, setError);
   const { screen } = props.renaming;
+  // The CSS clamps `--anchor-x` so the popover stays inside the canvas on both sides.
+  const placement: CSSProperties & Record<"--anchor-x", string> = {
+    "--anchor-x": `${String(screen.x)}px`,
+    insetBlockStart: screen.y,
+  };
   return (
     <form
       className={styles.popover}
-      style={{ insetInlineStart: Math.max(MIN_INSET_PX, screen.x), insetBlockStart: screen.y }}
+      style={placement}
       onSubmit={(event) => {
         event.preventDefault();
         save(name);

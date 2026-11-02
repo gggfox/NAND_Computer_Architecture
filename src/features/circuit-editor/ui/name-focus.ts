@@ -11,6 +11,14 @@ export interface NameFocus {
   readonly leave: (pinId: PinId) => void;
 }
 
+/** Runs `then` after a closing menu or dialog has unmounted and given focus back to its opener. */
+export const afterOverlayCloses = (then: () => void): void => {
+  // Two frames: the overlay unmounts, then restores focus to its trigger; this comes after.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(then);
+  });
+};
+
 export const createNameFocus = (): NameFocus => {
   const fields = new Map<PinId, HTMLInputElement>();
   const focus = (pinId: PinId): void => {
@@ -28,11 +36,8 @@ export const createNameFocus = (): NameFocus => {
     },
     focus,
     focusSoon: (pinId) => {
-      // Two frames: the overlay unmounts, then restores focus to its trigger; this comes after.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          focus(pinId);
-        });
+      afterOverlayCloses(() => {
+        focus(pinId);
       });
     },
     leave: (pinId) => {

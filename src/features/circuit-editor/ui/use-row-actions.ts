@@ -1,17 +1,22 @@
 import { useMemo } from "react";
+import type { RefObject } from "react";
 
 import type { EditorSession } from "../application/editor-session";
 import { rowAfter, rowNear } from "../domain/pin-rows";
-import { createNameFocus } from "./name-focus";
+import { afterOverlayCloses, createNameFocus } from "./name-focus";
 import type { NameFocus } from "./name-focus";
 import { pinCommands } from "./pin-commands";
 import type { RowActions } from "./PinRow";
 import type { PinsView } from "./use-pins";
 
-/** The rows' callbacks: Enter goes on to the next name, and a deleted row's neighbour takes focus. */
+/**
+ * The rows' callbacks: Enter goes on to the next name, and a deleted row's neighbour takes focus;
+ * with no row left, `fallback` (the panel's "Add inputs…") does, so focus never drops to the page.
+ */
 export const useRowActions = (
   session: EditorSession,
   view: PinsView,
+  fallback: RefObject<HTMLElement | null>,
 ): { readonly actions: RowActions; readonly focus: NameFocus } => {
   const focus = useMemo(() => createNameFocus(), []);
   const commands = pinCommands(session);
@@ -29,7 +34,11 @@ export const useRowActions = (
     onDelete: (pinId) => {
       const near = rowNear(view.rows, pinId);
       commands.remove(pinId);
-      if (near !== undefined) {
+      if (near === undefined) {
+        afterOverlayCloses(() => {
+          fallback.current?.focus();
+        });
+      } else {
         focus.focusSoon(near.pinId);
       }
     },

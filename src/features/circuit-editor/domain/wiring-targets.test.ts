@@ -131,10 +131,10 @@ describe("completionFor with a bus target", () => {
     const out = bus("q", "output");
     const full = [0, 1, 2, 3].map((bit) => wire(ref(source, NAND_OUT), ref(out.piece, 0, bit)));
     const scene = sceneWith([out.def], [source, out.piece], full);
-    // The bit fallback failed, so the reason is the original width mismatch.
+    // 1-bit to a bus goes through the bit picker, so the real reason is that every bit is taken.
     expect(completionFor(scene, ref(source, NAND_OUT), ref(out.piece, 0))).toEqual({
       type: "illegal",
-      reason: { type: "WidthMismatch", from: 1, to: 4 },
+      reason: { type: "InputAlreadyDriven", instanceId: out.piece.id },
     });
   });
 });

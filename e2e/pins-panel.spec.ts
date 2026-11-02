@@ -90,6 +90,17 @@ test("Enter names a row and moves on to the next; Delete focuses a neighbour's n
   await expect(nameField(pins, "input", THIRD)).toHaveValue("Dee");
 });
 
+test("deleting the last pin gives focus to Add inputs", async ({ page }) => {
+  await createProject(page);
+  const pins = await openPins(page);
+  for (const name of ["A", "B", "OUT"]) {
+    await pins.getByRole("button", { name: `Actions for ${name}` }).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+  }
+  await expect(pins.getByRole("row")).toHaveCount(0);
+  await expect(pins.getByRole("button", { name: "Add inputs…" })).toBeFocused();
+});
+
 test("an empty name in the panel is refused inline", async ({ page }) => {
   await createProject(page);
   const pins = await openPins(page);

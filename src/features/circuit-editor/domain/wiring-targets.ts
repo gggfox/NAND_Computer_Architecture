@@ -50,21 +50,16 @@ const tapped = ({ armed, target }: Ends, bus: "armed" | "target", bit: number): 
 const connectEnds = (scene: Scene, { armed, target }: Ends): Completion =>
   connectOf(checkConnection(scene.project, scene.circuit, armed, target));
 
-/** Which bus end gets a bit, and why the whole pins could not connect. */
-interface Fallback {
-  readonly bus: "armed" | "target";
-  readonly mismatch: ConnectionError;
-}
-
-const chooseBit = (scene: Scene, ends: Ends, { bus, mismatch }: Fallback): Completion => {
+/**
+ * Picks the bit on the `bus` end. With no bit free, the reason is the per-bit refusal (every bit
+ * is already driven), not the whole-pin width mismatch: 1-bit to a bus is normally allowed.
+ */
+const chooseBit = (scene: Scene, ends: Ends, bus: "armed" | "target"): Completion => {
   const width = sideWidth(scene, ends[bus]);
   const free = Array.from({ length: width }, (_unused, bit) => bit).filter(
     (bit) => connectEnds(scene, tapped(ends, bus, bit)).type === "connect",
   );
-  const [only] = free;
-  if (only === undefined) {
-    return illegal(mismatch);
-  }
+  const [only = 0] = free;
   return free.length > 1
     ? { type: "pickBit", bus, bits: free }
     : connectEnds(scene, tapped(ends, bus, only));
@@ -76,13 +71,12 @@ export const completionFor = (scene: Scene, armed: PinRef, target: PinRef): Comp
   if (direct.ok || direct.error.type !== "WidthMismatch") {
     return connectOf(direct);
   }
-  const mismatch = direct.error;
   if (needsBit(scene, target, armed)) {
-    return chooseBit(scene, { armed, target }, { bus: "target", mismatch });
+    return chooseBit(scene, { armed, target }, "target");
   }
   return needsBit(scene, armed, target)
-    ? chooseBit(scene, { armed, target }, { bus: "armed", mismatch })
-    : illegal(mismatch);
+    ? chooseBit(scene, { armed, target }, "armed")
+    : illegal(direct.error);
 };
 
 /** `pinLevelKey` of every pin that can take a wire from `armed` (some bit choice may be needed). */

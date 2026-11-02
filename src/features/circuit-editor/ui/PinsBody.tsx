@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import type { PinDirection } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
@@ -17,12 +17,15 @@ interface ToolbarProps {
   readonly isEmpty: boolean;
   readonly onAdd: (direction: PinDirection) => void;
   readonly onTidy: () => void;
+  /** "Add inputs…", which takes focus when the last pin is deleted. */
+  readonly addRef: RefObject<HTMLButtonElement | null>;
 }
 
-function Toolbar({ isEmpty, onAdd, onTidy }: Readonly<ToolbarProps>): ReactNode {
+function Toolbar({ isEmpty, onAdd, onTidy, addRef }: Readonly<ToolbarProps>): ReactNode {
   return (
     <div className={styles.toolbar}>
       <Button
+        ref={addRef}
         variant="quiet"
         onPress={() => {
           onAdd("input");
@@ -48,13 +51,19 @@ function Toolbar({ isEmpty, onAdd, onTidy }: Readonly<ToolbarProps>): ReactNode 
 /** The panel's contents: Add and Tidy, the lists, and the Add dialog while it is open. */
 export function PinsBody({ session }: { readonly session: EditorSession }): ReactNode {
   const view = usePins(session);
-  const { actions, focus } = useRowActions(session, view);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const { actions, focus } = useRowActions(session, view, addRef);
   const [adding, setAdding] = useState<PinDirection>();
   const { inputs, outputs } = view.rows;
   const { tidy } = actions.commands;
   return (
     <div className={styles.body}>
-      <Toolbar isEmpty={inputs.length + outputs.length === 0} onAdd={setAdding} onTidy={tidy} />
+      <Toolbar
+        isEmpty={inputs.length + outputs.length === 0}
+        onAdd={setAdding}
+        onTidy={tidy}
+        addRef={addRef}
+      />
       <PinsList view={view} actions={actions} />
       {adding === undefined ? undefined : (
         <AddPinsDialog
