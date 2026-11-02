@@ -1,4 +1,5 @@
 import { importLibrary, openLibrary } from "./library-support";
+import { chipPath } from "./save-support";
 import { expect, test } from "./support";
 
 const MAIN_ID = "00000000-0000-4000-8000-000000000401";
@@ -18,6 +19,8 @@ test("reloading reopens the chip named in the URL", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Library" })).toBeAttached();
   // The editor opened Scratch, so the URL stays as it was instead of being corrected to Main.
   await expect.poll(() => chipParam(page.url())).toBe(SCRATCH_ID);
+  // After a reload the trail is one level: only the open chip (D8).
+  await expect(chipPath(page).getByRole("listitem")).toHaveText(["Scratch"]);
 });
 
 for (const [label, chip] of [
@@ -43,4 +46,5 @@ test("a known chip in ?chip= is opened instead of the last opened one", async ({
   // Were Main opened, the mount-time correction would have rewritten the URL to Main.
   await expect.poll(() => chipParam(page.url())).toBe(SCRATCH_ID);
   await expect(page.getByRole("heading", { name: "Pins 0" })).toBeVisible();
+  await expect(chipPath(page).getByRole("listitem")).toHaveText(["Scratch"]);
 });

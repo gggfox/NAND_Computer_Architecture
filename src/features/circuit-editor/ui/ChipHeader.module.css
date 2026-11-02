@@ -1,0 +1,90 @@
+/* One row that never scrolls sideways: the breadcrumbs shrink and truncate, the actions do not. */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.5rem;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.path {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.crumbs {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  min-inline-size: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.crumb {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.crumb + .crumb::before {
+  flex: none;
+  margin-inline-end: 0.25rem;
+  color: var(--color-text-muted);
+  content: "›" / "";
+}
+
+.crumb > * {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.name,
+.current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current {
+  font-weight: 600;
+}
+
+.dot {
+  position: relative;
+  flex: none;
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  background-color: var(--color-accent);
+  border-radius: 50%;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.outcome {
+  flex-basis: 100%;
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+}
+
+.prose {
+  margin: 0;
+}
+
+.consequences {
+  padding-inline-start: 1.25rem;
+  margin: 0;
+}
+
+.buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}

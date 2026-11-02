@@ -256,5 +256,20 @@
   "library_delete_confirm": "Delete",
   "library_folder_name": "Folder name",
   "library_rename_folder": "Rename folder",
-  "library_move_title": "Move {name}"
+  "library_move_title": "Move {name}",
+  "chip_path_label": "Chip path",
+  "chip_unsaved": "Unsaved changes",
+  "chip_save": "Save",
+  "chip_more_label": "More chip actions",
+  "chip_discard": "Discard changes…",
+  "chip_discard_title": "Discard changes to {name}?",
+  "chip_discard_body": "The chip goes back to its last saved version.",
+  "chip_discard_confirm": "Discard",
+  "chip_save_title": "Save {name}?",
+  "chip_save_body": "Saving updates every chip that uses it:",
+  "chip_save_wires_removed": "Wires removed in {chip}: {count}",
+  "chip_save_pin_removed": "Pin {name} removed",
+  "chip_save_pin_width": "Pin {name}: {from} → {to} bits",
+  "chip_saved": "Saved {name}",
+  "chip_discarded": "Changes to {name} discarded"
 }

@@ -2,6 +2,7 @@
   display: grid;
   grid-template:
     "toolbar" auto
+    "header" auto
     "status" auto
     "canvas" minmax(16rem, 60dvh)
     "panel" auto
@@ -16,6 +17,11 @@
   grid-area: toolbar;
   gap: 0.75rem;
   align-items: center;
+  min-inline-size: 0;
+}
+
+.header {
+  grid-area: header;
   min-inline-size: 0;
 }
 
@@ -44,6 +50,7 @@
   .layout {
     grid-template:
       "toolbar toolbar toolbar" auto
+      "header header header" auto
       "status status status" auto
       "library canvas panel" minmax(24rem, 1fr)
       / auto minmax(0, 1fr) minmax(16rem, 22rem);
@@ -54,6 +61,7 @@
   .layout:has(> .library:empty) {
     grid-template:
       "toolbar toolbar" auto
+      "header header" auto
       "status status" auto
       "canvas panel" minmax(24rem, 1fr)
       / minmax(0, 1fr) minmax(16rem, 22rem);

@@ -6,6 +6,7 @@ import { CircuitSummary } from "~/features/accessibility";
 import { useLibrary } from "~/features/chip-library";
 import {
   cameraForUrl,
+  ChipHeader,
   CircuitCanvas,
   EditorLayout,
   EditorSearchSchema,
@@ -232,6 +233,7 @@ function Editor({ project }: EditorProps): ReactNode {
       <h1 className="visually-hidden">{project.name}</h1>
       <EditorLayout
         toolbar={toolbar}
+        header={<ChipHeader session={session} />}
         status={<StatusMessages messages={notices} />}
         canvas={<CircuitCanvas session={session} view={view} canvasMenu={library.quickAdd} />}
         panel={panel}

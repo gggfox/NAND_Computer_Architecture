@@ -30,6 +30,8 @@ test("a chip dragged onto the canvas is placed where it was dropped", async ({
   const tree = await openLibrary(page);
   await libraryRow(tree, "Arithmetic").click();
   await libraryRow(tree, "Adders").click();
+  // The library scrolls inside its column, which the chip header leaves shorter (D9).
+  await libraryRow(tree, "Half adder").scrollIntoViewIfNeeded();
   const to = await worldToPage(page, DROP_WORLD);
   await mouseDrag(page, { from: await centreOf(libraryRow(tree, "Half adder")), to });
 
