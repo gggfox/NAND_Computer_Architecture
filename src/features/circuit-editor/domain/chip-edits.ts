@@ -42,6 +42,7 @@ export const createChip: Edit<"createChip"> = (project, action) => {
     color: action.color,
     draft: EMPTY_CIRCUIT,
     tags: [],
+    starred: false,
   };
   return ok({ ...project, chips: [...project.chips, chip] });
 };

@@ -24,6 +24,7 @@ describe("createChip", () => {
       color: "#aabbcc",
       draft: EMPTY_CIRCUIT,
       tags: [],
+      starred: false,
     });
     expect(created?.saved).toBeUndefined();
   });

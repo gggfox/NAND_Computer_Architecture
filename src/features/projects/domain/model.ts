@@ -10,6 +10,8 @@ import {
   WireIdSchema,
 } from "~/shared/ids";
 
+import { folderIssues } from "./folder-issues";
+
 /* oxlint-disable-next-line eslint/id-length -- `x` and `y` are coordinate names */
 const PointSchema = z.object({ x: z.number(), y: z.number() }).readonly();
 export type Point = z.infer<typeof PointSchema>;
@@ -158,11 +160,14 @@ const ChipSchema = z
     draft: CircuitSchema,
     folderId: FolderIdSchema.optional(),
     tags: z.array(z.string()).readonly(),
+    starred: z.boolean().default(false),
   })
   .readonly();
 export type Chip = z.infer<typeof ChipSchema>;
 
-const FolderSchema = z.object({ id: FolderIdSchema, name: z.string() }).readonly();
+const FolderSchema = z
+  .object({ id: FolderIdSchema, name: z.string(), parentId: FolderIdSchema.optional() })
+  .readonly();
 export type Folder = z.infer<typeof FolderSchema>;
 
 const MAX_UINT32 = 0xff_ff_ff_ff;
@@ -187,6 +192,9 @@ export const ProjectSchema = z
         path: ["lastOpenedChipId"],
         message: "lastOpenedChipId names no chip",
       });
+    }
+    for (const issue of folderIssues(project.folders)) {
+      context.addIssue({ code: "custom", path: [...issue.path], message: issue.message });
     }
   })
   .readonly();
