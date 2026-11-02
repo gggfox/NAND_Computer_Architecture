@@ -40,18 +40,26 @@ const slotsOf = (column: readonly Rect[], height: number): readonly number[] =>
     snapUp(rect.y - PIN_ROW_GAP - height),
   ]);
 
-/** The rects of the other pieces of `dragged`'s direction. */
-const othersLike = (scene: Scene, dragged: ChipInstance): readonly Rect[] => {
+/**
+ * Another piece of the dragged one's direction: its column is its position's x, which a wide
+ * input's body extends left of, and its rect is where it sits in that column.
+ */
+interface Other {
+  readonly x: number;
+  readonly rect: Rect;
+}
+
+const othersLike = (scene: Scene, dragged: ChipInstance): readonly Other[] => {
   const { circuit } = scene;
   const direction = partOf(circuit, dragged);
   return circuit.instances
     .filter((item) => item.id !== dragged.id && partOf(circuit, item) === direction)
-    .map((item) => layoutIn(scene, item).rect);
+    .map((item) => ({ x: item.position.x, rect: layoutIn(scene, item).rect }));
 };
 
 /** A drop near a column: the other pieces, the column's x and the proposed point. */
 interface Drop {
-  readonly others: readonly Rect[];
+  readonly others: readonly Other[];
   readonly guideX: number;
   readonly proposed: Point;
 }
@@ -59,7 +67,7 @@ interface Drop {
 /** Into the column at `guideX`, and into a slot of it when near one. */
 const intoColumn = (scene: Scene, dragged: ChipInstance, drop: Drop): PinDrop => {
   const { others, guideX, proposed } = drop;
-  const column = others.filter((rect) => rect.x === guideX);
+  const column = others.filter((other) => other.x === guideX).map((other) => other.rect);
   const slot = nearest(slotsOf(column, layoutIn(scene, dragged).rect.height), proposed.y);
   return { position: { x: guideX, y: slot ?? snap(proposed).y }, guideX };
 };
@@ -76,7 +84,7 @@ export const snapPinDrop = (scene: Scene, instanceId: InstanceId, proposed: Poin
   }
   const others = othersLike(scene, dragged);
   const guideX = nearest(
-    others.map((rect) => rect.x),
+    others.map((other) => other.x),
     proposed.x,
   );
   return guideX === undefined

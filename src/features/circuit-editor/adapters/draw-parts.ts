@@ -2,11 +2,13 @@
 import type { ChipInstance, PinDef } from "~/features/projects";
 import { readableTextOn } from "~/shared/contrast";
 
+import { hasBitGrid, valueArea } from "../domain/bit-grid";
 import type { ChipLayout, Rect } from "../domain/chip-layout";
 import { layoutIn } from "../domain/geometry";
 import { panelNumber } from "../domain/io-layout";
 import { instanceLevel, pieceValue, pinLevelKey, pinValue } from "../domain/signals";
 import type { Level } from "../domain/signals";
+import { drawBits } from "./draw-bits";
 import { inPart, intersects, levelColor } from "./frame";
 import type { Frame } from "./frame";
 
@@ -198,6 +200,20 @@ const drawValue = (frame: Frame, rect: Rect, value: number | undefined): void =>
   ctx.fillText(text, rect.x + rect.width * HALF, rect.y + rect.height * HALF);
 };
 
+/** The value on the body; a wide input shows it above its switches. */
+const drawPieceValue = (
+  frame: Frame,
+  rect: Rect,
+  { def, value }: { readonly def: PinDef | undefined; readonly value: number | undefined },
+): void => {
+  if (def === undefined || !hasBitGrid(def)) {
+    drawValue(frame, rect, value);
+    return;
+  }
+  drawValue(frame, valueArea(rect, def.width), value);
+  drawBits(frame, { rect, def, ...(value === undefined ? {} : { value }) });
+};
+
 const defOf = (frame: Frame, instance: ChipInstance): PinDef | undefined => {
   const { kind } = instance;
   return kind.type === "pin" ? frame.circuit.pins.find((pin) => pin.id === kind.pinId) : undefined;
@@ -211,7 +227,7 @@ const levelOfPiece = (def: PinDef | undefined, value: number | undefined): Level
   return value === 0 ? 0 : 1;
 };
 
-/** A pin piece: its value on the body, its order badge, its name outside, its tab. */
+/** A pin piece: its value (and a wide input's switches) on the body, its badge, name and tab. */
 const drawPiece = (frame: Frame, instance: ChipInstance, layout: ChipLayout): void => {
   const { palette } = frame;
   const def = defOf(frame, instance);
@@ -219,7 +235,7 @@ const drawPiece = (frame: Frame, instance: ChipInstance, layout: ChipLayout): vo
   const level = levelOfPiece(def, value);
   drawBody(frame, layout.rect, { fill: levelColor(palette, level), radius: CHIP_RADIUS });
   frame.ctx.fillStyle = palette[level === 0 ? "chip-text-low" : "chip-text"];
-  drawValue(frame, layout.rect, value);
+  drawPieceValue(frame, layout.rect, { def, value });
   drawBadge(frame, layout.rect, def);
   drawPieceName(frame, layout);
   drawTabs(frame, instance, layout);

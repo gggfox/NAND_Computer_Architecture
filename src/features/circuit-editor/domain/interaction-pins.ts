@@ -1,8 +1,9 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { Circuit, PinDef } from "~/features/projects";
+import type { Circuit, PinDef, Point } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
-import { worldToScreen } from "./camera";
+import { bitAt, flipBit, hasBitGrid } from "./bit-grid";
+import { screenToWorld, worldToScreen } from "./camera";
 import { layoutIn } from "./geometry";
 import { done, selected, withoutOverlays } from "./interaction";
 import type {
@@ -22,21 +23,43 @@ export const pieceDef = (circuit: Circuit, instanceId: InstanceId): PinDef | und
   return kind?.type === "pin" ? circuit.pins.find((pin) => pin.id === kind.pinId) : undefined;
 };
 
+/** A tap on a piece, at `screen` (screen pixels). */
+interface PieceTap {
+  readonly instanceId: InstanceId;
+  readonly screen: Point;
+}
+
+/** The value a tap at `world` gives a wider input: one bit flipped, or none off the switches. */
+const tappedBits = (
+  def: PinDef,
+  { instanceId, world }: { readonly instanceId: InstanceId; readonly world: Point },
+  context: InteractionContext,
+): number | undefined => {
+  const instance = context.scene.circuit.instances.find((item) => item.id === instanceId);
+  const bit = instance && bitAt(layoutIn(context.scene, instance).rect, def.width, world);
+  return bit === undefined ? undefined : flipBit(context.inputs.get(def.id) ?? 0, bit);
+};
+
 /**
- * A plain tap on a 1-bit input piece flips its value as well (spec §5.5). A wider input is set in
- * the Pins panel, so a tap only selects it.
+ * A plain tap on a 1-bit input piece flips its value as well (spec §5.5); on a wider input, a tap
+ * on one of its switches flips that bit. Elsewhere on the piece it only selects.
  */
 export const withToggle = (
   result: Interpreted,
-  instanceId: InstanceId,
+  { instanceId, screen }: PieceTap,
   context: InteractionContext,
 ): Interpreted => {
   const def = pieceDef(context.scene.circuit, instanceId);
-  if (def?.direction !== "input" || def.width !== 1) {
+  if (def?.direction !== "input") {
     return result;
   }
-  const value = (context.inputs.get(def.id) ?? 0) === 0 ? 1 : 0;
-  return { ...result, effects: [...result.effects, { type: "setInput", pinId: def.id, value }] };
+  const world = screenToWorld(result.state.camera, screen);
+  const value = hasBitGrid(def)
+    ? tappedBits(def, { instanceId, world }, context)
+    : flipBit(context.inputs.get(def.id) ?? 0, 0);
+  return value === undefined
+    ? result
+    : { ...result, effects: [...result.effects, { type: "setInput", pinId: def.id, value }] };
 };
 
 /** Opens the rename popover just below a pin piece's name; for any other part, nothing happens. */

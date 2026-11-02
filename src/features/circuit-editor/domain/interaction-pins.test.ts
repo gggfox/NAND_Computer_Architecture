@@ -4,6 +4,7 @@ import { EMPTY_CIRCUIT } from "~/features/projects";
 import type { ChipInstance } from "~/features/projects";
 import { newInstanceId } from "~/shared/ids";
 
+import { buildIndex } from "./hit-test";
 import { interact } from "./interact";
 import type { Effect, InteractionContext } from "./interaction";
 import { command, gesture, NONE, screen, setup, tap } from "./interaction.fixtures";
@@ -48,17 +49,35 @@ describe("tapping an input piece", () => {
     const onOut = tap(screen(340, 60));
     expect(setInputs(gesture(state, context, onOut).effects)).toEqual([]);
   });
+});
 
-  it("a multi-bit input is not toggled from the canvas", () => {
-    const { state, context, pieceA } = setup();
-    const { circuit } = context.scene;
-    const pins = circuit.pins.map((pin) =>
-      pin.id === pinIdOf(pieceA) ? { ...pin, width: 4 as const } : pin,
-    );
-    const scene = { ...context.scene, circuit: { ...circuit, pins } };
-    const wide: InteractionContext = { ...context, scene };
-    const onA = tap(screen(20, 20));
-    expect(setInputs(gesture(state, wide, onA).effects)).toEqual([]);
+/** The demo with A made 8 bits wide: its body is x -40..40, y 0..80, switches along the bottom. */
+const wideA = () => {
+  const { state, context, pieceA } = setup();
+  const { circuit } = context.scene;
+  const pins = circuit.pins.map((pin) =>
+    pin.id === pinIdOf(pieceA) ? { ...pin, width: 8 as const } : pin,
+  );
+  const scene = { ...context.scene, circuit: { ...circuit, pins } };
+  const index = () => buildIndex(scene);
+  return { state, context: { ...context, scene, index }, pinId: pinIdOf(pieceA) };
+};
+
+describe("tapping a wide input piece", () => {
+  it("a tap on a switch flips that bit: top-left is the most significant", () => {
+    const { state, context, pinId } = wideA();
+    const top = gesture(state, context, tap(screen(-27, 49)));
+    expect(setInputs(top.effects)).toEqual([{ type: "setInput", pinId, value: 128 }]);
+    const raised: InteractionContext = { ...context, inputs: new Map([[pinId, 128]]) };
+    const last = gesture(top.state, raised, tap(screen(27, 67)));
+    expect(setInputs(last.effects)).toEqual([{ type: "setInput", pinId, value: 129 }]);
+  });
+
+  it("a tap off the switches only selects", () => {
+    const { state, context } = wideA();
+    const { effects, state: after } = gesture(state, context, tap(screen(0, 20)));
+    expect(setInputs(effects)).toEqual([]);
+    expect(after.selection.instances.size).toBe(1);
   });
 });
 

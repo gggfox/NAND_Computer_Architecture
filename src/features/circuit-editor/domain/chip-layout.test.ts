@@ -159,6 +159,14 @@ describe("layoutOf pin pieces", () => {
     expect(outLayout.pins).toMatchObject([{ side: "left", label: "Q[8]", anchor: { x: 0 } }]);
   });
 
+  it("a wide input is two grids wide, grown to the left so its pin stays put", () => {
+    const input = pinDef("A", "input", 8);
+    const source = sourceWith([], { pins: [input], instances: [], wires: [] });
+    const layout = layoutOf(source, pinPiece(input));
+    expect(layout.rect).toEqual({ x: -GRID, y: 0, width: GRID + GRID, height: 4 * PIN_CELL });
+    expect(layout.pins).toMatchObject([{ side: "right", anchor: { x: GRID } }]);
+  });
+
   it("a piece without a definition has no pins", () => {
     const layout = layoutOf(sourceWith([]), piece({ type: "pin", pinId: newPinId() }));
     expect(layout.pins).toEqual([]);
