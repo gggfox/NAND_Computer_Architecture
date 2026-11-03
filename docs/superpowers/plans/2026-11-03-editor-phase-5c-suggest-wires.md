@@ -10,6 +10,7 @@ Approved by the owner as planned on 2026-11-03, including every decision marked 
   - Ghost routing (200 proposals: 40 `clk` + 160 `d` bits, one `settled`): **108 ms**, nearly all in `settled` (106 ms); building the draft is 0.4 ms. It is roughly quadratic: 100 proposals took 27 ms, 200 took 108 ms.
   - **Decision: over budget on routing.** Indexed matching fits the 16 ms frame easily, but routing is about 7x over.
   - **Owner's ruling (2026-11-03): a hybrid.** Up to a cap of about 64 ghosts, they are routed like real wires. Above the cap, they are drawn as dashed elbows, and a wire is routed only when it is accepted. Task 3 measures the cap so that routing stays within 16 ms. D9 and Task 3 are updated.
+  - **Cap measured (Task 3)**, `ghostsOf` alone on the 200-part chip, first N proposals, one `settled`, median of 7, no coverage: N=32 **3.4 ms**, 48 **4.8 ms**, 64 **11.6 ms**, 80 **15.8 ms**, 96 **21.3 ms** (200: about 100 ms; as elbows, 200 take 0.7 ms). 80 is the largest under 16 ms by itself, but matching adds about 2.4 ms, so the full Suggest wires (matching plus routing) stays in one frame only up to 64 (about 14 ms). **`GHOST_ROUTE_CAP` = 64.**
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
