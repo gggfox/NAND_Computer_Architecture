@@ -1,8 +1,25 @@
-import type { ChipInstance, PinRef } from "~/features/projects";
+import type { ChipInstance, ConnectionError, PinRef } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import { partOf, pinPosition } from "./geometry";
 import type { Scene } from "./geometry";
+
+/** Why a bulk wire cannot be planned (D5): the selection breaks a rule of the cases. */
+export type BulkWireError =
+  | { readonly type: "SourceSelected" }
+  | { readonly type: "MixedPins" }
+  | { readonly type: "SameDirection" }
+  | { readonly type: "TooManyPins"; readonly pins: number; readonly bits: number }
+  | { readonly type: "InputTakesOneWire" };
+
+/** A refused bulk wire and the first pin that is to blame (D6). */
+export interface BulkRefusal {
+  readonly reason: BulkWireError | ConnectionError;
+  readonly at: PinRef;
+}
+
+/** What the canvas notice can say: a refused wire, or a refused bulk wire. */
+export type Notice = ConnectionError | BulkRefusal;
 
 const same = (a: PinRef, b: PinRef): boolean => a.instanceId === b.instanceId && a.pin === b.pin;
 

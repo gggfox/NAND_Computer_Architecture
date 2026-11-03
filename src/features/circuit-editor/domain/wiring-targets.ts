@@ -20,7 +20,7 @@ export type Completion =
 const illegal = (reason: ConnectionError): Completion => ({ type: "illegal", reason });
 
 /** The pin's width as a wire sees it (a tapped bit counts as 1); NaN for a pin that is not there. */
-const sideWidth = (scene: Scene, ref: PinRef): number => {
+export const sideWidth = (scene: Scene, ref: PinRef): number => {
   const [width] = scene.circuit.instances
     .filter((item) => item.id === ref.instanceId)
     .map((item) => endpointInfo(scene.project, scene.circuit, item, ref.pin)?.width);
