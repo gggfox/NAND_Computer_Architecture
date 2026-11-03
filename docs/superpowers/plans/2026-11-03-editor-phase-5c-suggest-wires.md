@@ -8,7 +8,8 @@ Approved by the owner as planned on 2026-11-03, including every decision marked 
   - Naive matching: **124 ms** (about 444 unconnected sinks x 316 sources, 138,700 legal pairs). On the 4-register file it is 0.15 ms.
   - Indexed matching (name, stem and width indexes, at most 8 `checkConnection` calls per sink): **2.3 ms** (cold first run 4.3 ms). It proposed 40 wires here, as a sketch.
   - Ghost routing (200 proposals: 40 `clk` + 160 `d` bits, one `settled`): **108 ms**, nearly all in `settled` (106 ms); building the draft is 0.4 ms. It is roughly quadratic: 100 proposals took 27 ms, 200 took 108 ms.
-  - **Decision: over budget on routing.** Indexed matching fits the 16 ms frame easily, but routing is about 7x over. Per Task 0 Step 3 the plan is not changed here; the likely fix (draw ghosts as elbows with `waypoints: []` and route only on accept) changes D9, so it goes to the owner first.
+  - **Decision: over budget on routing.** Indexed matching fits the 16 ms frame easily, but routing is about 7x over.
+  - **Owner's ruling (2026-11-03): a hybrid.** Up to a cap of about 64 ghosts, they are routed like real wires. Above the cap, they are drawn as dashed elbows, and a wire is routed only when it is accepted. Task 3 measures the cap so that routing stays within 16 ms. D9 and Task 3 are updated.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
@@ -66,7 +67,7 @@ Approved by the owner as planned on 2026-11-03, including every decision marked 
 - **D9. Ghosts live in interaction state only** (spec §3.3.4). `InteractionState.suggestions?: Suggestions`, where
   `Suggestions = { ghosts: readonly Ghost[]; focus?: number; accepting?: readonly WireId[] }` and
   `Ghost = { from: PinRef; to: PinRef; route: readonly Point[] }`.
-  The routes are computed once when suggesting: every ghost is added to a draft circuit and routed with one `settled` call, so ghosts from one source share a trunk, as real fan-out does. Routes are in world units, so panning and zooming never stale them, and every edit clears the ghosts anyway.
+  The routes are computed once when suggesting: every ghost is added to a draft circuit and routed with one `settled` call, so ghosts from one source share a trunk, as real fan-out does. **Above `GHOST_ROUTE_CAP` ghosts (about 64, measured in Task 3; owner, 2026-11-03), none is routed:** each route is the elbow `wireRoute` draws for a wire with no waypoints, because routing is roughly quadratic (200 ghosts took 108 ms in Task 0). Accepting still routes the real wires as usual. Routes are in world units, so panning and zooming never stale them, and every edit clears the ghosts anyway.
 - **D10. Accepting** (spec §3.3.3, §3.3.4).
   - **Tap a ghost, or `Enter` on the focused one:** one `connectWires` with that one wire (one undo step), in `state.wireColor`. The other ghosts stay. The spec's "Accept all adds every remaining ghost" implies this.
   - **Accept all:** one `connectWires` with every remaining ghost. The bar goes.
@@ -279,7 +280,8 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   - Each ghost's route starts at its `from` anchor and ends at its `to` anchor, and doesn't enter a chip body other than its ends' (use `entersChips` from `routing.fixtures.ts`).
   - Two ghosts from one source share their first segment, as fan-out wires do.
   - The scene's circuit is the same object afterwards.
-  - **Timing guard:** on Task 0's 200-part chip, `ghostsOf(scene, suggestWires(scene))` takes under 16 ms (median of 7) without coverage. Under coverage it asserts a looser bound, as 5b's `connectWires` test does (record the factor). Record the numbers in Status.
+  - **The cap (D9):** with `GHOST_ROUTE_CAP` + 1 proposals, every route is an elbow (start, corner(s), end, as `wireRoute` draws a wire with no waypoints); with `GHOST_ROUTE_CAP` or fewer, they are routed. Set `GHOST_ROUTE_CAP` (start at 64) as the largest round number whose routing on `bigScene` stays under 16 ms (median of 7, no coverage), and record it.
+  - **Timing guard:** on Task 0's 200-part chip (`bigScene` in `suggest-wires.fixtures.ts`), `ghostsOf(scene, suggestWires(scene))` takes under 16 ms (median of 7) without coverage, both with all proposals (elbows) and with exactly `GHOST_ROUTE_CAP` of them (routed). Under coverage it asserts a looser bound, as 5b's `connectWires` test does (record the factor). Record the numbers in Status.
 - [ ] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/ghost-routes.test.ts`. Expect FAIL.
 - [ ] **Step 3:** Implement: orient each proposal with `checkConnection` against the draft so far, add it with a placeholder id (`ghost:<n>`, never dispatched), call `settled` once with all of them, and read each route back with `wireRoute`.
 - [ ] **Step 4:** Run the test and `pnpm typecheck`. Expect PASS.
