@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { useStore } from "zustand";
 
 import type { EditorSession } from "../application/editor-session";
-import { editorErrorMessage } from "../domain/editor-error-messages";
+import { noticeText } from "../domain/announcements-pins";
 import type { InteractionCommand } from "../domain/interaction";
 import { ArrayDialog } from "./ArrayDialog";
 import { KeyboardHelp } from "./KeyboardHelp";
@@ -21,9 +21,14 @@ const sendCommand = (session: EditorSession, command: InteractionCommand): void 
  */
 function RefusalNotice({ session }: { readonly session: EditorSession }): ReactNode {
   const notice = useStore(session.interaction.store, (state) => state.notice);
-  return notice === undefined ? undefined : (
+  if (notice === undefined) {
+    return undefined;
+  }
+  const editor = session.editor.getState();
+  const known = { ...editor, ...session.simulation.getState() };
+  return (
     <p className={styles.notice} aria-hidden="true">
-      {editorErrorMessage(notice)}
+      {noticeText(session.interaction.sceneOf(editor), known, notice)}
     </p>
   );
 }

@@ -2,6 +2,7 @@ import { m } from "~/i18n/paraglide/messages";
 import { assertNever } from "~/shared/assert-never";
 
 import type { EditorError } from "./actions";
+import type { BulkWireError } from "./pin-selection";
 
 type Messages = {
   readonly [Type in EditorError["type"]]: (failure: Extract<EditorError, { type: Type }>) => string;
@@ -54,3 +55,31 @@ const messageOf = <Type extends EditorError["type"]>(
 
 export const editorErrorMessage = (failure: EditorError): string =>
   isKnownError(failure) ? messageOf(failure) : assertNever(failure);
+
+type BulkMessages = {
+  readonly [Type in BulkWireError["type"]]: (
+    failure: Extract<BulkWireError, { type: Type }>,
+  ) => string;
+};
+
+const BULK_MESSAGES: BulkMessages = {
+  SourceSelected: () => m.editor_error_source_selected(),
+  MixedPins: () => m.editor_error_mixed_pins(),
+  SameDirection: () => m.editor_error_same_direction(),
+  TooManyPins: (failure) =>
+    m.editor_error_too_many_pins({ pins: failure.pins, bits: failure.bits }),
+  InputTakesOneWire: () => m.editor_error_input_takes_one_wire(),
+};
+
+const isBulkError = (failure: BulkWireError | EditorError): failure is BulkWireError =>
+  Object.hasOwn(BULK_MESSAGES, failure.type);
+
+const bulkMessageOf = <Type extends BulkWireError["type"]>(
+  failure: Extract<BulkWireError, { type: Type }>,
+): string => BULK_MESSAGES[failure.type](failure);
+
+/** A refusal's reason as the end of a sentence: first letter lower-case, no full stop. */
+export const refusalReasonMessage = (failure: BulkWireError | EditorError): string => {
+  const text = isBulkError(failure) ? bulkMessageOf(failure) : editorErrorMessage(failure);
+  return text.charAt(0).toLowerCase() + text.slice(1).replace(/\.$/u, "");
+};
