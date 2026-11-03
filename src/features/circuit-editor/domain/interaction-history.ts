@@ -4,7 +4,7 @@ import type { InstanceId, WireId } from "~/shared/ids";
 import { bendHandles } from "./bend-geometry";
 import type { Scene } from "./geometry";
 import type { Armed, Bends, BitPick, InteractionState, Menu } from "./interaction";
-import { prune } from "./selection";
+import { isEmpty, prune } from "./selection";
 import { legalTargets } from "./wiring-targets";
 
 const stillThere = <Overlay extends { readonly instanceId: InstanceId }>(
@@ -100,11 +100,14 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
     bitPick: _pick,
     bends: _bends,
     drag: _drag,
+    pinPick,
     ...rest
   } = state;
+  const selection = prune(state.selection, scene);
   return {
     ...rest,
-    selection: prune(state.selection, circuit),
+    selection,
+    ...(pinPick === true && !isEmpty(selection) ? { pinPick } : {}),
     ...(focus !== undefined && present.instances.has(focus) ? { focus } : {}),
     ...(menuThere(menu, present) ? { menu } : {}),
     ...(stillThere(card, present.instances) === undefined ? {} : { card }),

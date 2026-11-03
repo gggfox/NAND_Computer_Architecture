@@ -61,6 +61,18 @@ export type EditorAction =
       /** Missing means the default colour. */
       readonly color?: WireColor;
     }
+  /** Connects several pins as one undo step; the first illegal wire refuses all of them. */
+  | {
+      readonly type: "connectWires";
+      readonly chipId: ChipId;
+      readonly wires: readonly {
+        readonly wireId: WireId;
+        readonly from: PinRef;
+        readonly to: PinRef;
+      }[];
+      /** Missing means the default colour. */
+      readonly color?: WireColor;
+    }
   /** Recolours wires as one undo step; no colour clears it. Routes stay as they are. */
   | {
       readonly type: "recolorWires";
@@ -157,6 +169,7 @@ export type EditorError =
   | { readonly type: "NothingToRecolor" }
   | { readonly type: "NothingToReroute" }
   | { readonly type: "NothingToAdd" }
+  | { readonly type: "NothingToConnect" }
   | PlaceError
   | SaveError
   | ConnectionError

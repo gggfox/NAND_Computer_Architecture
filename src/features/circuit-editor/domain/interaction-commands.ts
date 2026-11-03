@@ -142,9 +142,10 @@ const nudge = (
 
 const deleteSelection = (state: InteractionState, context: InteractionContext): Interpreted => {
   const { instances, wires } = state.selection;
-  if (isEmpty(state.selection)) {
+  if (instances.size === 0 && wires.size === 0) {
     return done(state);
   }
+  const { pinPick: _pinPick, ...open } = withoutOverlays(state);
   const action = {
     type: "removeItems",
     chipId: context.chipId,
@@ -152,7 +153,7 @@ const deleteSelection = (state: InteractionState, context: InteractionContext): 
     wireIds: [...wires],
   } as const;
   return done(
-    { ...withoutOverlays(state), selection: EMPTY_SELECTION },
+    { ...open, selection: EMPTY_SELECTION },
     { type: "dispatch", action },
     { type: "announce", announcement: { type: "deleted", count: instances.size + wires.size } },
   );

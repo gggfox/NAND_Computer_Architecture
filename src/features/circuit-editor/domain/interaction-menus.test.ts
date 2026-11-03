@@ -51,7 +51,7 @@ describe("menu triggers", () => {
   it("a wire menu keeps a multi-selection that holds the wire", () => {
     const { context, state, circuit, nand } = setup();
     const wireId = circuit.wires[0]!.id;
-    const selection = { instances: new Set([nand.id]), wires: new Set([wireId]) };
+    const selection = { instances: new Set([nand.id]), wires: new Set([wireId]), pins: [] };
     const result = gesture({ ...state, selection }, context, {
       type: "contextMenu",
       point: ON_WIRE,
@@ -118,7 +118,11 @@ describe("wire and canvas menu commands", () => {
   it("recolorSelection recolours every selected wire in one dispatch", () => {
     const { context, state, wireIds, nand } = styled();
     const { chipId } = context;
-    const selection = { instances: new Set([nand.id]), wires: new Set(wireIds.slice(0, 2)) };
+    const selection = {
+      instances: new Set([nand.id]),
+      wires: new Set(wireIds.slice(0, 2)),
+      pins: [],
+    };
     const menu = { kind: "wire", wireId: wireIds[0]!, screen: ON_WIRE } as const;
     const result = command({ ...state, selection, menu }, context, {
       type: "recolorSelection",

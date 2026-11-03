@@ -1,13 +1,20 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
-import type { ChipInstance, Circuit, PinDef, Point, Wire } from "~/features/projects";
+import type { ChipInstance, Circuit, PinDef, PinRef, Point, Wire } from "~/features/projects";
 import type { InstanceId, WireId } from "~/shared/ids";
 
 import type { Rect } from "./chip-layout";
+import { layoutIn } from "./geometry";
+import type { Scene } from "./geometry";
+
+export type { Notice, PinAnnouncement, PinCommand } from "./pin-selection";
+export { appendPins, samePinOn, togglePinIn } from "./pin-selection";
 
 /** What is selected on the open chip. Not an edit: it lives outside undo history. */
 export interface Selection {
   readonly instances: ReadonlySet<InstanceId>;
   readonly wires: ReadonlySet<WireId>;
+  /** Whole pins, in the order they were added, with no repeats and no `bit`. */
+  readonly pins: readonly PinRef[];
 }
 
 /** What a clipboard announcement reports. */
@@ -26,16 +33,22 @@ export interface Clipboard {
   readonly offset: number;
 }
 
-export const EMPTY_SELECTION: Selection = { instances: new Set(), wires: new Set() };
+export const EMPTY_SELECTION: Selection = {
+  instances: new Set(),
+  wires: new Set(),
+  pins: [],
+};
 
 export const selectInstances = (instanceIds: Iterable<InstanceId>): Selection => ({
   instances: new Set(instanceIds),
   wires: new Set(),
+  pins: [],
 });
 
 export const selectWire = (wireId: WireId): Selection => ({
   instances: new Set(),
   wires: new Set([wireId]),
+  pins: [],
 });
 
 const toggled = <Id>(set: ReadonlySet<Id>, id: Id): ReadonlySet<Id> => {
@@ -64,8 +77,14 @@ export const addInstances = (
   instances: new Set([...selection.instances, ...instanceIds]),
 });
 
+/** `selection` with its pins replaced. */
+export const withPins = (selection: Selection, pins: readonly PinRef[]): Selection => ({
+  ...selection,
+  pins,
+});
+
 export const isEmpty = (selection: Selection): boolean =>
-  selection.instances.size === 0 && selection.wires.size === 0;
+  selection.instances.size === 0 && selection.wires.size === 0 && selection.pins.length === 0;
 
 /** A chip as box and lasso selection see it. */
 export interface ChipBox {
@@ -123,13 +142,28 @@ export const withInnerWires = (circuit: Circuit, selection: Selection): Selectio
   return { ...selection, wires: new Set([...selection.wires, ...inner.map((wire) => wire.id)]) };
 };
 
-/** Drops ids the circuit no longer has (after undo, redo or a delete); unchanged if none. */
-export const prune = (selection: Selection, circuit: Circuit): Selection => {
+/** Whether the chip behind `pin` is still there and still has that pin. */
+const pinThere = (scene: Scene, pin: PinRef): boolean => {
+  const instance = scene.circuit.instances.find((item) => item.id === pin.instanceId);
+  return (
+    instance !== undefined && layoutIn(scene, instance).pins.some((item) => item.key === pin.pin)
+  );
+};
+
+/**
+ * Drops ids and pins the circuit no longer has (after undo, redo or a delete); unchanged if
+ * none.
+ */
+export const prune = (selection: Selection, scene: Scene): Selection => {
+  const { circuit } = scene;
   const instanceIds = new Set(circuit.instances.map((item) => item.id));
   const wireIds = new Set(circuit.wires.map((item) => item.id));
   const instances = [...selection.instances].filter((id) => instanceIds.has(id));
   const wires = [...selection.wires].filter((id) => wireIds.has(id));
-  return instances.length === selection.instances.size && wires.length === selection.wires.size
+  const pins = selection.pins.filter((pin) => pinThere(scene, pin));
+  return instances.length === selection.instances.size &&
+    wires.length === selection.wires.size &&
+    pins.length === selection.pins.length
     ? selection
-    : { instances: new Set(instances), wires: new Set(wires) };
+    : { instances: new Set(instances), wires: new Set(wires), pins };
 };

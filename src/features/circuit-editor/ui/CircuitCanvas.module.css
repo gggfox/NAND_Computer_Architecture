@@ -47,6 +47,13 @@
   border-radius: 0.5rem;
 }
 
+/* Clear of the docked selection bar, which holds the top centre except on a narrow canvas. */
+@media (width > 600px) {
+  .lowered {
+    inset-block-start: 4.25rem;
+  }
+}
+
 /* Armed placement: what a tap does, and Done, at the top of the canvas; taps elsewhere still place. */
 .placing {
   position: absolute;

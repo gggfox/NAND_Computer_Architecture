@@ -1,10 +1,10 @@
 import { checkConnection } from "~/features/projects";
-import type { Circuit, Wire, WireColor } from "~/features/projects";
+import type { Circuit, Project, Wire, WireColor } from "~/features/projects";
 import type { WireId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
-import type { EditorError } from "./actions";
+import type { EditorAction, EditorError } from "./actions";
 import { editDraft } from "./circuit-edits";
 import type { Edit } from "./circuit-edits";
 import type { Scene } from "./geometry";
@@ -29,6 +29,45 @@ export const connectWire: Edit<"connectWire"> = (project, action) =>
     };
     const added = { ...circuit, wires: [...circuit.wires, stored] };
     return ok(settled({ project, circuit: added }, new Set([action.wireId])));
+  });
+
+type Connect = Extract<EditorAction, { type: "connectWires" }>;
+
+/** Adds each wire to the circuit in turn, checked against the wires before it. */
+const grownBy = (project: Project, circuit: Circuit, action: Connect) => {
+  const wires = [...circuit.wires];
+  const draft = { ...circuit, wires };
+  for (const request of action.wires) {
+    if (wires.some((item) => item.id === request.wireId)) {
+      return err<EditorError>({ type: "DuplicateWire", wireId: request.wireId });
+    }
+    const connection = checkConnection(project, draft, request.from, request.to);
+    if (!connection.ok) {
+      return connection;
+    }
+    wires.push({
+      id: request.wireId,
+      ...connection.value,
+      waypoints: [],
+      manualWaypoints: false,
+      ...(action.color === undefined ? {} : { color: action.color }),
+    });
+  }
+  return ok(draft);
+};
+
+/** Connects several pins and routes only the new wires, or changes nothing if any is illegal. */
+export const connectWires: Edit<"connectWires"> = (project, action) =>
+  editDraft(project, action.chipId, (circuit) => {
+    if (action.wires.length === 0) {
+      return err({ type: "NothingToConnect" });
+    }
+    const grown = grownBy(project, circuit, action);
+    if (!grown.ok) {
+      return grown;
+    }
+    const ids = new Set(action.wires.map((item) => item.wireId));
+    return ok(settled({ project, circuit: grown.value }, ids));
   });
 
 /** The first of `wireIds` not in the circuit, as an error. */

@@ -1,6 +1,6 @@
 import type { InstanceId } from "~/shared/ids";
 
-import type { InteractionCommand } from "./interaction";
+import type { InteractionCommand, InteractionState } from "./interaction";
 
 /** The parts of a `KeyboardEvent` the canvas reads. */
 export interface KeyPress {
@@ -46,27 +46,40 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
   ["h", () => ({ type: "setTool", tool: "pan" })],
   ["?", () => ({ type: "showHelp" })],
   ["w", () => ({ type: "arm" })],
+  ["a", () => ({ type: "selectPinOnAll" })],
+  ["A", () => ({ type: "selectPinOnAll" })],
   ["n", (backwards) => ({ type: "nextWire", backwards })],
   ["N", () => ({ type: "nextWire", backwards: true })],
 ]);
 
 /**
- * What the map reads from the canvas: `Enter` wires an armed pin instead of opening a menu, and
- * `F2` renames the focused pin piece.
+ * What the map reads from the canvas: `Enter` wires instead of opening a menu while a pin is armed
+ * or pins are selected with a pin card open (`wiring`), and `F2` renames the focused pin piece.
  */
 interface KeyContext {
-  readonly armed: boolean;
+  readonly wiring: boolean;
   readonly focus?: InstanceId | undefined;
 }
+
+/** Whether `Enter` wires (D10): a pin is armed, or pins are selected and a pin card is open. */
+export const keyWiring = (state: InteractionState): boolean =>
+  state.armed !== undefined || (state.selection.pins.length > 0 && state.card !== undefined);
 
 /** `F2` renames the focused chip when it is a pin piece; with nothing focused it is the browser's. */
 const f2 = (context?: KeyContext): InteractionCommand | undefined =>
   context?.focus === undefined ? undefined : { type: "startRename", instanceId: context.focus };
 
-const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined =>
-  press.key === "Enter" && context?.armed === true
-    ? { type: "connect" }
-    : PLAIN.get(press.key)?.(press.shift);
+/** Keys that mean something only with Shift held; plain `Space` stays the browser's. */
+const SHIFTED: ReadonlyMap<string, InteractionCommand> = new Map<string, InteractionCommand>([
+  [" ", { type: "togglePin" }],
+]);
+
+const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined => {
+  if (press.key === "Enter" && context?.wiring === true) {
+    return { type: "connect" };
+  }
+  return (press.shift ? SHIFTED.get(press.key) : undefined) ?? PLAIN.get(press.key)?.(press.shift);
+};
 
 /** With Ctrl or ⌘ (keys lowercased): only the editing shortcuts; the rest stay the browser's. */
 const WITH_CTRL: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new Map<

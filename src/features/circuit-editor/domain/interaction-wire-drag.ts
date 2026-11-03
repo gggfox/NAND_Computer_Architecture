@@ -1,11 +1,11 @@
 import type { PinRef } from "~/features/projects";
 
 import { worldToScreen } from "./camera";
-import type { Gesture } from "./gesture-types";
+import type { Drag, Gesture } from "./gesture-types";
 import { nearestPin } from "./hit-test";
 import type { Hit } from "./hit-test";
 import { withoutOverlays } from "./interaction";
-import type { Armed, Drag, InteractionContext, InteractionState, Interpreted } from "./interaction";
+import type { Armed, InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { toWorld } from "./interaction-hits";
 import { arm, colorOf, complete, disarmed, refOf, refused } from "./interaction-wiring";
 import type { Start } from "./interaction-wiring";

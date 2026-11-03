@@ -9,6 +9,7 @@ import type { Scene } from "../domain/geometry";
 import { movePreviewOf, previewOf } from "../domain/interaction";
 import type { InteractionState } from "../domain/interaction";
 import { pinLevelKey } from "../domain/signals";
+import { pickedOf } from "./picked-of";
 
 type Wiring = Pick<OverlayView, "armed" | "wireDrag" | "bends">;
 
@@ -77,6 +78,7 @@ export const renderStateOf = (session: EditorSession): RenderState => {
       ...armedOf(scene, state),
       ...wireDragOf(scene, state),
       ...bendsOf(state),
+      ...pickedOf(scene, state),
     },
   };
 };

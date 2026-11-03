@@ -239,7 +239,7 @@ describe("a refused connection", () => {
   it("tapping an already-driven input says why, and arms the tapped pin", () => {
     const { context, state, pieceB } = setup();
     const result = gestures(state, context, [tap(NAND_A), tap(PIN_B_OUT)]);
-    expect(result.state.notice?.type).toBe("InputAlreadyDriven");
+    expect(result.state.notice).toMatchObject({ type: "InputAlreadyDriven" });
     expect(result.state.armed?.end).toEqual({ instanceId: pieceB.id, pin: 0 });
     expect(dispatched(result.effects)).toEqual([]);
     expect(result.effects.at(-1)).toEqual({

@@ -7,6 +7,7 @@ export { Select, type SelectOption } from "./Select";
 export { StatusMessages } from "./StatusMessages";
 export { Switch } from "./Switch";
 export { Toolbar } from "./Toolbar";
+export { ToggleButton } from "./ToggleButton";
 export { UpdateBanner } from "./UpdateBanner";
 export { ModalDialog } from "./ModalDialog";
 export { PointMenu, type MenuEntry } from "./PointMenu";

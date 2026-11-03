@@ -10,7 +10,7 @@ import type { EditorSession } from "../application/editor-session";
 import { announcementText } from "../domain/announcements";
 import { cameraForUrl } from "../domain/camera";
 import type { Camera } from "../domain/camera";
-import { commandForKey } from "../domain/keymap";
+import { commandForKey, keyWiring } from "../domain/keymap";
 import { minimapStateOf, renderStateOf } from "./render-state-of";
 
 const EVERY_OTHER = 2;
@@ -82,9 +82,9 @@ const attachInput = (
   };
 };
 
-/** The canvas command for a key; `Enter` reads whether a pin is armed, `F2` the focused chip. */
+/** The canvas command for a key; `Enter` reads whether it wires (a pin armed, or pins and a card). */
 const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) => {
-  const { armed, focus } = session.interaction.store.getState();
+  const state = session.interaction.store.getState();
   return commandForKey(
     {
       key: event.key,
@@ -92,7 +92,7 @@ const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) =
       ctrlOrMeta: event.ctrlKey || event.metaKey,
       alt: event.altKey,
     },
-    { armed: armed !== undefined, focus },
+    { wiring: keyWiring(state), focus: state.focus },
   );
 };
 

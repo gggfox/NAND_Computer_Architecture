@@ -155,7 +155,7 @@ describe("a wire drag released over an illegal pin", () => {
     expect(dispatched(released.effects)).toEqual([]);
     expect(released.state.armed).toBeUndefined();
     expect(released.state.drag).toBeUndefined();
-    expect(released.state.notice?.type).toBe("InputAlreadyDriven");
+    expect(released.state.notice).toMatchObject({ type: "InputAlreadyDriven" });
     expect(released.effects.at(-1)).toEqual({
       type: "announce",
       announcement: { type: "refused", reason: released.state.notice },

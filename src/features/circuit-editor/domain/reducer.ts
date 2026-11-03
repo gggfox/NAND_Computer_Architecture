@@ -8,7 +8,7 @@ import { CHIP_HANDLERS } from "./chip-edits";
 import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { addPins } from "./pin-batch-edits";
 import { addPin, removePin, renamePin, reorderPin, setPinWidth } from "./pin-edits";
-import { connectWire, recolorWires, rerouteWires } from "./wire-edits";
+import { connectWire, connectWires, recolorWires, rerouteWires } from "./wire-edits";
 
 type Outcome = Result<Project, EditorError>;
 
@@ -28,6 +28,7 @@ const HANDLERS: Handlers = {
   removeItems,
   pasteItems,
   connectWire,
+  connectWires,
   recolorWires,
   rerouteWires,
   removeWire,

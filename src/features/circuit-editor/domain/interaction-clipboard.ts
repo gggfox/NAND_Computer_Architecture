@@ -90,8 +90,9 @@ const cut = (state: InteractionState, context: InteractionContext): Interpreted 
     instanceIds: clipboard.instances.map((item) => item.id),
     wireIds: [],
   } as const;
+  const { pinPick: _pinPick, ...open } = withoutOverlays(state);
   return done(
-    { ...withoutOverlays(state), selection: EMPTY_SELECTION, clipboard },
+    { ...open, selection: EMPTY_SELECTION, clipboard },
     { type: "dispatch", action },
     {
       type: "announce",
@@ -115,6 +116,7 @@ const paste = (state: InteractionState, context: InteractionContext): Interprete
   const selection = {
     instances: new Set(instances.map((item) => item.id)),
     wires: new Set(wires.map((item) => item.id)),
+    pins: [],
   };
   const result = selected(
     { ...state, clipboard: { ...clipboard, offset: clipboard.offset + 1 } },

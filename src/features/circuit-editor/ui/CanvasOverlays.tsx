@@ -8,6 +8,7 @@ import type { CanvasMenuSlot, OverlayDialog } from "./CanvasMenus";
 import { ModeOverlays } from "./ModeOverlays";
 import { OverlayDialogView } from "./OverlayDialogView";
 import { PinCard } from "./PinCard";
+import { PinCardActions } from "./PinCardActions";
 import { PinRenamePopover } from "./PinRenamePopover";
 import { useFocusHostOnClose } from "./use-focus-host";
 
@@ -55,7 +56,11 @@ export function CanvasOverlays({
   return (
     <>
       <CanvasMenus session={session} onDialog={setDialog} canvasMenu={canvasMenu} />
-      {card === undefined ? undefined : <PinCard session={session} card={card} />}
+      {card === undefined ? undefined : (
+        <PinCard session={session} card={card}>
+          <PinCardActions session={session} hostRef={hostRef} />
+        </PinCard>
+      )}
       <RenameOverlay session={session} hostRef={hostRef} />
       {dialog === undefined ? undefined : (
         <OverlayDialogView session={session} dialog={dialog} onClose={close} />

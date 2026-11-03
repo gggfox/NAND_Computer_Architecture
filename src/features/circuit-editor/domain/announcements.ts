@@ -1,38 +1,16 @@
-import type { PinRef } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import { assertNever } from "~/shared/assert-never";
-import type { InstanceId } from "~/shared/ids";
 
+import { pinAnnouncementText } from "./announcements-pins";
+import { chipLabel } from "./chip-label";
 import { editorErrorMessage } from "./editor-error-messages";
-import { layoutIn } from "./geometry";
 import type { Scene } from "./geometry";
 import type { Announcement } from "./interaction";
 import { partName } from "./messages";
 import { pinInfo } from "./pin-info";
 import type { KnownLevels } from "./signals";
 
-/**
- * A chip's spoken name, matching the circuit summary: a pin piece by its pin's name, a NAND as
- * "NAND gate 2", anything else as its title and number among same-titled parts in canvas order.
- */
-export const chipLabel = (scene: Scene, instanceId: InstanceId): string => {
-  const { instances } = scene.circuit;
-  const instance = instances.find((item) => item.id === instanceId);
-  if (instance === undefined) {
-    return "";
-  }
-  const { title } = layoutIn(scene, instance);
-  if (instance.kind.type === "pin") {
-    return title;
-  }
-  const same = instances.filter(
-    (item) => item.kind.type !== "pin" && layoutIn(scene, item).title === title,
-  );
-  const number = same.findIndex((item) => item.id === instanceId) + 1;
-  return instance.kind.type === "nand"
-    ? m.nand_numbered({ number })
-    : m.part_numbered({ name: title, number });
-};
+export { chipLabel } from "./chip-label";
 
 const selectedText = (
   scene: Scene,
@@ -71,8 +49,10 @@ const armedText = (
     : m.canvas_armed({ pin: info.name, chip: chipLabel(scene, announcement.instanceId) });
 };
 
+type WireEnd = Scene["circuit"]["wires"][number]["from"];
+
 /** A wire end as "{pin} of {chip}", or `undefined` when the pin is gone. */
-const endText = (scene: Scene, known: KnownLevels, end: PinRef): string | undefined => {
+const endText = (scene: Scene, known: KnownLevels, end: WireEnd): string | undefined => {
   const info = pinInfo(scene, known, [end.instanceId, end.pin]);
   return info && m.canvas_wire_end({ pin: info.name, chip: chipLabel(scene, end.instanceId) });
 };
@@ -152,12 +132,29 @@ const placementText = (scene: Scene, announcement: PlacementAnnouncement): strin
     : m.announce_placed({ name });
 };
 
+type PinAnnouncement = Extract<
+  Announcement,
+  { type: "pinsSelected" | "bulkWired" | "bulkRefused" }
+>;
+
+const PIN_TYPES: ReadonlySet<Announcement["type"]> = new Set([
+  "pinsSelected",
+  "bulkWired",
+  "bulkRefused",
+]);
+
+const isPinSelection = (announcement: Announcement): announcement is PinAnnouncement =>
+  PIN_TYPES.has(announcement.type);
+
 /** The live region's words for an announcement (ADR 3, 17). */
 export const announcementText = (
   scene: Scene,
   known: KnownLevels,
   announcement: Announcement,
 ): string => {
+  if (isPinSelection(announcement)) {
+    return pinAnnouncementText(scene, known, announcement);
+  }
   if (isWiring(announcement)) {
     return wiringText(scene, known, announcement);
   }
@@ -185,7 +182,7 @@ const CLIPBOARD_TEXT: Readonly<
 const plainText = (
   scene: Scene,
   known: KnownLevels,
-  announcement: Exclude<Announcement, WiringAnnouncement | PlacementAnnouncement>,
+  announcement: Exclude<Announcement, WiringAnnouncement | PlacementAnnouncement | PinAnnouncement>,
 ): string => {
   switch (announcement.type) {
     case "selected": {

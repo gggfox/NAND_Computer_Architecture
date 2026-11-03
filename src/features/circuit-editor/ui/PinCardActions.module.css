@@ -1,0 +1,6 @@
+/* The card's anchor ignores the pointer; the button takes its own. */
+.actions {
+  pointer-events: auto;
+  background-color: var(--color-surface);
+  border-radius: 0.5rem;
+}
