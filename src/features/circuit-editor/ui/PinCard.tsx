@@ -12,31 +12,11 @@ import styles from "./PinCard.module.css";
 /** Keeps the card inside a 360 px-wide phone canvas: it opens left of pins near the right edge. */
 const FLIP_AFTER_PX = 200;
 
-/**
- * What a pin is (spec §5.1): name, width, live value and connections. Visual only: the same words
- * reach screen readers through the canvas's live region when the card opens.
- */
-export function PinCard({
-  session,
-  card,
-}: {
-  readonly session: EditorSession;
-  readonly card: PinCardState;
-}): ReactNode {
-  const levels = useStore(session.simulation, (state) => state.levels);
-  const editor = useStore(session.editor);
-  const known = { inputs: editor.inputs, outputs: session.simulation.getState().outputs, levels };
-  const info = pinInfo(session.interaction.sceneOf(editor), known, [card.instanceId, card.pin]);
-  if (info === undefined) {
-    return undefined;
-  }
-  const flip = card.screen.x > FLIP_AFTER_PX;
+type Info = NonNullable<ReturnType<typeof pinInfo>>;
+
+function CardBody({ info }: { readonly info: Info }): ReactNode {
   return (
-    <div
-      className={`${styles.card} ${flip ? styles.flipped : ""}`}
-      style={{ insetInlineStart: card.screen.x, insetBlockStart: card.screen.y }}
-      aria-hidden="true"
-    >
+    <div className={styles.card} aria-hidden="true">
       <p className={styles.name}>
         {info.name}
         <span className={styles.width}>
@@ -53,6 +33,39 @@ export function PinCard({
           <li key={`${connection.chip}.${connection.pin}`}>{m.pin_card_connection(connection)}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * What a pin is (spec §5.1): name, width, live value and connections. Visual only: the same words
+ * reach screen readers through the canvas's live region when the card opens.
+ */
+export function PinCard({
+  session,
+  card,
+  children,
+}: {
+  readonly session: EditorSession;
+  readonly card: PinCardState;
+  /** Shown just below the card, which is hidden from assistive technology: the children are not. */
+  readonly children?: ReactNode;
+}): ReactNode {
+  const levels = useStore(session.simulation, (state) => state.levels);
+  const editor = useStore(session.editor);
+  const known = { inputs: editor.inputs, outputs: session.simulation.getState().outputs, levels };
+  const info = pinInfo(session.interaction.sceneOf(editor), known, [card.instanceId, card.pin]);
+  if (info === undefined) {
+    return undefined;
+  }
+  const flip = card.screen.x > FLIP_AFTER_PX;
+  return (
+    <div
+      className={`${styles.anchor} ${flip ? styles.flipped : ""}`}
+      style={{ insetInlineStart: card.screen.x, insetBlockStart: card.screen.y }}
+    >
+      <CardBody info={info} />
+      {children}
     </div>
   );
 }

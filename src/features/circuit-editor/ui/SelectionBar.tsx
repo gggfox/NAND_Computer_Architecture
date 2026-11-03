@@ -3,11 +3,11 @@ import type { ReactNode, RefObject } from "react";
 import { useStore } from "zustand";
 
 import { m } from "~/i18n/paraglide/messages";
-import { Button, Toolbar } from "~/shared/ui";
+import { Button, ToggleButton, Toolbar } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
 import type { InteractionCommand } from "../domain/interaction";
-import { barVisible } from "../domain/selection-bar";
+import { barChipActions, barVisible } from "../domain/selection-bar";
 
 import styles from "./SelectionBar.module.css";
 
@@ -17,20 +17,36 @@ const ACTIONS: readonly (readonly [InteractionCommand, () => string])[] = [
   [{ type: "deleteSelection" }, () => m.delete_selection()],
 ];
 
+function send(session: EditorSession, command: InteractionCommand): void {
+  session.interaction.store.getState().send({ type: "command", command });
+}
+
 function BarButtons({ session }: { readonly session: EditorSession }): ReactNode {
+  const chips = useStore(session.interaction.store, barChipActions);
+  const picking = useStore(session.interaction.store, (state) => state.pinPick === true);
   return (
     <Toolbar aria-label={m.selection_bar_label()}>
-      {ACTIONS.map(([command, label]) => (
-        <Button
-          key={command.type}
-          variant="quiet"
-          onPress={() => {
-            session.interaction.store.getState().send({ type: "command", command });
-          }}
-        >
-          {label()}
-        </Button>
-      ))}
+      {chips
+        ? ACTIONS.map(([command, label]) => (
+            <Button
+              key={command.type}
+              variant="quiet"
+              onPress={() => {
+                send(session, command);
+              }}
+            >
+              {label()}
+            </Button>
+          ))
+        : undefined}
+      <ToggleButton
+        isSelected={picking}
+        onChange={() => {
+          send(session, { type: "togglePinPick" });
+        }}
+      >
+        {m.selection_bar_pick_pins()}
+      </ToggleButton>
     </Toolbar>
   );
 }
@@ -66,7 +82,7 @@ function DockedBar({ session, hostRef }: BarProps): ReactNode {
 }
 
 /**
- * Duplicate, Array… and Delete for the selected chips, for touch and mouse users who do not know
+ * Duplicate, Array… and Delete for the selected chips, and the Pick pins toggle, for touch and mouse users who do not know
  * the shortcuts. It is docked to the canvas (top centre; bottom on phones) rather than floating by
  * the selection, where it would cover the neighbouring chips a user is about to click.
  */

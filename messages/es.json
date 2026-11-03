@@ -310,5 +310,13 @@
   "help_keys_duplicate": "Ctrl+D",
   "help_duplicate": "Duplica la selección",
   "help_keys_array": "Ctrl+Mayús+D",
-  "help_array": "Abre el diálogo de matriz para la selección"
+  "help_array": "Abre el diálogo de matriz para la selección",
+  "selection_bar_pick_pins": "Elegir pines",
+  "pin_card_select_on_all": "Seleccionar este pin en todos los chips seleccionados",
+  "help_keys_pick_pin": "Mayús+Espacio",
+  "help_pick_pin": "Selecciona o deselecciona el pin de la tarjeta",
+  "help_keys_pick_all": "A",
+  "help_pick_all": "Selecciona este pin en todos los chips seleccionados",
+  "help_keys_wire_picked": "Intro (con pines seleccionados)",
+  "help_wire_picked": "Cablea los pines seleccionados al pin de la tarjeta"
 }

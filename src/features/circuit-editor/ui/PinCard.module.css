@@ -1,11 +1,20 @@
-.card {
+/* Places the card and what hangs below it; only the children take pointer events. */
+.anchor {
   position: absolute;
   z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  margin-block-start: 0.75rem;
+  margin-inline-start: 0.75rem;
+  pointer-events: none;
+}
+
+.card {
   min-inline-size: 9rem;
   max-inline-size: 16rem;
   padding: 0.5rem 0.75rem;
-  margin-block-start: 0.75rem;
-  margin-inline-start: 0.75rem;
   font-size: var(--font-size-small);
   color: var(--color-text);
   pointer-events: none;
@@ -15,6 +24,7 @@
 }
 
 .flipped {
+  align-items: flex-end;
   translate: calc(-100% - 1.5rem) 0;
 }
 

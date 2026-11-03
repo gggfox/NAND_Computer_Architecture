@@ -310,5 +310,13 @@
   "help_keys_duplicate": "Ctrl+D",
   "help_duplicate": "Duplicate the selection",
   "help_keys_array": "Ctrl+Shift+D",
-  "help_array": "Open the Array dialog for the selection"
+  "help_array": "Open the Array dialog for the selection",
+  "selection_bar_pick_pins": "Pick pins",
+  "pin_card_select_on_all": "Select this pin on all selected chips",
+  "help_keys_pick_pin": "Shift+Space",
+  "help_pick_pin": "Select or unselect the card's pin",
+  "help_keys_pick_all": "A",
+  "help_pick_all": "Select this pin on all selected chips",
+  "help_keys_wire_picked": "Enter (with pins selected)",
+  "help_wire_picked": "Wire the selected pins to the card's pin"
 }
