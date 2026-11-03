@@ -12,7 +12,7 @@ import type { EditorAction, PlaceableKind } from "./actions";
 import type { ArrayRequest } from "./array";
 import type { Camera } from "./camera";
 import type { Scene, Size } from "./geometry";
-import type { Gesture } from "./gesture-types";
+import type { Drag, Gesture } from "./gesture-types";
 import type { Hit, SpatialIndex } from "./hit-test";
 import { dragPreview } from "./pin-snap";
 import type { DragPreview } from "./pin-snap";
@@ -21,36 +21,6 @@ import type { Clipboard, ClipboardDid, Selection } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
 export type Tool = "pan" | "select";
-
-/** A drag in progress. Points are world units, except `pan`, which follows the screen. */
-export type Drag =
-  | { readonly kind: "move"; readonly origin: Point; readonly delta: Point }
-  | { readonly kind: "pan"; readonly last: Point }
-  | {
-      readonly kind: "marquee";
-      readonly shape: "box" | "lasso";
-      readonly points: readonly Point[];
-      readonly additive: boolean;
-    }
-  /** A new wire follows the pointer from `from`; it connects on release over a legal pin. */
-  | {
-      readonly kind: "wire";
-      readonly from: PinRef;
-      readonly color?: WireColor;
-      readonly point: Point;
-    }
-  /**
-   * Moves interior segment `index` of the wire in bend mode by `offset` world px along `axis`
-   * (perpendicular to the segment), measured from where the drag started (`origin`).
-   */
-  | {
-      readonly kind: "segment";
-      readonly wireId: WireId;
-      readonly index: number;
-      readonly axis: "x" | "y";
-      readonly origin: Point;
-      readonly offset: number;
-    };
 
 export interface PinCard {
   readonly instanceId: InstanceId;

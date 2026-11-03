@@ -2,9 +2,9 @@
 import { assertNever } from "~/shared/assert-never";
 
 import { panBy } from "./camera";
-import type { Gesture } from "./gesture-types";
+import type { Drag, Gesture } from "./gesture-types";
 import { done, previewOf, selected, withoutOverlays } from "./interaction";
-import type { Drag, InteractionContext, InteractionState, Interpreted } from "./interaction";
+import type { InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { endSegmentDrag, segmentMoved, startSegmentDrag } from "./interaction-bends";
 import { chipOf, hitAt, toWorld } from "./interaction-hits";
 import { endMarquee, marqueePoints } from "./interaction-marquee";

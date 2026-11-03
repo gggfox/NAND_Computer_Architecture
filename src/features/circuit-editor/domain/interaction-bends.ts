@@ -3,15 +3,9 @@ import type { WireId } from "~/shared/ids";
 
 import { bendHandles, bentRoute, handleAt, moveSegment } from "./bend-geometry";
 import type { BendHandle } from "./bend-geometry";
-import type { Gesture } from "./gesture-types";
+import type { Drag, Gesture } from "./gesture-types";
 import { done, withoutOverlays } from "./interaction";
-import type {
-  Drag,
-  Effect,
-  InteractionContext,
-  InteractionState,
-  Interpreted,
-} from "./interaction";
+import type { Effect, InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { toWorld } from "./interaction-hits";
 
 type SegmentDrag = Extract<Drag, { kind: "segment" }>;

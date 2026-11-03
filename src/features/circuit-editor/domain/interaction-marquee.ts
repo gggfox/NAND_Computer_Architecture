@@ -1,9 +1,10 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import type { Point } from "~/features/projects";
 
+import type { Drag } from "./gesture-types";
 import { chipsIn } from "./hit-test";
 import { selected } from "./interaction";
-import type { Drag, InteractionContext, InteractionState, Interpreted } from "./interaction";
+import type { InteractionContext, InteractionState, Interpreted } from "./interaction";
 import { addInstances, inBox, inLasso, selectInstances, withInnerWires } from "./selection";
 
 type Rect = Parameters<typeof chipsIn>[1];
