@@ -15,14 +15,16 @@ const pickIn = (context: CanvasMenuContext, pick: QuickAddPick): void => {
     context.place(pick.kind);
   } else if (pick.type === "pin") {
     context.addPin(pick.direction);
-  } else {
+  } else if (pick.type === "tidy") {
     context.tidyWires();
+  } else {
+    context.suggestWires();
   }
 };
 
 /**
  * The canvas's quick-add menu at the press point (D9): search the library, or pick from Recent,
- * Starred, the pins, the built-ins and Tidy wires. Each pick acts at the point and closes the menu.
+ * Starred, the pins, the built-ins, Tidy wires and Suggest wires. Each pick acts at the point and closes the menu.
  */
 export function QuickAdd({
   session,

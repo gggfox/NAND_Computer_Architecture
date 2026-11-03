@@ -58,6 +58,8 @@ export interface CanvasMenuContext {
   readonly screen: Point;
   readonly close: () => void;
   readonly tidyWires: () => void;
+  /** Proposes wires as ghosts (D18). */
+  readonly suggestWires: () => void;
   /** Places one `kind` at the menu's point. */
   readonly place: (kind: PlaceableKind) => void;
   /** Adds one pin of the open chip at the menu's point. */

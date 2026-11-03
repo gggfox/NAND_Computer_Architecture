@@ -4,6 +4,7 @@ import type { InstanceId, WireId } from "~/shared/ids";
 import { bendHandles } from "./bend-geometry";
 import type { Scene } from "./geometry";
 import type { Armed, Bends, BitPick, InteractionState, Menu } from "./interaction";
+import { suggestionsAfter } from "./interaction-suggest";
 import { isEmpty, prune } from "./selection";
 import { legalTargets } from "./wiring-targets";
 
@@ -101,12 +102,15 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
     bends: _bends,
     drag: _drag,
     pinPick,
+    suggestions,
     ...rest
   } = state;
   const selection = prune(state.selection, scene);
+  const ghosts = suggestionsAfter(suggestions, scene);
   return {
     ...rest,
     selection,
+    ...(ghosts === undefined ? {} : { suggestions: ghosts }),
     ...(pinPick === true && !isEmpty(selection) ? { pinPick } : {}),
     ...(focus !== undefined && present.instances.has(focus) ? { focus } : {}),
     ...(menuThere(menu, present) ? { menu } : {}),

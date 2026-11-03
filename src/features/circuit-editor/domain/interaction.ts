@@ -24,6 +24,9 @@ import type {
   PinAnnouncement,
   PinCommand,
   Selection,
+  SuggestAnnouncement,
+  SuggestCommand,
+  Suggestions,
 } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
@@ -108,6 +111,8 @@ export interface InteractionState {
   readonly recent: readonly PlaceableKind[];
   /** What Ctrl+C or Ctrl+X took, for Ctrl+V. */
   readonly clipboard?: Clipboard;
+  /** Proposed wires shown as ghosts until accepted or dismissed (D9). */
+  readonly suggestions?: Suggestions;
 }
 
 export const initialInteraction = (camera: Camera, tool: Tool): InteractionState => ({
@@ -168,7 +173,8 @@ export type InteractionCommand =
   | { readonly type: "placeAt"; readonly kind: PlaceableKind; readonly screen?: Point }
   /** Adds one 1-bit pin of the open chip, its piece centred on `screen`. */
   | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point }
-  | PinCommand;
+  | PinCommand
+  | SuggestCommand;
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -202,7 +208,8 @@ export type Announcement =
   | { readonly type: "placing"; readonly kind: PlaceableKind | undefined }
   | { readonly type: "placed"; readonly kind: PlaceableKind }
   | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string }
-  | PinAnnouncement;
+  | PinAnnouncement
+  | SuggestAnnouncement;
 
 export type Effect =
   | { readonly type: "dispatch"; readonly action: EditorAction }

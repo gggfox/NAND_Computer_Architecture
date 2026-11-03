@@ -19,6 +19,7 @@ import {
   wireSelectedPins,
 } from "./interaction-pin-select";
 import { PLACE_COMMANDS, stopPlacing } from "./interaction-place";
+import { dismissGhosts, SUGGEST_COMMANDS } from "./interaction-suggest";
 import { completionFor, legalTargets } from "./wiring-targets";
 
 type PinHit = Extract<Hit, { type: "pin" }>;
@@ -152,14 +153,17 @@ export const onPinTap = (
 /**
  * Escape's arming step: the bit picker closes first, then a placement (keeping the selection),
  * then the armed pin (and a wire being drawn, so its release says nothing more), then the pin
- * list with Pick pins; else `undefined`.
+ * list with Pick pins, then the suggested ghosts (D12); else `undefined`.
  */
 export const cancelWiring = (state: InteractionState): Interpreted | undefined => {
   if (state.bitPick !== undefined) {
     const { bitPick: _bitPick, ...rest } = state;
     return done(rest);
   }
-  return stopPlacing(state) ?? (state.armed === undefined ? clearPins(state) : disarmed(state));
+  return (
+    stopPlacing(state) ??
+    (state.armed === undefined ? (clearPins(state) ?? dismissGhosts(state)) : disarmed(state))
+  );
 };
 
 /** `w`: arms the pin in the card, else the focused chip's first pin. */
@@ -227,12 +231,15 @@ type WiringHandlers = {
  * The arming commands, for the command table: a pin's (`arm`, `connect`, `pickBit`,
  * `setWireColor`) and a part's placement. Arming either disarms the other (D6).
  */
-export const WIRING_COMMANDS: WiringHandlers & typeof PLACE_COMMANDS & typeof PIN_SELECT_COMMANDS =
-  {
-    arm: (state, _command, context) => armByKey(state, context),
-    connect: (state, _command, context) => connectByKey(state, context),
-    pickBit: (state, command, context) => pickBit(state, command.bit, context),
-    setWireColor: (state, command) => setWireColor(state, command.color),
-    ...PLACE_COMMANDS,
-    ...PIN_SELECT_COMMANDS,
-  };
+export const WIRING_COMMANDS: WiringHandlers &
+  typeof PLACE_COMMANDS &
+  typeof PIN_SELECT_COMMANDS &
+  typeof SUGGEST_COMMANDS = {
+  arm: (state, _command, context) => armByKey(state, context),
+  connect: (state, _command, context) => connectByKey(state, context),
+  pickBit: (state, command, context) => pickBit(state, command.bit, context),
+  setWireColor: (state, command) => setWireColor(state, command.color),
+  ...PLACE_COMMANDS,
+  ...PIN_SELECT_COMMANDS,
+  ...SUGGEST_COMMANDS,
+};

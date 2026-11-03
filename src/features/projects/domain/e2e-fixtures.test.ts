@@ -1,4 +1,5 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+/* oxlint-disable typescript/prefer-readonly-parameter-types -- the builders' model types are not deeply readonly */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -6,7 +7,7 @@ import { describe, expect, test } from "vitest";
 
 import { newChip, pinDef, pinPiece, piece, projectWith, wire } from "./builders";
 import { parseProjectFile, serializeProject } from "./format";
-import type { Project } from "./model";
+import type { ChipInstance, PinDef, Project, Wire } from "./model";
 
 /*
  * Generates the E2E fixtures in `e2e/fixtures/` from the real builders and checks that each
@@ -26,8 +27,16 @@ const SAVED_IDS = 0x3_00;
 const SAVE_FLOW_IDS = 0x5_00;
 const RAM_CELL_IDS = 0x6_00;
 const BIT_BUS_IDS = 0x7_00;
+const REGISTER_FILE_IDS = 0x8_00;
 const BIT_BUS_OUTPUTS = 4;
 const ROW = 80;
+const REG_ROW = 120;
+const FILE_X = 480;
+const FILE_ROW = 240;
+const LOADS_FROM = 2;
+const NAND_OUT = 2;
+const NAND_X = 240;
+const Q_X = 480;
 
 /** A 4-bit input D (its pin at world (40, 80)), a NAND at (160, 40) and an output; no wires. */
 const busProject = (): Project => {
@@ -165,6 +174,83 @@ const bitBusProject = (): Project => {
   return projectWith("Bit bus", [newChip("Main", draft)], SEED);
 };
 
+const range = (count: number): readonly number[] => Array.from({ length: count }, (_u, i) => i);
+
+interface RegBit {
+  readonly din: PinDef;
+  readonly qDef: PinDef;
+  readonly parts: readonly ChipInstance[];
+  readonly wires: readonly Wire[];
+}
+
+/** The bits' pins, pieces and wires as one circuit, with `load` and `clk` between the pins. */
+const joined = (
+  bits: readonly RegBit[],
+  middle: readonly PinDef[],
+  extra: readonly ChipInstance[],
+) => {
+  const circuit = { pins: [] as PinDef[], instances: [] as ChipInstance[], wires: [] as Wire[] };
+  circuit.pins.push(...bits.map((bit) => bit.din), ...middle, ...bits.map((bit) => bit.qDef));
+  circuit.instances.push(...bits.flatMap((bit) => bit.parts), ...extra);
+  circuit.wires.push(...bits.flatMap((bit) => bit.wires));
+  return circuit;
+};
+
+/** The saved `Reg` chip: inputs `d0`..`d3`, `load`, `clk`; outputs `q0`..`q3`; one NAND per bit. */
+const regChip = () => {
+  const [load, clk] = [pinDef("load", "input"), pinDef("clk", "input")] as const;
+  const loadPiece = pinPiece(load, { x: 0, y: BUS_WIDTH * REG_ROW });
+  const clkPiece = pinPiece(clk, { x: 0, y: (BUS_WIDTH + 1) * REG_ROW });
+  const bits = range(BUS_WIDTH).map((index) => {
+    const [din, qDef] = [
+      pinDef(`d${String(index)}`, "input"),
+      pinDef(`q${String(index)}`, "output"),
+    ];
+    const y = index * REG_ROW;
+    const [dIn, nand, qPiece] = [
+      pinPiece(din, { x: 0, y }),
+      piece({ type: "nand" }, { x: NAND_X, y }),
+      pinPiece(qDef, { x: Q_X, y }),
+    ] as const;
+    const wires = [
+      wire({ instanceId: dIn.id, pin: 0 }, { instanceId: nand.id, pin: 0 }),
+      wire({ instanceId: loadPiece.id, pin: 0 }, { instanceId: nand.id, pin: 1 }),
+      wire({ instanceId: nand.id, pin: NAND_OUT }, { instanceId: qPiece.id, pin: 0 }),
+    ];
+    return { din, qDef, parts: [dIn, nand, qPiece], wires };
+  });
+  const circuit = joined(bits, [load, clk], [loadPiece, clkPiece]);
+  return newChip("Reg", circuit, { saved: true });
+};
+
+/**
+ * `Main` (open): a 4-bit input `d` at (0, 0), `clk` at (0, 80), inputs `load0`..`load3` from
+ * (0, 160) down, and four `Reg`s at x = 480, 240 apart; no wires. Like `registerFileScene`.
+ */
+const registerFileProject = (): Project => {
+  const reg = regChip();
+  const [dPin, clkPin] = [pinDef("d", "input", BUS_WIDTH), pinDef("clk", "input")] as const;
+  const loadPins = range(BUS_WIDTH).map((index) => pinDef(`load${String(index)}`, "input"));
+  const loads: ChipInstance[] = [];
+  for (const [index, pin] of loadPins.entries()) {
+    loads.push(pinPiece(pin, { x: 0, y: (index + LOADS_FROM) * ROW }));
+  }
+  const regs = range(BUS_WIDTH).map((index) =>
+    piece({ type: "custom", chipId: reg.id }, { x: FILE_X, y: index * FILE_ROW }),
+  );
+  const main = newChip("Main", {
+    pins: [dPin, clkPin, ...loadPins],
+    instances: [
+      pinPiece(dPin, { x: 0, y: 0 }),
+      pinPiece(clkPin, { x: 0, y: ROW }),
+      ...loads,
+      ...regs,
+    ],
+    wires: [],
+  });
+  return projectWith("Register file", [main, reg], SEED);
+};
+
 /** Random ids replaced, in order of appearance, by fixed ones from `base`, so a file is reproducible. */
 const withFixedIds = (text: string, base: number): string => {
   const ids = new Map<string, string>();
@@ -185,6 +271,7 @@ const FIXTURE_CASES = [
   { file: "save-flow.json", build: saveFlowProject, idBase: SAVE_FLOW_IDS },
   { file: "ram-cell.json", build: ramCellProject, idBase: RAM_CELL_IDS },
   { file: "bit-bus.json", build: bitBusProject, idBase: BIT_BUS_IDS },
+  { file: "register-file.json", build: registerFileProject, idBase: REGISTER_FILE_IDS },
 ] as const;
 
 describe("the E2E fixtures", () => {

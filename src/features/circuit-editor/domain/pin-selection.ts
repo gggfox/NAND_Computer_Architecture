@@ -1,4 +1,4 @@
-import type { ChipInstance, ConnectionError, PinRef } from "~/features/projects";
+import type { ChipInstance, ConnectionError, PinRef, Point } from "~/features/projects";
 import type { InstanceId } from "~/shared/ids";
 
 import { partOf, pinPosition } from "./geometry";
@@ -72,6 +72,16 @@ const kindKey = (scene: Scene, instance: ChipInstance): string => {
   return kind.type === "pin" ? `pin:${partOf(scene.circuit, instance)}` : kind.type;
 };
 
+/** Something at an anchor, with its place in the instance list. */
+export interface Placed {
+  readonly anchor: Point;
+  readonly order: number;
+}
+
+/** Reading order (D8): top to bottom by anchor, then left to right, then instance order. */
+export const readingOrder = (a: Placed, b: Placed): number =>
+  a.anchor.y - b.anchor.y || a.anchor.x - b.anchor.x || a.order - b.order;
+
 /**
  * `like`'s pin (by key) on every chip of `like`'s kind among `instanceIds`, in reading order
  * (D3): top to bottom by anchor, then left to right, then instance order.
@@ -93,6 +103,6 @@ export const samePinOn = (
           : undefined;
       return anchor === undefined ? [] : [{ instance, anchor, order }];
     })
-    .toSorted((a, b) => a.anchor.y - b.anchor.y || a.anchor.x - b.anchor.x || a.order - b.order)
+    .toSorted(readingOrder)
     .map(({ instance }) => ({ instanceId: instance.id, pin: like.pin }));
 };

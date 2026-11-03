@@ -11,6 +11,7 @@ import type {
 import { onCommand } from "./interaction-commands";
 import { onGesture } from "./interaction-gestures";
 import { afterHistory } from "./interaction-history";
+import { ghostTap } from "./interaction-suggest";
 
 /** Pointer movement alone leaves a refusal notice up; every other gesture or command clears it. */
 const KEEPS_NOTICE: ReadonlySet<Gesture["type"]> = new Set(["hover", "hoverEnd"]);
@@ -40,7 +41,7 @@ export const interact = (
   const state = noticeCleared(before, input);
   switch (input.type) {
     case "gesture": {
-      return onGesture(state, input.gesture, context);
+      return ghostTap(state, input.gesture, context) ?? onGesture(state, input.gesture, context);
     }
     case "command": {
       return onCommand(state, input.command, context);

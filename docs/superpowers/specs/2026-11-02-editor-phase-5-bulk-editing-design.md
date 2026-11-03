@@ -66,7 +66,7 @@ Each PR is usable on its own and merges to `main` before the next one starts.
 
 ### 3.3 Suggest wires (PR 5c)
 
-1. **On demand (owner).** Suggest wires runs only when asked: a **Suggest wires** button in the toolbar, also in the canvas menu, with the shortcut `Ctrl`/`⌘`+`Shift`+`W`. Nothing appears unasked.
+1. **On demand (owner).** Suggest wires runs only when asked: a **Suggest wires** button in the toolbar, also in the canvas menu, with the shortcut `Shift`+`W` (owner, 2026-11-03). `Ctrl`/`⌘`+`Shift`+`W` was the first idea, but Chrome, Edge and Firefox keep it to close the window, so a page never gets the key. Nothing appears unasked.
    - With chips selected, it suggests only wires that touch the selection. With nothing selected, it considers the whole chip (my call).
 2. **What it proposes (spec §5.7).** It proposes wires only into unconnected inputs: inputs of parts and circuit output pieces that have no wire. Rules, in order. An input takes the first rule that gives it exactly one source:
    1. **Same name**, case-insensitive: an output called `clk` to an input called `clk`.

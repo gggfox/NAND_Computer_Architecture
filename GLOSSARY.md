@@ -44,6 +44,10 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Pick pins**: the selection bar toggle that makes a plain tap on a pin add it to the pin selection, or remove it. The touch way to do what `Shift`+tap does.
 - **Reading order**: top to bottom by pin anchor, then left to right, then instance order. "Select this pin on all selected chips" adds pins in reading order, so an Array's pins come row by row. Not the same as canvas order, which `]`/`[` use and which follows instance order.
 - **Bulk wire**: wiring every pin in the pin selection to one source pin, as one undo step. A same-width source fans out; a wider source is wired bit by bit, selected pin k to bit k. It is all or nothing: one illegal wire refuses the lot and names the first offending pin.
+- **Suggest wires**: the toolbar button, canvas menu entry and `Shift`+`W` that propose wires into unconnected inputs, by same name, by numbered series, or because there is only one legal source. Runs only when asked, and leaves ties alone. Nothing is an edit until it is accepted. _Avoid_: auto-wire, autoroute.
+- **Ghost wire**: a proposed wire drawn dashed until it is accepted. Lives only in interaction state, so undo skips it, and any edit clears it. _Avoid_: preview wire, draft wire.
+- **Numbered series**: two or more pins whose names share a stem and end in different numbers (`d0`, `d1`, `d2`). Matched as a whole, pin k to pin k of another series, or to bit k of a bus as wide as the series.
+- **Suggestions bar**: the row of "Suggested wires: N", Accept all and Dismiss shown while ghost wires show. Docked where the selection bar is, which hides meanwhile.
 - **Marquee**: the box or lasso being drawn to select chips. A chip is picked when its centre is inside.
 - **Pin card**: the small card showing a pin's name, width and live value.
 - **Chip menu**: the menu of actions on a chip (Delete; for custom chips Rename chip, Recolour chip, Look inside).

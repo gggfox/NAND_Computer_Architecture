@@ -92,7 +92,12 @@ const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) =
       ctrlOrMeta: event.ctrlKey || event.metaKey,
       alt: event.altKey,
     },
-    { wiring: keyWiring(state), focus: state.focus },
+    {
+      wiring: keyWiring(state),
+      ghosts: state.suggestions !== undefined,
+      ghostFocused: state.suggestions?.focus !== undefined,
+      focus: state.focus,
+    },
   );
 };
 

@@ -177,3 +177,17 @@ export const freeNandPosition = (scene: Scene): Point => {
   const bottom = Math.max(...taken.map((rect) => rect.y + rect.height));
   return { x: FIRST_COLUMN, y: bottom };
 };
+
+/** The straight-line distance between two points. */
+export const distance = (first: Point, second: Point): number =>
+  Math.hypot(first.x - second.x, first.y - second.y);
+
+/** The distance from `point` to the segment `from`-`to`. */
+export const segmentDistance = (point: Point, from: Point, to: Point): number => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = dx * dx + dy * dy;
+  const along = length === 0 ? 0 : ((point.x - from.x) * dx + (point.y - from.y) * dy) / length;
+  const clamped = Math.min(1, Math.max(0, along));
+  return distance(point, { x: from.x + clamped * dx, y: from.y + clamped * dy });
+};

@@ -106,6 +106,10 @@ const canvasMenuContext = (session: EditorSession, menu: CanvasMenu): CanvasMenu
       close();
       send({ type: "tidyWires" });
     },
+    suggestWires: () => {
+      close();
+      send({ type: "suggestWires" });
+    },
     place: (kind) => {
       close();
       send({ type: "placeAt", kind, screen });
@@ -118,7 +122,7 @@ const canvasMenuContext = (session: EditorSession, menu: CanvasMenu): CanvasMenu
 };
 
 /**
- * The canvas menu: the `slot` when given (the library's quick-add), else Tidy wires alone (also
+ * The canvas menu: the `slot` when given (the library's quick-add), else Tidy wires and Suggest wires (also
  * on the toolbar, so the menu is never the only path).
  */
 export function CanvasMenuOverlay({
@@ -135,9 +139,16 @@ export function CanvasMenuOverlay({
     <PointMenu
       label={m.canvas_menu_label()}
       point={menu.screen}
-      entries={[{ id: "tidy", label: m.canvas_menu_tidy() }]}
-      onAction={() => {
-        context.tidyWires();
+      entries={[
+        { id: "tidy", label: m.canvas_menu_tidy() },
+        { id: "suggest", label: m.suggest_wires() },
+      ]}
+      onAction={(id) => {
+        if (id === "suggest") {
+          context.suggestWires();
+        } else {
+          context.tidyWires();
+        }
       }}
       onClose={() => {
         context.close();

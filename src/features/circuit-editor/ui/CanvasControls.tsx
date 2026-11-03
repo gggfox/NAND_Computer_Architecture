@@ -31,7 +31,7 @@ export function ToolSwitch({ session }: { readonly session: EditorSession }): Re
 }
 
 /**
- * Delete, the next wire colour, Tidy wires, zoom, fit and the keyboard help: the toolbar twins of
+ * Delete, the next wire colour, Tidy wires, Suggest wires, zoom, fit and the keyboard help: the toolbar twins of
  * the canvas keys and menus.
  */
 export function CanvasButtons({ session }: { readonly session: EditorSession }): ReactNode {
@@ -51,6 +51,9 @@ export function CanvasButtons({ session }: { readonly session: EditorSession }):
       <WireColorButton session={session} />
       <Button onPress={run({ type: "tidyWires" })} variant="quiet">
         {m.tidy_wires()}
+      </Button>
+      <Button onPress={run({ type: "suggestWires" })} variant="quiet">
+        {m.suggest_wires()}
       </Button>
       <Button onPress={run({ type: "zoomOut" })} variant="quiet">
         {m.zoom_out()}

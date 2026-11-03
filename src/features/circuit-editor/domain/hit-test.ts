@@ -5,7 +5,7 @@ import type { InstanceId, WireId } from "~/shared/ids";
 
 import { GRID } from "./chip-layout";
 import type { Rect } from "./chip-layout";
-import { layoutIn, wireRoute } from "./geometry";
+import { distance, layoutIn, segmentDistance, wireRoute } from "./geometry";
 import type { Scene } from "./geometry";
 
 /** The smallest target, in screen pixels (spec §3, WCAG 2.5.8). */
@@ -171,18 +171,6 @@ const overlaps = (first: Rect, second: Rect): boolean =>
   second.x <= first.x + first.width &&
   first.y <= second.y + second.height &&
   second.y <= first.y + first.height;
-
-const distance = (first: Point, second: Point): number =>
-  Math.hypot(first.x - second.x, first.y - second.y);
-
-const segmentDistance = (point: Point, from: Point, to: Point): number => {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = dx * dx + dy * dy;
-  const along = length === 0 ? 0 : ((point.x - from.x) * dx + (point.y - from.y) * dy) / length;
-  const clamped = Math.min(1, Math.max(0, along));
-  return distance(point, { x: from.x + clamped * dx, y: from.y + clamped * dy });
-};
 
 type PinEntry = Extract<Entry, { type: "pin" }>;
 

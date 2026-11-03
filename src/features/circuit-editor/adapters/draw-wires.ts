@@ -37,7 +37,7 @@ interface Batch {
   readonly signals: Set<string>;
 }
 
-const boundsOfPoints = (points: Route): Rect => {
+export const boundsOfPoints = (points: Route): Rect => {
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
   const [x, y] = [Math.min(...xs), Math.min(...ys)];
