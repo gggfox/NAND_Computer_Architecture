@@ -123,7 +123,7 @@ describe("Enter", () => {
     expect(result.state.pinPick).toBeUndefined();
   });
 
-  it("does nothing with no pins selected or no card", () => {
+  it("does nothing with no pins selected, or pins selected but no card", () => {
     const rig = grid();
     const { context, state, pieceA } = rig;
     const card = { instanceId: pieceA.id, pin: 0, screen: PIN_A_OUT, pinned: true };

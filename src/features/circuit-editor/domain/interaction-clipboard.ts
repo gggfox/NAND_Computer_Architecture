@@ -90,8 +90,9 @@ const cut = (state: InteractionState, context: InteractionContext): Interpreted 
     instanceIds: clipboard.instances.map((item) => item.id),
     wireIds: [],
   } as const;
+  const { pinPick: _pinPick, ...open } = withoutOverlays(state);
   return done(
-    { ...withoutOverlays(state), selection: EMPTY_SELECTION, clipboard },
+    { ...open, selection: EMPTY_SELECTION, clipboard },
     { type: "dispatch", action },
     {
       type: "announce",

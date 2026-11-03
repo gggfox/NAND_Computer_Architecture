@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { dispatched, NAND_A, wiring } from "./interaction-wiring.fixtures";
-import { command as run } from "./interaction.fixtures";
-import { commandForKey } from "./keymap";
+import { command as run, screen } from "./interaction.fixtures";
+import { commandForKey, keyWiring } from "./keymap";
 import type { KeyPress } from "./keymap";
+import { EMPTY_SELECTION } from "./selection";
 
 const press = (key: string, more: Partial<KeyPress> = {}): KeyPress => ({
   key,
@@ -137,5 +138,22 @@ describe("rename key", () => {
       instanceId: pieceA.id,
     });
     expect(commandForKey(press("F2"), { wiring: false, focus: state.focus })).toBeUndefined();
+  });
+});
+
+describe("keyWiring", () => {
+  const rig = wiring();
+  const pins = { ...EMPTY_SELECTION, pins: [{ instanceId: rig.pieceA.id, pin: 0 }] };
+  const card = { instanceId: rig.pieceA.id, pin: 0, screen: screen(0, 0), pinned: true };
+
+  it("is off with pins selected but no card, so Enter opens the menu", () => {
+    expect(keyWiring({ ...rig.state, selection: pins })).toBe(false);
+    expect(keyWiring(rig.state)).toBe(false);
+  });
+
+  it("is on with pins selected and a card open, or with a pin armed", () => {
+    expect(keyWiring({ ...rig.state, selection: pins, card })).toBe(true);
+    const armed = { end: { instanceId: rig.pieceA.id, pin: 0 }, legal: new Set<string>() };
+    expect(keyWiring({ ...rig.state, armed })).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import type { InstanceId } from "~/shared/ids";
 
-import type { InteractionCommand } from "./interaction";
+import type { InteractionCommand, InteractionState } from "./interaction";
 
 /** The parts of a `KeyboardEvent` the canvas reads. */
 export interface KeyPress {
@@ -54,12 +54,16 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
 
 /**
  * What the map reads from the canvas: `Enter` wires instead of opening a menu while a pin is armed
- * or pins are selected (`wiring`), and `F2` renames the focused pin piece.
+ * or pins are selected with a pin card open (`wiring`), and `F2` renames the focused pin piece.
  */
 interface KeyContext {
   readonly wiring: boolean;
   readonly focus?: InstanceId | undefined;
 }
+
+/** Whether `Enter` wires (D10): a pin is armed, or pins are selected and a pin card is open. */
+export const keyWiring = (state: InteractionState): boolean =>
+  state.armed !== undefined || (state.selection.pins.length > 0 && state.card !== undefined);
 
 /** `F2` renames the focused chip when it is a pin piece; with nothing focused it is the browser's. */
 const f2 = (context?: KeyContext): InteractionCommand | undefined =>

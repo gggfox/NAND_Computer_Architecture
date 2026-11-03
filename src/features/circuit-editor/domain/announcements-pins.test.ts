@@ -44,7 +44,7 @@ describe("pin selection and bulk wire announcements", () => {
     expect(say(0)).toBe("Pin selection cleared");
     setLocale("es");
     expect(say(3)).toBe("Pines seleccionados: 3");
-    expect(say(0)).toBe("Selección de pines vacía");
+    expect(say(0)).toBe("Selección de pines borrada");
   });
 
   it("says a fan-out and a bit-by-bit wire, naming the pin", () => {
@@ -88,7 +88,7 @@ const BULK: readonly (readonly [BulkWireError, string, string])[] = [
   [
     { type: "SameDirection" },
     "the selected pins face the same way as that pin",
-    "los pines seleccionados miran hacia el mismo lado que ese pin",
+    "los pines seleccionados tienen la misma dirección que ese pin",
   ],
   [{ type: "TooManyPins", pins: 5, bits: 4 }, "5 pins but only 4 bits", "5 pines pero solo 4 bits"],
   [
