@@ -2,7 +2,13 @@
 
 ## Status
 
-Approved by the owner as planned on 2026-11-03, including every decision marked **(beyond the spec)** and `Shift`+`W` as the shortcut (D13). Nothing is built yet; Task 0 is next.
+Approved by the owner as planned on 2026-11-03, including every decision marked **(beyond the spec)** and `Shift`+`W` as the shortcut (D13). Task 0 is done; Task 1 is next.
+
+- **Spike (Task 0)**, 200-part chip (40 `Reg`, 150 NANDs, 12 pin pieces; 100 NAND inputs wired), median of 7, no coverage, M-series Mac:
+  - Naive matching: **124 ms** (about 444 unconnected sinks x 316 sources, 138,700 legal pairs). On the 4-register file it is 0.15 ms.
+  - Indexed matching (name, stem and width indexes, at most 8 `checkConnection` calls per sink): **2.3 ms** (cold first run 4.3 ms). It proposed 40 wires here, as a sketch.
+  - Ghost routing (200 proposals: 40 `clk` + 160 `d` bits, one `settled`): **108 ms**, nearly all in `settled` (106 ms); building the draft is 0.4 ms. It is roughly quadratic: 100 proposals took 27 ms, 200 took 108 ms.
+  - **Decision: over budget on routing.** Indexed matching fits the 16 ms frame easily, but routing is about 7x over. Per Task 0 Step 3 the plan is not changed here; the likely fix (draw ghosts as elbows with `waypoints: []` and route only on accept) changes D9, so it goes to the owner first.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
