@@ -228,7 +228,11 @@ const deleteCarryWire = async (page: Page, pointer: Pointer): Promise<void> => {
   const from = nandPins(board.nands.at(-1)).out;
   const polyline = [from, ...wire.waypoints, offset(board.carry, OUTPUT_PIN)];
   await pointer.tap(await worldToPage(page, middleOf(polyline)));
-  await tap(page.getByRole("button", { name: "Delete", exact: true }));
+  await tap(
+    page
+      .getByRole("toolbar", { name: "Editor tools" })
+      .getByRole("button", { name: "Delete", exact: true }),
+  );
   await expect
     .poll(async () => {
       const after = await exportedProject(page);

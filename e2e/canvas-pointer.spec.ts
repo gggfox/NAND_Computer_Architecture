@@ -101,7 +101,10 @@ test("a box around both inputs selects them for Delete, and Undo restores them",
   await page.mouse.up();
   await expect(page.getByText("selected", { exact: true })).toHaveCount(BOTH_INPUTS);
 
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page
+    .getByRole("toolbar", { name: "Editor tools" })
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect(inputSwitch(page, "Input A")).toHaveCount(0);
   await expect(inputSwitch(page, "Input B")).toHaveCount(0);
   await expect(page.getByText("NAND gate 1", { exact: true })).toBeVisible();
