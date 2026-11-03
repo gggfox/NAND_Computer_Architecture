@@ -1,0 +1,37 @@
+/* Covers the canvas without taking its pointer events; the bar inside takes its own. */
+.dock {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Placed by inline insets; the translate puts its centre-bottom (or centre-top) on that point. */
+.bar {
+  position: absolute;
+  inline-size: max-content;
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+}
+
+.below {
+  transform: translate(-50%, 0);
+}
+
+/* On a narrow canvas the bar sits at the bottom centre, clear of the selection and the thumb. */
+@media (width <= 600px) {
+  .dock {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-block-end: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* A static box ignores the inline insets. */
+  .bar,
+  .below {
+    position: static;
+    transform: none;
+  }
+}

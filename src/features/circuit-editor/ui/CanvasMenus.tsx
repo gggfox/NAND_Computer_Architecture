@@ -21,6 +21,8 @@ type ChipMenu = Extract<Menu, { kind: "chip" }>;
 /** Delete for every part; the chip-definition actions only for custom chips (spec §5.1). */
 const entriesFor = (custom: boolean): readonly MenuEntry[] => [
   { id: "delete", label: m.chip_menu_delete() },
+  { id: "duplicate", label: m.chip_menu_duplicate() },
+  { id: "array", label: m.chip_menu_array() },
   ...(custom
     ? [
         { id: "rename", label: m.chip_menu_rename() },
@@ -63,6 +65,10 @@ function ChipMenuOverlay({
     closeMenu();
     if (id === "delete") {
       send({ type: "command", command: { type: "deleteSelection" } });
+    } else if (id === "duplicate") {
+      send({ type: "command", command: { type: "duplicate" } });
+    } else if (id === "array") {
+      send({ type: "command", command: { type: "showArray" } });
     } else if (chip !== undefined && id === "rename") {
       onDialog({ kind: "rename", chipId: chip.id, name: chip.name });
     } else if (chip !== undefined && id === "recolor") {

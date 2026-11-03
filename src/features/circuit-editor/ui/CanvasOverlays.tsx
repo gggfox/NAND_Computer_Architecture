@@ -6,7 +6,7 @@ import type { EditorSession } from "../application/editor-session";
 import { editorErrorMessage } from "../domain/editor-error-messages";
 import { CanvasMenus } from "./CanvasMenus";
 import type { CanvasMenuSlot, OverlayDialog } from "./CanvasMenus";
-import { KeyboardHelp } from "./KeyboardHelp";
+import { ModeOverlays } from "./ModeOverlays";
 import { OverlayDialogView } from "./OverlayDialogView";
 import { PinCard } from "./PinCard";
 import { PinRenamePopover } from "./PinRenamePopover";
@@ -79,7 +79,6 @@ export function CanvasOverlays({
   readonly canvasMenu?: CanvasMenuSlot | undefined;
 }): ReactNode {
   const card = useStore(session.interaction.store, (state) => state.card);
-  const help = useStore(session.interaction.store, (state) => state.help);
   const [dialog, setDialog] = useState<OverlayDialog>();
   useFocusHostOnClose(dialog, hostRef);
   const close = (): void => {
@@ -94,15 +93,7 @@ export function CanvasOverlays({
       {dialog === undefined ? undefined : (
         <OverlayDialogView session={session} dialog={dialog} onClose={close} />
       )}
-      {help === true ? (
-        <KeyboardHelp
-          onClose={() => {
-            session.interaction.store
-              .getState()
-              .send({ type: "command", command: { type: "hideHelp" } });
-          }}
-        />
-      ) : undefined}
+      <ModeOverlays session={session} />
     </>
   );
 }
