@@ -7,7 +7,7 @@ import { intersects } from "./frame";
 import type { Frame } from "./frame";
 
 /** One suggested wire: the route a real one would take, and whether `n` has focused it. */
-export interface GhostView {
+interface GhostView {
   readonly route: readonly Point[];
   readonly focused: boolean;
 }
