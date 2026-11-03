@@ -93,6 +93,8 @@
   "canvas_copied": "Chips copiados: {count}",
   "canvas_cut": "Chips cortados: {count}",
   "canvas_pasted": "Chips pegados: {count}",
+  "canvas_duplicated": "Chips duplicados: {count}",
+  "canvas_arrayed": "Chips añadidos en una matriz: {count}",
   "canvas_tool_pan": "Arrastrar el lienzo lo desplaza",
   "canvas_tool_select": "Arrastrar el lienzo selecciona",
   "canvas_pin": "Pin {name} de {chip}: {value}. Conexiones: {count}",

@@ -93,6 +93,8 @@
   "canvas_copied": "Chips copied: {count}",
   "canvas_cut": "Chips cut: {count}",
   "canvas_pasted": "Chips pasted: {count}",
+  "canvas_duplicated": "Chips duplicated: {count}",
+  "canvas_arrayed": "Chips added in an array: {count}",
   "canvas_tool_pan": "Dragging the canvas pans",
   "canvas_tool_select": "Dragging the canvas selects",
   "canvas_pin": "Pin {name} of {chip}: {value}. Connections: {count}",

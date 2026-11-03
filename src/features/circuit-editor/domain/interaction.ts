@@ -9,15 +9,15 @@ import type {
 import type { ChipId, InstanceId, PinId, WireId } from "~/shared/ids";
 
 import type { EditorAction, PlaceableKind } from "./actions";
+import type { ArrayRequest } from "./array";
 import type { Camera } from "./camera";
-import type { Size } from "./chip-layout";
-import type { Scene } from "./geometry";
+import type { Scene, Size } from "./geometry";
 import type { Gesture } from "./gesture-types";
 import type { Hit, SpatialIndex } from "./hit-test";
 import { dragPreview } from "./pin-snap";
 import type { DragPreview } from "./pin-snap";
 import { EMPTY_SELECTION, isEmpty } from "./selection";
-import type { Clipboard, Selection } from "./selection";
+import type { Clipboard, ClipboardDid, Selection } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
 export type Tool = "pan" | "select";
@@ -117,8 +117,9 @@ export interface InteractionState {
   readonly bends?: Bends;
   /** The colour new wires get; missing means the default. */
   readonly wireColor?: WireColor;
-  /** The keyboard help dialog is open. */
+  /** The keyboard help dialog is open; `arraying`: the Array dialog is. */
   readonly help?: true;
+  readonly arraying?: true;
   /** Why the last connection was refused, shown over the canvas until the next gesture or command. */
   readonly notice?: ConnectionError;
   readonly renaming?: Renaming;
@@ -159,7 +160,8 @@ export type InteractionCommand =
   | { readonly type: "nextPin"; readonly backwards: boolean }
   /** Selects the next (or previous) wire touching the focused chip. */
   | { readonly type: "nextWire"; readonly backwards: boolean }
-  | { readonly type: "showHelp" | "hideHelp" }
+  | { readonly type: "showHelp" | "hideHelp" | "duplicate" | "showArray" | "hideArray" }
+  | { readonly type: "array"; readonly request: ArrayRequest }
   /** Arms the pin in the card, else the focused chip's first pin. */
   | { readonly type: "arm" }
   /** Wires the armed pin to the pin in the card. */
@@ -204,7 +206,7 @@ export type Announcement =
   | { readonly type: "cleared" }
   | { readonly type: "moved"; readonly count: number }
   | { readonly type: "deleted"; readonly count: number }
-  | { readonly type: "clipboard"; readonly did: "copy" | "cut" | "paste"; readonly count: number }
+  | { readonly type: "clipboard"; readonly did: ClipboardDid; readonly count: number }
   | { readonly type: "tool"; readonly tool: Tool }
   | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }

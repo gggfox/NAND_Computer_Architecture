@@ -19,6 +19,9 @@ describe("clipboard keys", () => {
     [press("x", { ctrlOrMeta: true }), { type: "cut" }],
     [press("v", { ctrlOrMeta: true }), { type: "paste" }],
     [press("V", { ctrlOrMeta: true, shift: true }), { type: "paste" }],
+    [press("d", { ctrlOrMeta: true }), { type: "duplicate" }],
+    [press("D", { ctrlOrMeta: true, shift: true }), { type: "showArray" }],
+    [press("d", { ctrlOrMeta: true, shift: true }), { type: "showArray" }],
   ])("maps %o to %o", (key, command) => {
     expect(commandForKey(key)).toEqual(command);
   });

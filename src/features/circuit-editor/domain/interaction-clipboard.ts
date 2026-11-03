@@ -1,9 +1,9 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
 import type { Point } from "~/features/projects";
 
-import { boundsOf, screenToWorld, worldToScreen } from "./camera";
+import { screenToWorld, worldToScreen } from "./camera";
 import { copyOf, pastedFrom } from "./clipboard";
-import { GRID, layoutIn } from "./geometry";
+import { GRID } from "./geometry";
 import type { Rect } from "./geometry";
 import { done, selected, withoutOverlays } from "./interaction";
 import type {
@@ -12,7 +12,9 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
+import { DUPLICATE_COMMANDS } from "./interaction-duplicate";
 import { snap } from "./move";
+import { piecesBounds } from "./pieces-bounds";
 import { EMPTY_SELECTION } from "./selection";
 import type { Clipboard } from "./selection";
 
@@ -28,13 +30,7 @@ const boundsAt = (
   clipboard: Clipboard,
   delta: Point,
   context: InteractionContext,
-): Rect | undefined =>
-  boundsOf(
-    clipboard.instances.map((item) => {
-      const { rect } = layoutIn(context.scene, item);
-      return { ...rect, x: rect.x + delta.x, y: rect.y + delta.y };
-    }),
-  );
+): Rect | undefined => piecesBounds(context.scene, clipboard.instances, delta);
 
 const inView = (state: InteractionState, rect: Rect, context: InteractionContext): boolean => {
   const topLeft = worldToScreen(state.camera, rect);
@@ -146,8 +142,9 @@ type ClipboardHandlers = {
   ) => Interpreted;
 };
 
-/** The clipboard commands, for the command table. */
-export const CLIPBOARD_COMMANDS: ClipboardHandlers = {
+/** The clipboard commands, with duplicate and array, for the command table. */
+export const CLIPBOARD_COMMANDS: ClipboardHandlers & typeof DUPLICATE_COMMANDS = {
+  ...DUPLICATE_COMMANDS,
   copy: (state, _command, context) => copy(state, context),
   cut: (state, _command, context) => cut(state, context),
   paste: (state, _command, context) => paste(state, context),

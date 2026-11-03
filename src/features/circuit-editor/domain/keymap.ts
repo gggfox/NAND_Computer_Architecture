@@ -68,32 +68,22 @@ const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | u
     ? { type: "connect" }
     : PLAIN.get(press.key)?.(press.shift);
 
-/** With Ctrl or ⌘: only the editing shortcuts; everything else stays the browser's. */
-const withCtrl = ({ key, shift }: KeyPress): InteractionCommand | undefined => {
-  switch (key.toLowerCase()) {
-    case "z": {
-      return { type: shift ? "redo" : "undo" };
-    }
-    case "y": {
-      return { type: "redo" };
-    }
-    case "a": {
-      return { type: "selectAll" };
-    }
-    case "c": {
-      return { type: "copy" };
-    }
-    case "x": {
-      return { type: "cut" };
-    }
-    case "v": {
-      return { type: "paste" };
-    }
-    default: {
-      return undefined;
-    }
-  }
-};
+/** With Ctrl or ⌘ (keys lowercased): only the editing shortcuts; the rest stay the browser's. */
+const WITH_CTRL: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new Map<
+  string,
+  (shift: boolean) => InteractionCommand
+>([
+  ["z", (shift) => ({ type: shift ? "redo" : "undo" })],
+  ["y", () => ({ type: "redo" })],
+  ["a", () => ({ type: "selectAll" })],
+  ["c", () => ({ type: "copy" })],
+  ["x", () => ({ type: "cut" })],
+  ["v", () => ({ type: "paste" })],
+  ["d", (shift) => ({ type: shift ? "showArray" : "duplicate" })],
+]);
+
+const withCtrl = ({ key, shift }: KeyPress): InteractionCommand | undefined =>
+  WITH_CTRL.get(key.toLowerCase())?.(shift);
 
 /** `Shift`+`F10` is the standard keyboard context-menu key; plain F10 stays the browser's. */
 const shiftF10 = (press: KeyPress): InteractionCommand | undefined =>
