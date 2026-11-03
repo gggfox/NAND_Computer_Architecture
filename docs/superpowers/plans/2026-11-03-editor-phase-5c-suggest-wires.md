@@ -2,15 +2,51 @@
 
 ## Status
 
-Approved by the owner as planned on 2026-11-03, including every decision marked **(beyond the spec)** and `Shift`+`W` as the shortcut (D13). Task 0 is done; Task 1 is next.
+Tasks 0–7 are done; Task 8 is this update and the PR. The decisions, and the calls made while building, are recorded in [ADR 50](../../adr/0050-suggest-wires.md). Approved by the owner as planned on 2026-11-03, with `Shift`+`W` as the shortcut (D13).
+
+What shipped:
+
+- `suggest-names.ts` (names of user-named pins, stems and numbers, indexes by name, stem and width) and `suggest-wires.ts` (the three rules, in reading order, scoped by the selection).
+- `ghost-routes.ts` (ghosts routed over a draft circuit with one `settled`, or drawn as elbows above `GHOST_ROUTE_CAP`) and `suggestion-types.ts`.
+- `interaction-suggest.ts` (suggest, `n`/`N` to cycle, accept one, accept all, dismiss, `afterHistory` clearing) and `announcements-suggest.ts`, in `en` and `es`. Accepting reuses 5b's `connectWires`, so Accept all is one undo step.
+- Dashed ghost wires (`adapters/draw-ghosts.ts`) at `GHOST_ALPHA`, with a halo on the focused one.
+- `SuggestionsBar` (Accept all, Dismiss), the **Suggest wires** toolbar button, the canvas menu and quick-add entries, `Shift`+`W`, and the keyboard help rows. `DockedBar.tsx` holds the dock and focus-return logic both bars share.
+- E2E on a register file: suggest, tap one ghost, Accept all with one Undo, keyboard only, and axe on the bar in every theme. Fixtures for the register file and the 200-part chip.
+
+Spike and timing:
 
 - **Spike (Task 0)**, 200-part chip (40 `Reg`, 150 NANDs, 12 pin pieces; 100 NAND inputs wired), median of 7, no coverage, M-series Mac:
   - Naive matching: **124 ms** (about 444 unconnected sinks x 316 sources, 138,700 legal pairs). On the 4-register file it is 0.15 ms.
-  - Indexed matching (name, stem and width indexes, at most 8 `checkConnection` calls per sink): **2.3 ms** (cold first run 4.3 ms). It proposed 40 wires here, as a sketch.
-  - Ghost routing (200 proposals: 40 `clk` + 160 `d` bits, one `settled`): **108 ms**, nearly all in `settled` (106 ms); building the draft is 0.4 ms. It is roughly quadratic: 100 proposals took 27 ms, 200 took 108 ms.
+  - Indexed matching (name, stem and width indexes, at most 8 `checkConnection` calls per sink): **2.3–2.4 ms** (cold first run 4.3 ms). It proposed 40 wires here, as a sketch.
+  - Ghost routing (200 proposals: 40 `clk` + 160 `d` bits, one `settled`): **100–108 ms**, nearly all in `settled` (106 ms); building the draft is 0.4 ms. It is roughly quadratic: 100 proposals took 27 ms, 200 took 108 ms.
   - **Decision: over budget on routing.** Indexed matching fits the 16 ms frame easily, but routing is about 7x over.
-  - **Owner's ruling (2026-11-03): a hybrid.** Up to a cap of about 64 ghosts, they are routed like real wires. Above the cap, they are drawn as dashed elbows, and a wire is routed only when it is accepted. Task 3 measures the cap so that routing stays within 16 ms. D9 and Task 3 are updated.
-  - **Cap measured (Task 3)**, `ghostsOf` alone on the 200-part chip, first N proposals, one `settled`, median of 7, no coverage: N=32 **3.4 ms**, 48 **4.8 ms**, 64 **11.6 ms**, 80 **15.8 ms**, 96 **21.3 ms** (200: about 100 ms; as elbows, 200 take 0.7 ms). 80 is the largest under 16 ms by itself, but matching adds about 2.4 ms, so the full Suggest wires (matching plus routing) stays in one frame only up to 64 (about 14 ms). **`GHOST_ROUTE_CAP` = 64.**
+  - **Owner's ruling (2026-11-03): a hybrid.** Up to a cap, ghosts are routed like real wires. Above the cap, they are drawn as dashed elbows, and a wire is routed only when it is accepted.
+- **Cap measured (Task 3)**, `ghostsOf` alone on the 200-part chip, first N proposals, one `settled`, median of 7, no coverage: N=32 **3.4 ms**, 48 **4.8 ms**, 64 **11.6 ms**, 80 **15.8 ms**, 96 **21.3 ms** (200: about 100 ms; as elbows, 200 take **0.7 ms**). 80 is the largest under 16 ms by itself, but matching adds about 2.4 ms, so the full Suggest wires (matching plus routing) stays in one frame only up to 64 (about 14 ms). **`GHOST_ROUTE_CAP` = 64**, not 80.
+- The committed timing guards assert under 200 ms, because coverage slows them about 15 times.
+- `pnpm e2e:perf`: p95 16.8 ms (drag) and 16.8 ms (glow drag). Visual: 7/7, no baseline changed. `pnpm check` passes (1419 tests).
+- Firefox can't launch on the machine that built this, so its e2e first runs in CI.
+
+Rulings made while building:
+
+- **Names come only from user-named pins (D3).** A series with repeated numbers (`d1`, `D1`) is not a series. An empty name counts as unnamed.
+- **Series-to-bus candidates are named sources only.** `End.width` comes from `endpointInfo`, not `sideWidth`, which scans.
+- **Proposals are sorted by sink reading order only.** Each sink gets at most one proposal, so the bit tiebreak can never fire. The `readingOrder` comparator is exported from `pin-selection.ts` and `samePinOn` uses it.
+- **Ghost draft wires use fresh `newWireId()` ids** (a `ghost:n` cast is banned by lint). They are never dispatched.
+- **`announcements.ts` was at its import limit**, so pin and suggestion announcements now both route through `announcements-suggest.ts` (`isListAnnouncement` and `listAnnouncementText`).
+- **`KeyContext.ghosts` and `ghostFocused` are optional**, so the existing keymap tests stay unchanged.
+- A ghost into a bus bit reads `d.2`, as the pin card does.
+- After one ghost is accepted, focus keeps the same index rules: it drops by one if the accepted ghost was before it, and wraps if it was the accepted one.
+- A ghost is "off screen" by the midpoint of its route's middle segment.
+- **`GHOST_ALPHA` = 0.7**, the lowest 0.05 step that gives at least 3:1 in every theme, for the default wire and all 8 wire colours (the light theme binds default, blue, orange and yellow). The test asserts 0.65 fails, so the value stays minimal. The default ghost colour is the `wire` token. The focused ghost gets the selected-wire halo.
+- `DockedBar.tsx` now holds the dock and focus-return logic both bars share. The suggestions bar also hides while the help dialog is open. Accept all is the default button variant and Dismiss is quiet.
+- The e2e ghost-tap point is computed from the fixture, with no test hook.
+
+Known follow-ups:
+
+- A series of 1-bit sources into the bits of a sink bus (D19).
+- Routing ghosts above the cap in the background, or a few at a time.
+- `route-perf.test.ts` and `to-netlist-source-perf.test.ts` still flake under load.
+- `.pnpm-store/` is left untracked after the Docker visual run.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
@@ -166,12 +202,12 @@ e2e/a11y-suggest.spec.ts              # NEW
 
 Spec §9. It runs first, so a slow result changes the plan before any UI exists. The code is throwaway; only the numbers are kept.
 
-- [ ] **Step 1:** In a throwaway Vitest file (not committed), build a 200-part chip with the builders: 40 instances of a saved custom `Reg` chip (inputs `d0`…`d3`, `load`, `clk`; outputs `q0`…`q3`), 150 NANDs, a 4-bit input piece `d`, a 1-bit input piece `clk`, and 8 more pin pieces. Wire a third of the NAND inputs, so the rest are unconnected.
-- [ ] **Step 2:** Time three things, median of 7 runs each, without coverage:
+- [x] **Step 1:** In a throwaway Vitest file (not committed), build a 200-part chip with the builders: 40 instances of a saved custom `Reg` chip (inputs `d0`…`d3`, `load`, `clk`; outputs `q0`…`q3`), 150 NANDs, a 4-bit input piece `d`, a 1-bit input piece `clk`, and 8 more pin pieces. Wire a third of the NAND inputs, so the rest are unconnected.
+- [x] **Step 2:** Time three things, median of 7 runs each, without coverage:
   - **Naive matching:** for every unconnected sink, `checkConnection` against every source. This is the cost spec §9 worries about.
   - **Indexed matching:** a sketch of D5–D7 with sources indexed by lowercased name, by stem and by width, calling `checkConnection` only for the candidates the index returns.
   - **Ghost routing:** the expected 200 proposals (40 `clk` and 160 bits of `d`) added to a draft and routed with one `settled`.
-- [ ] **Step 3:** Record the three numbers in this plan's Status, and decide:
+- [x] **Step 3:** Record the three numbers in this plan's Status, and decide:
   - Indexed matching plus routing under 16 ms: go on as planned.
   - Matching over budget: stop and report; the likely fix is a lookup for "is this sink driven" built once, instead of `checkConnection`'s scan per call.
   - Routing over budget: draw ghosts as elbows (`waypoints: []`, which `wireRoute` already draws as an elbow) and route only on accept. That changes D9's "routed like real ones", so report it to the owner first.
@@ -200,14 +236,14 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   export const indexSources: (sources: readonly End[]) => SourceIndex;
   ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `splitName`: `d0` → (`d`, 0), `d_12` → (`d`, 12), `D[3]` → (`D`, 3), `clk` → undefined, `0` → undefined, `d[` → undefined, `a1b2` → (`a1b`, 2).
   - `endsOf`: a NAND's pins have no `name` (D3); a custom chip's pins have their definition names; an input piece is a source and an output piece a sink, both named; a sink with a wire on any bit is not unconnected; a 4-bit input has width 4.
   - `indexSources`: two sources named `CLK` and `clk` share one name entry; `q0..q3` on one chip form one series, and `q0..q3` on another chip a second one; input pieces `d0..d3` form one series together; a lone `q0` is not a series.
-- [ ] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/suggest-names.test.ts`. Expect FAIL.
-- [ ] **Step 3:** Implement. Names come from the project's pin definitions (custom chips: the saved version's pins; pieces: the open chip's pin for `pinId`). Use `endpointInfo` for role and `sideWidth` for width.
-- [ ] **Step 4:** Run the test again with coverage (`pnpm vitest run --coverage src/features/circuit-editor/domain/suggest-names.test.ts`): ≥ 95 % branches. Run `pnpm typecheck`.
-- [ ] **Step 5: Commit:** `feat(circuit-editor): name pins and series for suggested wires`.
+- [x] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/suggest-names.test.ts`. Expect FAIL.
+- [x] **Step 3:** Implement. Names come from the project's pin definitions (custom chips: the saved version's pins; pieces: the open chip's pin for `pinId`). Use `endpointInfo` for role and `sideWidth` for width.
+- [x] **Step 4:** Run the test again with coverage (`pnpm vitest run --coverage src/features/circuit-editor/domain/suggest-names.test.ts`): ≥ 95 % branches. Run `pnpm typecheck`.
+- [x] **Step 5: Commit:** `feat(circuit-editor): name pins and series for suggested wires`.
 
 ### Task 2: The matching rules (judgement)
 
@@ -226,7 +262,7 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   export const suggestWires: (scene: Scene, scope?: ReadonlySet<InstanceId>) => readonly Proposal[];
   ```
 
-- [ ] **Step 1: Write the failing tests**, one block per rule and one for ties:
+- [x] **Step 1: Write the failing tests**, one block per rule and one for ties:
   - **Rule 1:** an input piece `clk` and four `Reg` parts: four proposals into each `clk`. `CLK` matches `clk`. A same-named source of the wrong width is ignored (D4), so a 1-bit `q` and a 4-bit `q` don't tie for a 1-bit sink.
   - **Rule 1 tie:** two sources named `clk`: no rule-1 proposal; the sink falls through, and with other 1-bit sources around, gets nothing.
   - **Rule 2, series to series:** `A.q0..q3` → `B.d0..d3`, index by index, when they are the only series with those numbers.
@@ -240,10 +276,10 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   - **The register file (the e2e fixture's chip):** exactly 20 proposals: 4 `clk`, 16 bits of `d`. No `load` pin gets one (Review Focus 2).
   - **Order:** proposals follow the sinks' reading order, then bit.
   - The scene is unchanged (compare before and after).
-- [ ] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/suggest-wires.test.ts`. Expect FAIL.
-- [ ] **Step 3:** Implement as small functions, each ≤ 50 lines and complexity ≤ 10: `byName`, `bySeries` (with the two passes), `byOnlyOption`, and `suggestWires` that runs them in order over the sinks left unresolved by the rule before. Check a candidate's legality with `checkConnection` only after the index narrows it.
-- [ ] **Step 4:** Run the test with coverage (≥ 95 % branches), `pnpm vitest run src/features/circuit-editor/domain/pin-selection.test.ts` (unchanged), and `pnpm typecheck`.
-- [ ] **Step 5: Commit:** `feat(circuit-editor): propose wires by name, series or the only legal option`.
+- [x] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/suggest-wires.test.ts`. Expect FAIL.
+- [x] **Step 3:** Implement as small functions, each ≤ 50 lines and complexity ≤ 10: `byName`, `bySeries` (with the two passes), `byOnlyOption`, and `suggestWires` that runs them in order over the sinks left unresolved by the rule before. Check a candidate's legality with `checkConnection` only after the index narrows it.
+- [x] **Step 4:** Run the test with coverage (≥ 95 % branches), `pnpm vitest run src/features/circuit-editor/domain/pin-selection.test.ts` (unchanged), and `pnpm typecheck`.
+- [x] **Step 5: Commit:** `feat(circuit-editor): propose wires by name, series or the only legal option`.
 
 ### Task 3: Ghost routes and the timing guard (judgement)
 
@@ -277,16 +313,16 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   export const ghostsOf: (scene: Scene, proposals: readonly Proposal[]) => readonly Ghost[];
   ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - Each ghost's route starts at its `from` anchor and ends at its `to` anchor, and doesn't enter a chip body other than its ends' (use `entersChips` from `routing.fixtures.ts`).
   - Two ghosts from one source share their first segment, as fan-out wires do.
   - The scene's circuit is the same object afterwards.
   - **The cap (D9):** with `GHOST_ROUTE_CAP` + 1 proposals, every route is an elbow (start, corner(s), end, as `wireRoute` draws a wire with no waypoints); with `GHOST_ROUTE_CAP` or fewer, they are routed. Set `GHOST_ROUTE_CAP` (start at 64) as the largest round number whose routing on `bigScene` stays under 16 ms (median of 7, no coverage), and record it.
   - **Timing guard:** on Task 0's 200-part chip (`bigScene` in `suggest-wires.fixtures.ts`), `ghostsOf(scene, suggestWires(scene))` takes under 16 ms (median of 7) without coverage, both with all proposals (elbows) and with exactly `GHOST_ROUTE_CAP` of them (routed). Under coverage it asserts a looser bound, as 5b's `connectWires` test does (record the factor). Record the numbers in Status.
-- [ ] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/ghost-routes.test.ts`. Expect FAIL.
-- [ ] **Step 3:** Implement: orient each proposal with `checkConnection` against the draft so far, add it with a placeholder id (`ghost:<n>`, never dispatched), call `settled` once with all of them, and read each route back with `wireRoute`.
-- [ ] **Step 4:** Run the test and `pnpm typecheck`. Expect PASS.
-- [ ] **Step 5: Commit:** `feat(circuit-editor): route suggested wires like real ones`.
+- [x] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain/ghost-routes.test.ts`. Expect FAIL.
+- [x] **Step 3:** Implement: orient each proposal with `checkConnection` against the draft so far, add it with a placeholder id (`ghost:<n>`, never dispatched), call `settled` once with all of them, and read each route back with `wireRoute`.
+- [x] **Step 4:** Run the test and `pnpm typecheck`. Expect PASS.
+- [x] **Step 5: Commit:** `feat(circuit-editor): route suggested wires like real ones`.
 
 ### Task 4: Suggestion commands, taps, keys and history (judgement)
 
@@ -315,7 +351,7 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   interface KeyContext { readonly wiring: boolean; readonly ghosts: boolean; readonly ghostFocused: boolean; readonly focus?: InstanceId | undefined }
   ```
 
-- [ ] **Step 1: Write the failing tests** in `interaction-suggest.test.ts` (fixtures from `interaction.fixtures.ts` and Task 2's register file):
+- [x] **Step 1: Write the failing tests** in `interaction-suggest.test.ts` (fixtures from `interaction.fixtures.ts` and Task 2's register file):
   - `suggestWires` with nothing selected sets 20 ghosts, emits **no `dispatch`**, and announces `suggested` with 20. With one `Reg` selected, 5. With nothing to propose, no `suggestions`, and `suggested` with 0. It closes the card and menu, disarms an armed pin, stops a placement, and keeps the selection (D15).
   - `acceptGhost` with an index dispatches **one** `connectWires` with that one wire in `state.wireColor`, sets `accepting` to its id, keeps the other 19, and announces `accepted` with 1. Without an index it accepts the focused ghost; with none focused it does nothing.
   - `acceptAllGhosts` dispatches one `connectWires` with all remaining ghosts, removes `suggestions`, and announces `accepted` with their count.
@@ -329,8 +365,8 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   - `keymap.test.ts`: `Shift`+`W` → `suggestWires`; `Ctrl`+`W` and `Ctrl`+`Shift`+`W` → `undefined` (left to the browser, D13); `n`/`N` with `ghosts: true` → `nextGhost`, with `ghosts: false` → `nextWire` as before; `Enter` with `ghostFocused: true` → `acceptGhost`, else as before.
   - `announcements-suggest.test.ts`: every text in `en` and `es`, including a ghost to a bus bit (`d.2`).
   - **Unchanged (Review Focus 5):** the existing `interaction-*.test.ts`, `keymap.test.ts` and `interact.test.ts` cases pass without edits.
-- [ ] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain`. Expect FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2:** Run `pnpm vitest run src/features/circuit-editor/domain`. Expect FAIL.
+- [x] **Step 3: Implement.**
   - Move `distance` and `segmentDistance` to `geometry.ts` first (`refactor(circuit-editor): share the segment distance`, its own commit).
   - `suggestWires` runs `suggestWires` then `ghostsOf` from Tasks 2 and 3.
   - `interaction-wiring.ts` spreads `SUGGEST_COMMANDS` into `WIRING_COMMANDS`, and `cancelWiring` ends with `clearPins(state) ?? dismissGhosts(state)`.
@@ -338,8 +374,8 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   - `interaction-history.ts`: `afterHistory` takes `suggestions` out of `rest` and adds back `suggestionsAfter(...)` when defined.
   - `keymap.ts`: a `GHOST_KEYS` lookup consulted first when `context.ghosts`, so `plainKey` stays under complexity 10. `WITH_CTRL` doesn't change.
   - `use-canvas.ts` fills `ghosts` and `ghostFocused`.
-- [ ] **Step 4:** Run `pnpm vitest run src/features/circuit-editor`, `pnpm typecheck` and `pnpm lint`. Expect PASS, with no file over 300 lines or 10 modules, and ≥ 95 % branches on the new domain files.
-- [ ] **Step 5: Commit:** `feat(circuit-editor): suggest, cycle, accept and dismiss ghost wires`.
+- [x] **Step 4:** Run `pnpm vitest run src/features/circuit-editor`, `pnpm typecheck` and `pnpm lint`. Expect PASS, with no file over 300 lines or 10 modules, and ≥ 95 % branches on the new domain files.
+- [x] **Step 5: Commit:** `feat(circuit-editor): suggest, cycle, accept and dismiss ghost wires`.
 
 ### Task 5: Drawing ghosts (judgement)
 
@@ -356,13 +392,13 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   export const drawGhosts: (frame: PaintFrame & Pick<Frame, "visible">, view: GhostsView) => void;
   ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `ghostsOf` maps `suggestions` to routes and marks the focused one; with none, nothing.
   - Draw test with a recording context, like `draw-picked-pins.test.ts`: each visible ghost is stroked with a dash set and the reduced alpha, and the dash is reset afterwards; the focused one also gets a halo; a ghost wholly off screen is skipped.
   - Contrast test (D17): the ghost stroke, blended at its alpha over the canvas colour, gives ≥ 3:1 against the canvas in every theme, for the default wire colour and every wire colour token.
-- [ ] **Step 2:** Run them. Expect FAIL. Implement. Expect PASS.
-- [ ] **Step 3:** Check by hand in `pnpm dev`, in every theme: import the register file, press `Shift`+`W`, and see 20 dashed ghosts; press `n` and see the halo move. Check that there are no console errors.
-- [ ] **Step 4: Commit:** `feat(circuit-editor): draw suggested wires as dashed ghosts`.
+- [x] **Step 2:** Run them. Expect FAIL. Implement. Expect PASS.
+- [x] **Step 3:** Check by hand in `pnpm dev`, in every theme: import the register file, press `Shift`+`W`, and see 20 dashed ghosts; press `n` and see the halo move. Check that there are no console errors.
+- [x] **Step 4: Commit:** `feat(circuit-editor): draw suggested wires as dashed ghosts`.
 
 ### Task 6: The bar, the toolbar button, the canvas menu and the keyboard help (judgement)
 
@@ -384,17 +420,17 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   interface CanvasMenuContext { /* … */ readonly suggestWires: () => void }
   ```
 
-- [ ] **Step 1: Write the failing domain tests:** `barVisible` is false with chips selected while ghosts show; `suggestionsBarVisible` is true with ghosts and false with none, or with a menu open, or during a drag. `quick-add-view` lists a Suggest wires pick next to Tidy wires.
-- [ ] **Step 2:** Run them. Expect FAIL. Implement. Expect PASS.
-- [ ] **Step 3: UI.**
+- [x] **Step 1: Write the failing domain tests:** `barVisible` is false with chips selected while ghosts show; `suggestionsBarVisible` is true with ghosts and false with none, or with a menu open, or during a drag. `quick-add-view` lists a Suggest wires pick next to Tidy wires.
+- [x] **Step 2:** Run them. Expect FAIL. Implement. Expect PASS.
+- [x] **Step 3: UI.**
   - `SuggestionsBar`: a `Toolbar` labelled "Suggested wires", with the count as text ("Suggested wires: 20"), then **Accept all** (`acceptAllGhosts`) and **Dismiss** (`dismissGhosts`) buttons. Focus returns to the canvas host when the bar goes away, as `SelectionBar` does.
   - `CanvasButtons`: **Suggest wires** after Tidy wires.
   - The default canvas menu: entries Tidy wires and **Suggest wires**. `QuickAdd`: a Suggest wires pick that calls `context.suggestWires()`.
   - `KeyboardHelp`: rows for `Shift`+`W`, `n`/`N` and `Enter` with ghosts showing, and `Escape` dismissing them.
   - Every string in `en` and `es`.
-- [ ] **Step 4:** Check by hand in `pnpm dev`, at desktop and phone width: the toolbar button, the canvas menu (right-click on empty canvas, and long-press on touch), and the quick-add pick each show the ghosts; Accept all adds them and one Undo removes them; tapping one ghost adds one and the bar's count drops; moving a chip clears the ghosts. Check that there are no console errors.
-- [ ] **Step 5:** Run `pnpm vitest run src/features/circuit-editor src/features/chip-library`, `pnpm typecheck` and `pnpm lint`. Expect PASS.
-- [ ] **Step 6: Commit:** `feat(circuit-editor): suggest wires from the toolbar, the canvas menu and a bar`.
+- [x] **Step 4:** Check by hand in `pnpm dev`, at desktop and phone width: the toolbar button, the canvas menu (right-click on empty canvas, and long-press on touch), and the quick-add pick each show the ghosts; Accept all adds them and one Undo removes them; tapping one ghost adds one and the bar's count drops; moving a chip clears the ghosts. Check that there are no console errors.
+- [x] **Step 5:** Run `pnpm vitest run src/features/circuit-editor src/features/chip-library`, `pnpm typecheck` and `pnpm lint`. Expect PASS.
+- [x] **Step 6: Commit:** `feat(circuit-editor): suggest wires from the toolbar, the canvas menu and a bar`.
 
 ### Task 7: Register file fixture, E2E, axe and perf (mechanical)
 
@@ -403,8 +439,8 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
 - Create: `e2e/fixtures/register-file.json` (generated), `e2e/suggest-wires.spec.ts`, `e2e/a11y-suggest.spec.ts`
 - Reuse: `e2e/support.ts`, `wiring-support.ts` (`pointerFor`, `usesTouch`, `wiresOf`), the export helpers `multi-wire.spec.ts` uses
 
-- [ ] **Step 1: The fixture.** `registerFileProject`: a saved `Reg` chip with inputs `d0`…`d3`, `load`, `clk` and outputs `q0`…`q3` (inside, one NAND per bit from `dk` and `load` to `qk`, so it is a real saved chip). `Main` (open) holds a 4-bit input piece `d`, a 1-bit input `clk`, inputs `load0`…`load3`, and four `Reg`s in a column. No wires. Regenerate with `UPDATE_E2E_FIXTURES=1 pnpm vitest run src/features/projects/domain/e2e-fixtures.test.ts`.
-- [ ] **Step 2:** In `suggest-wires.spec.ts`:
+- [x] **Step 1: The fixture.** `registerFileProject`: a saved `Reg` chip with inputs `d0`…`d3`, `load`, `clk` and outputs `q0`…`q3` (inside, one NAND per bit from `dk` and `load` to `qk`, so it is a real saved chip). `Main` (open) holds a 4-bit input piece `d`, a 1-bit input `clk`, inputs `load0`…`load3`, and four `Reg`s in a column. No wires. Regenerate with `UPDATE_E2E_FIXTURES=1 pnpm vitest run src/features/projects/domain/e2e-fixtures.test.ts`.
+- [x] **Step 2:** In `suggest-wires.spec.ts`:
   - **Done when (issue #16):** import `register-file.json`, click **Suggest wires** on the toolbar. Expect the bar "Suggested wires: 20", the announcement "Wires suggested: 20", and **no wires in the export** (nothing applied). Click **Accept all**. Expect 20 wires: `clk` to each `Reg`'s `clk`, and bits 0–3 of `d` to each `Reg`'s `d0`…`d3` in order (from the export's `from.bit`). No `load` pin is wired. One Undo leaves 0 wires; one Redo gives 20.
   - **Scope:** select one `Reg`, press `Shift`+`W`: "Suggested wires: 5".
   - **Accept one:** suggest, click the middle of one ghost: 1 wire, and the bar reads 19. Click **Dismiss**: the bar goes, still 1 wire.
@@ -413,17 +449,17 @@ Spec §9. It runs first, so a slow result changes the plan before any UI exists.
   - **Touch only (phone and tablet projects):** long-press empty canvas, pick Suggest wires, tap **Accept all**: 20 wires.
   - **Nothing to suggest:** after Accept all, suggest again: "No wires to suggest", and no bar.
   - **Unchanged:** `n` with no ghosts still steps through wires (the existing keyboard wiring spec covers this; it must still pass).
-- [ ] **Step 3:** In `a11y-suggest.spec.ts`, run axe in every theme with the bar showing and a ghost focused. Copy the setup from `a11y-multi-wire.spec.ts`.
-- [ ] **Step 4:** Run `pnpm build && pnpm e2e --grep "suggest"`, then `pnpm e2e --grep "wiring|multi-wire|keyboard"`. Expect PASS on every project.
-- [ ] **Step 5:** Run `pnpm e2e:visual:docker`. No baseline should change: none shows ghosts, and the toolbar's new button may move nothing that is snapshotted. If one does change, find out why, then update with `--update-snapshots=all` and commit only Linux baselines.
-- [ ] **Step 6:** Run `pnpm e2e:perf` (p95 ≤ 20 ms), then `pnpm check`. Expect PASS.
-- [ ] **Step 7: Commit:** `test(e2e): suggest wires on a register file, and check the bar with axe`.
+- [x] **Step 3:** In `a11y-suggest.spec.ts`, run axe in every theme with the bar showing and a ghost focused. Copy the setup from `a11y-multi-wire.spec.ts`.
+- [x] **Step 4:** Run `pnpm build && pnpm e2e --grep "suggest"`, then `pnpm e2e --grep "wiring|multi-wire|keyboard"`. Expect PASS on every project.
+- [x] **Step 5:** Run `pnpm e2e:visual:docker`. No baseline should change: none shows ghosts, and the toolbar's new button may move nothing that is snapshotted. If one does change, find out why, then update with `--update-snapshots=all` and commit only Linux baselines.
+- [x] **Step 6:** Run `pnpm e2e:perf` (p95 ≤ 20 ms), then `pnpm check`. Expect PASS.
+- [x] **Step 7: Commit:** `test(e2e): suggest wires on a register file, and check the bar with axe`.
 
 ### Task 8: Docs and PR (mechanical)
 
-- [ ] **Step 1:** Rewrite this plan's Status as 5b's: what shipped, the spike and timing numbers, rulings made while building, and known follow-ups.
-- [ ] **Step 2:** Record the decisions in `docs/adr/0050-suggest-wires.md`. Add **Suggest wires**, **Ghost wire**, **Numbered series** and **Suggestions bar** to `GLOSSARY.md`. Update the spec's §3.3 shortcut line if the owner chose a different shortcut (D13).
-- [ ] **Step 3:** Open the PR with the `pr` skill; its body says it completes issue #16 ("Closes #16"). Then run one `sonnet` review over the whole PR, and fix what it finds in one wave.
+- [x] **Step 1:** Rewrite this plan's Status as 5b's: what shipped, the spike and timing numbers, rulings made while building, and known follow-ups.
+- [x] **Step 2:** Record the decisions in `docs/adr/0050-suggest-wires.md`. Add **Suggest wires**, **Ghost wire**, **Numbered series** and **Suggestions bar** to `GLOSSARY.md`. Update the spec's §3.3 shortcut line if the owner chose a different shortcut (D13).
+- [x] **Step 3:** Open the PR with the `pr` skill; its body says it completes issue #16 ("Closes #16"). Then run one `sonnet` review over the whole PR, and fix what it finds in one wave.
 
 ## Not in this PR
 
