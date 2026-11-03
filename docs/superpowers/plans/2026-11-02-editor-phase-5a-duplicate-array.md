@@ -1,5 +1,12 @@
 # Editor Phase 5a: Duplicate and Array Implementation Plan
 
+## Status
+
+Task 0 is done; the routing path stays as planned.
+
+- **Spike result.** One `pasteItems` of 64 copies of a 4-NAND cell with 4 automatic wires (256 parts, 256 wires) goes through `applyAction`. The median of 7 runs is about 12 ms, on an empty chip and with 300 NANDs elsewhere on the chip. Both are under the 16 ms frame budget, so the copies are routed as usual.
+- **Seen in the spike:** when the copies land **on top of** existing chips, the same paste takes about 70 ms, because every route has to work around the overlapping bodies. Array doesn't check for room (spec §3.1.3), so this can happen. It is a follow-up, not a blocker: a later fix could warn about overlap in the dialog's summary, or route the copies by translating the originals' routes.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
 **Goal:** With chips selected, Duplicate copies them one grid step away, and Array adds a row, column or grid of copies from a dialog. Each is one undo step. Both are reached from a floating selection bar, the chip menu, and the keyboard.
