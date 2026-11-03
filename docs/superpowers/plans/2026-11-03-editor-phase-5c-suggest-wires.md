@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned, waiting for the owner's approval. Nothing is built yet. The decisions marked **(beyond the spec)** need the owner's yes or veto before Task 1 starts. D13, the shortcut, needs it most.
+Approved by the owner as planned on 2026-11-03, including every decision marked **(beyond the spec)** and `Shift`+`W` as the shortcut (D13). Nothing is built yet; Task 0 is next.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
