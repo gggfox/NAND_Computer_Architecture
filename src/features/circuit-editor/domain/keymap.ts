@@ -58,6 +58,10 @@ const PLAIN: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new M
  */
 interface KeyContext {
   readonly wiring: boolean;
+  /** Suggested wires show: `n`/`N` cycle them instead of the wires. */
+  readonly ghosts?: boolean;
+  /** A suggested wire is focused: `Enter` accepts it. */
+  readonly ghostFocused?: boolean;
   readonly focus?: InstanceId | undefined;
 }
 
@@ -72,9 +76,30 @@ const f2 = (context?: KeyContext): InteractionCommand | undefined =>
 /** Keys that mean something only with Shift held; plain `Space` stays the browser's. */
 const SHIFTED: ReadonlyMap<string, InteractionCommand> = new Map<string, InteractionCommand>([
   [" ", { type: "togglePin" }],
+  ["W", { type: "suggestWires" }],
 ]);
 
+/** Keys that mean something else while suggested wires show (D12). */
+const GHOST_KEYS: ReadonlyMap<string, (shift: boolean) => InteractionCommand> = new Map<
+  string,
+  (shift: boolean) => InteractionCommand
+>([
+  ["n", (backwards) => ({ type: "nextGhost", backwards })],
+  ["N", () => ({ type: "nextGhost", backwards: true })],
+]);
+
+const ghostKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined => {
+  if (press.key === "Enter" && context?.ghostFocused === true) {
+    return { type: "acceptGhost" };
+  }
+  return context?.ghosts === true ? GHOST_KEYS.get(press.key)?.(press.shift) : undefined;
+};
+
 const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined => {
+  const ghost = ghostKey(press, context);
+  if (ghost !== undefined) {
+    return ghost;
+  }
   if (press.key === "Enter" && context?.wiring === true) {
     return { type: "connect" };
   }

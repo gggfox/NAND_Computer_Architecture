@@ -157,3 +157,42 @@ describe("keyWiring", () => {
     expect(keyWiring({ ...rig.state, armed })).toBe(true);
   });
 });
+
+describe("suggested wire keys", () => {
+  it("Shift+W suggests; Ctrl or ⌘ with W is the browser's", () => {
+    expect(commandForKey(press("W", { shift: true }))).toEqual({ type: "suggestWires" });
+    expect(commandForKey(press("w", { ctrlOrMeta: true }))).toBeUndefined();
+    expect(commandForKey(press("W", { ctrlOrMeta: true, shift: true }))).toBeUndefined();
+  });
+
+  it("n and N cycle the ghosts while they show, the wires otherwise", () => {
+    const ghosts = { wiring: false, ghosts: true };
+    expect(commandForKey(press("n"), ghosts)).toEqual({ type: "nextGhost", backwards: false });
+    expect(commandForKey(press("N", { shift: true }), ghosts)).toEqual({
+      type: "nextGhost",
+      backwards: true,
+    });
+    expect(commandForKey(press("n", { shift: true }), ghosts)).toEqual({
+      type: "nextGhost",
+      backwards: true,
+    });
+    const none = { wiring: false, ghosts: false };
+    expect(commandForKey(press("n"), none)).toEqual({ type: "nextWire", backwards: false });
+    expect(commandForKey(press("N", { shift: true }), none)).toEqual({
+      type: "nextWire",
+      backwards: true,
+    });
+    expect(commandForKey(press("p"), ghosts)).toEqual({ type: "nextPin", backwards: false });
+  });
+
+  it("Enter accepts the focused ghost, ahead of wiring", () => {
+    const focused = { wiring: true, ghosts: true, ghostFocused: true };
+    expect(commandForKey(press("Enter"), focused)).toEqual({ type: "acceptGhost" });
+    expect(commandForKey(press("Enter"), { ...focused, ghostFocused: false })).toEqual({
+      type: "connect",
+    });
+    expect(commandForKey(press("Enter"), { wiring: false, ghosts: true })).toEqual({
+      type: "openMenu",
+    });
+  });
+});

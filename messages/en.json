@@ -318,5 +318,15 @@
   "help_keys_pick_all": "A",
   "help_pick_all": "Select this pin on all selected chips",
   "help_keys_wire_picked": "Enter (with pins selected)",
-  "help_wire_picked": "Wire the selected pins to the card's pin"
+  "help_wire_picked": "Wire the selected pins to the card's pin",
+  "canvas_suggested": "Wires suggested: {count}",
+  "canvas_suggested_none": "No wires to suggest",
+  "canvas_suggest_accepted": "Wires accepted: {count}",
+  "canvas_suggest_dismissed": "Suggestions dismissed",
+  "canvas_ghost_focused": "Suggested wire {index} of {count}: {from} on {fromChip} to {to} on {toChip}",
+  "suggestions_bar_label": "Suggested wires",
+  "suggestions_bar_count": "Suggested wires: {count}",
+  "suggestions_accept_all": "Accept all",
+  "suggestions_dismiss": "Dismiss",
+  "suggest_wires": "Suggest wires"
 }
