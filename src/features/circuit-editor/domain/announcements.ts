@@ -1,7 +1,8 @@
 import { m } from "~/i18n/paraglide/messages";
 import { assertNever } from "~/shared/assert-never";
 
-import { pinAnnouncementText } from "./announcements-pins";
+import { isListAnnouncement, listAnnouncementText } from "./announcements-suggest";
+import type { ListAnnouncement } from "./announcements-suggest";
 import { chipLabel } from "./chip-label";
 import { editorErrorMessage } from "./editor-error-messages";
 import type { Scene } from "./geometry";
@@ -132,28 +133,14 @@ const placementText = (scene: Scene, announcement: PlacementAnnouncement): strin
     : m.announce_placed({ name });
 };
 
-type PinAnnouncement = Extract<
-  Announcement,
-  { type: "pinsSelected" | "bulkWired" | "bulkRefused" }
->;
-
-const PIN_TYPES: ReadonlySet<Announcement["type"]> = new Set([
-  "pinsSelected",
-  "bulkWired",
-  "bulkRefused",
-]);
-
-const isPinSelection = (announcement: Announcement): announcement is PinAnnouncement =>
-  PIN_TYPES.has(announcement.type);
-
 /** The live region's words for an announcement (ADR 3, 17). */
 export const announcementText = (
   scene: Scene,
   known: KnownLevels,
   announcement: Announcement,
 ): string => {
-  if (isPinSelection(announcement)) {
-    return pinAnnouncementText(scene, known, announcement);
+  if (isListAnnouncement(announcement)) {
+    return listAnnouncementText(scene, known, announcement);
   }
   if (isWiring(announcement)) {
     return wiringText(scene, known, announcement);
@@ -182,7 +169,10 @@ const CLIPBOARD_TEXT: Readonly<
 const plainText = (
   scene: Scene,
   known: KnownLevels,
-  announcement: Exclude<Announcement, WiringAnnouncement | PlacementAnnouncement | PinAnnouncement>,
+  announcement: Exclude<
+    Announcement,
+    WiringAnnouncement | PlacementAnnouncement | ListAnnouncement
+  >,
 ): string => {
   switch (announcement.type) {
     case "selected": {
