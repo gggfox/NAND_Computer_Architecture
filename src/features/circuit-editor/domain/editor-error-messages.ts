@@ -41,6 +41,7 @@ const MESSAGES: Messages = {
   NothingToRecolor: () => m.editor_error_nothing_to_recolor(),
   NothingToReroute: () => m.editor_error_nothing_to_reroute(),
   NothingToAdd: () => m.editor_error_nothing_to_add(),
+  NothingToConnect: () => m.editor_error_nothing_to_connect(),
 };
 
 // The false branch narrows to `never`, so an unknown error at runtime reaches `assertNever`.

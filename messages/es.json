@@ -39,6 +39,7 @@
   "editor_error_nothing_to_recolor": "Primero selecciona cables para cambiarles el color.",
   "editor_error_nothing_to_reroute": "Primero selecciona cables para volver a trazarlos.",
   "editor_error_nothing_to_add": "Elige primero cuántos pines añadir.",
+  "editor_error_nothing_to_connect": "Primero selecciona los pines que quieres conectar.",
   "editor_error_would_contain_itself": "Un chip no puede contenerse a sí mismo, ni directamente ni a través de otro chip.",
   "editor_error_invalid_endpoint": "Ese pin no existe en este chip.",
   "editor_error_bit_out_of_range": "El bit {bit} no existe en un pin de {width} bits.",
