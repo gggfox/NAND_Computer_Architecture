@@ -21,6 +21,22 @@ export interface BulkRefusal {
 /** What the canvas notice can say: a refused wire, or a refused bulk wire. */
 export type Notice = ConnectionError | BulkRefusal;
 
+/** The pin-selection commands (D2, D3, D9). */
+export interface PinCommand {
+  readonly type: "togglePin" | "selectPinOnAll" | "togglePinPick";
+}
+
+/** What the pin selection and a bulk wire announce (D11). */
+export type PinAnnouncement =
+  | { readonly type: "pinsSelected"; readonly count: number }
+  | {
+      readonly type: "bulkWired";
+      readonly count: number;
+      readonly source: PinRef;
+      readonly bits?: { readonly first: number; readonly last: number };
+    }
+  | { readonly type: "bulkRefused"; readonly refusal: BulkRefusal };
+
 const same = (a: PinRef, b: PinRef): boolean => a.instanceId === b.instanceId && a.pin === b.pin;
 
 /** Pins as a selection keeps them: a whole pin, never one bit of it. */
