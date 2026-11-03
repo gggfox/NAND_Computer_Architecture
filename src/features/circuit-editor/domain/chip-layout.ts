@@ -154,6 +154,15 @@ interface Sides {
   readonly right: readonly PinSpec[];
 }
 
+/**
+ * A pin piece's body at `position`: one grid wide, or two for an input wider than one bit, whose
+ * bits are switches (bit-grid.ts). That body grows to the left, so the pin and its wires stay put.
+ */
+const pieceRect = (position: Point, size: Size, pin: PinSpec | undefined): Rect =>
+  pin !== undefined && pin.side === "right" && pin.width > 1
+    ? { x: position.x - GRID, y: position.y, width: size.width + GRID, height: size.height }
+    : { ...position, ...size };
+
 const bodySize = (sides: Sides, title: string, isPiece: boolean): Size => {
   const cells = Math.max(MIN_CELLS, cellsOf(sides.left), cellsOf(sides.right));
   if (isPiece) {
@@ -204,7 +213,7 @@ const nameRect = (rect: Rect, title: string, pinSide: Side | undefined): Rect =>
  * The body, title and pins of a part of `kind` at `position` (spec §5.1): inputs on the left and outputs on the right,
  * each pin in a slot of 2, 3, 4 or 5 half-grid cells by width, slack spread evenly, the height
  * set by the taller side and the width by the title and the widest labels (a multiple of the
- * grid). A pin piece is one grid wide. A custom chip that is unsaved or missing has no pins.
+ * grid). A pin piece is one grid wide (see `pieceRect`). A custom chip that is unsaved or missing has no pins.
  */
 export const layoutOfKind = (
   source: LayoutSource,
@@ -218,7 +227,8 @@ export const layoutOfKind = (
   };
   const title = partName(source.project, source.circuit, kind);
   const isPiece = kind.type === "pin";
-  const rect = { ...position, ...bodySize(sides, title, isPiece) };
+  const size = bodySize(sides, title, isPiece);
+  const rect = isPiece ? pieceRect(position, size, specs[0]) : { ...position, ...size };
   const pins = [...placeSide(rect, sides.left), ...placeSide(rect, sides.right)];
   return isPiece
     ? { rect, title, pins, name: nameRect(rect, title, specs[0]?.side) }

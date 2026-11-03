@@ -18,7 +18,7 @@ type Tap = Extract<Gesture, { type: "tap" }>;
 const emptyTap = (state: InteractionState, _hit: Extract<Hit, { type: "empty" }>): Interpreted =>
   selected(state, selectInstances([]));
 
-/** A tap on a chip selects it; a plain one on a 1-bit input piece also flips its value. */
+/** A tap on a chip selects it; a plain one on an input piece also flips its value or a bit. */
 const chipTap = (
   state: InteractionState,
   { gesture, instanceId }: { readonly gesture: Tap; readonly instanceId: InstanceId },
@@ -26,7 +26,11 @@ const chipTap = (
 ): Interpreted =>
   gesture.modifiers.shift
     ? selected(state, toggleInstance(state.selection, instanceId), instanceId)
-    : withToggle(selected(state, selectInstances([instanceId]), instanceId), instanceId, context);
+    : withToggle(
+        selected(state, selectInstances([instanceId]), instanceId),
+        { instanceId, screen: gesture.point },
+        context,
+      );
 
 /** A tap on a chip, a pin piece's name, a wire or empty canvas, with nothing armed. */
 const plainTap = (
