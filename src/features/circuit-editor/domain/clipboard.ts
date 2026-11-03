@@ -85,3 +85,29 @@ export const pastedFrom = (
     })),
   };
 };
+
+/**
+ * One copy of the clipboard per delta, as one batch for `pasteItems`. Each copy sees the pins and
+ * pieces of the copies before it, so pin names are unique across all of them.
+ */
+export const copiesOf = (
+  clipboard: Clipboard,
+  deltas: readonly Point[],
+  { target, newWireId }: Omit<PasteTarget, "delta">,
+): Omit<Clipboard, "offset"> => {
+  let growing = target;
+  const copies = deltas.map((delta) => {
+    const copy = pastedFrom(clipboard, { delta, target: growing, newWireId });
+    growing = {
+      ...growing,
+      pins: [...growing.pins, ...copy.pins],
+      instances: [...growing.instances, ...copy.instances],
+    };
+    return copy;
+  });
+  return {
+    instances: copies.flatMap((copy) => copy.instances),
+    pins: copies.flatMap((copy) => copy.pins),
+    wires: copies.flatMap((copy) => copy.wires),
+  };
+};
