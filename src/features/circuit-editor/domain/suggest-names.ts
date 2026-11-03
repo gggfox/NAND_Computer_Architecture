@@ -124,21 +124,29 @@ export const seriesOf = (ends: readonly End[]): readonly Series[] => {
   });
 };
 
+/** An end of a pin the user named. */
+export type NamedEnd = End & { readonly name: string };
+
+export const isNamed = (end: End): end is NamedEnd => end.name !== undefined;
+
 /** Sources by lowercased name, by lowercased stem (as series), and by width. */
 export interface SourceIndex {
   readonly byName: ReadonlyMap<string, readonly End[]>;
   readonly seriesByStem: ReadonlyMap<string, readonly Series[]>;
   readonly allSeries: readonly Series[];
   readonly byWidth: ReadonlyMap<number, readonly End[]>;
+  /** The named sources by width: the buses rule 2 may take bits from. */
+  readonly namedByWidth: ReadonlyMap<number, readonly NamedEnd[]>;
 }
 
 export const indexSources = (sources: readonly End[]): SourceIndex => {
-  const named = sources.filter((end) => end.name !== undefined);
+  const named = sources.filter((end) => isNamed(end));
   const allSeries = seriesOf(named);
   return {
-    byName: groupBy(named, (end) => (end.name ?? "").toLowerCase()),
+    byName: groupBy(named, (end) => end.name.toLowerCase()),
     seriesByStem: groupBy(allSeries, (series) => series.stem),
     allSeries,
     byWidth: groupBy(sources, (end) => end.width),
+    namedByWidth: groupBy(named, (end) => end.width),
   };
 };
