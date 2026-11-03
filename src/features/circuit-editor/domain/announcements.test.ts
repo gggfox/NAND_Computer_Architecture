@@ -35,6 +35,17 @@ describe("chipLabel", () => {
   });
 });
 
+describe("clipboard announcements", () => {
+  it("says what was copied, cut or pasted", () => {
+    const { scene } = demo();
+    const say = (did: "copy" | "cut" | "paste") =>
+      announcementText(scene, known, { type: "clipboard", did, count: 2 });
+    expect(say("copy")).toBe("Chips copied: 2");
+    expect(say("cut")).toBe("Chips cut: 2");
+    expect(say("paste")).toBe("Chips pasted: 2");
+  });
+});
+
 describe("announcementText", () => {
   it("says what was selected, moved, deleted or cleared", () => {
     const { scene, nand } = demo();

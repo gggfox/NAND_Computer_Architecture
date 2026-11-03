@@ -10,6 +10,7 @@ import type {
   PlaceError,
   Point,
   SaveError,
+  Wire,
   WireColor,
 } from "~/features/projects";
 import type { ChipId, FolderId, InstanceId, PinId, WireId } from "~/shared/ids";
@@ -41,6 +42,15 @@ export type EditorAction =
       readonly chipId: ChipId;
       readonly instanceIds: readonly InstanceId[];
       readonly wireIds: readonly WireId[];
+    }
+  /** Adds parts, pins and the wires between them as one undo step (a paste). */
+  | {
+      readonly type: "pasteItems";
+      readonly chipId: ChipId;
+      /** Parts and pin pieces; each pin piece's definition is in `pins`. */
+      readonly instances: readonly ChipInstance[];
+      readonly pins: readonly PinDef[];
+      readonly wires: readonly Wire[];
     }
   | {
       readonly type: "connectWire";

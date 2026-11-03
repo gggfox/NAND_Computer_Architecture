@@ -80,6 +80,15 @@ const withCtrl = ({ key, shift }: KeyPress): InteractionCommand | undefined => {
     case "a": {
       return { type: "selectAll" };
     }
+    case "c": {
+      return { type: "copy" };
+    }
+    case "x": {
+      return { type: "cut" };
+    }
+    case "v": {
+      return { type: "paste" };
+    }
     default: {
       return undefined;
     }
