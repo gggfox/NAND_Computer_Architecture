@@ -10,6 +10,9 @@ export interface Selection {
   readonly wires: ReadonlySet<WireId>;
 }
 
+/** What a clipboard announcement reports. */
+export type ClipboardDid = "copy" | "cut" | "paste" | "duplicate" | "array";
+
 /**
  * What Ctrl+C or Ctrl+X took: the selected pieces, the definitions of the pins among them, and the
  * wires between them, as they were. Not an edit: it lives outside undo history, and survives

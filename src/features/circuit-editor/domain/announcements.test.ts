@@ -44,6 +44,18 @@ describe("clipboard announcements", () => {
     expect(say("cut")).toBe("Chips cut: 2");
     expect(say("paste")).toBe("Chips pasted: 2");
   });
+
+  it("says what was duplicated or arrayed", () => {
+    const { scene } = demo();
+    const say = (did: "duplicate" | "array") =>
+      announcementText(scene, known, { type: "clipboard", did, count: 2 });
+    expect(say("duplicate")).toBe("Chips duplicated: 2");
+    expect(say("array")).toBe("Chips added in an array: 2");
+    expect(m.canvas_duplicated({ count: 2 }, { locale: "es" })).toBe("Chips duplicados: 2");
+    expect(m.canvas_arrayed({ count: 2 }, { locale: "es" })).toBe(
+      "Chips añadidos en una matriz: 2",
+    );
+  });
 });
 
 describe("announcementText", () => {

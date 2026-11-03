@@ -120,7 +120,10 @@ export const deleteDemoWire = async (
     throw new Error("The demo has no such wire");
   }
   await pointer.tap(await wirePoint(page, file, wire));
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page
+    .getByRole("toolbar", { name: "Editor tools" })
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect.poll(async () => wiresOf(await exportedProject(page)).length).toBe(DEMO_WIRES - 1);
 };
 

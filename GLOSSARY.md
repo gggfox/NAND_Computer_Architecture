@@ -37,6 +37,9 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Recent**: the last five kinds placed in this session, offered first in the quick-add menu. Not saved.
 - **Tool**: what a one-finger drag on empty canvas does: Pan or Select. A session preference, not an edit. A drag on a chip always moves it.
 - **Selection**: the chips (and the wires between them) the user has picked on the canvas. Not an edit, so undo skips it.
+- **Selection bar**: the row of Duplicate, Array… and Delete shown while chips are selected, docked at the top centre of the canvas (bottom on phones). _Avoid_: floating toolbar.
+- **Duplicate**: copies the selected chips, and the wires between them, one grid step down and to the right, as one undo step. It leaves the clipboard alone. Not a copy of a project: that is a fork.
+- **Array**: copies the selection several times in a row, column or grid, from a dialog, as one undo step. The copies aren't wired to each other.
 - **Marquee**: the box or lasso being drawn to select chips. A chip is picked when its centre is inside.
 - **Pin card**: the small card showing a pin's name, width and live value.
 - **Chip menu**: the menu of actions on a chip (Delete; for custom chips Rename chip, Recolour chip, Look inside).

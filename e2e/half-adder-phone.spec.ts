@@ -38,7 +38,11 @@ test.beforeEach(({ page: _page }, testInfo) => {
 const deleteNand = async (page: Page, pointer: Pointer): Promise<void> => {
   await pointer.tap(await chipCenter(page, DEMO_PART.nand));
   await expect(spoken(page)).toHaveText(/NAND gate 1 selected/u);
-  await tap(page.getByRole("button", { name: "Delete", exact: true }));
+  await tap(
+    page
+      .getByRole("toolbar", { name: "Editor tools" })
+      .getByRole("button", { name: "Delete", exact: true }),
+  );
   await expect(page.getByText("NAND gate 1", { exact: true })).toHaveCount(0);
 };
 

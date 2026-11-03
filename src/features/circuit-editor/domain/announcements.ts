@@ -170,12 +170,15 @@ export const announcementText = (
 const pinAddedText = ({ direction, name }: Extract<Announcement, { type: "pinAdded" }>): string =>
   direction === "input" ? m.announce_input_added({ name }) : m.announce_output_added({ name });
 
-/** Parts copied, cut or pasted. */
-const clipboardText = ({ did, count }: Extract<Announcement, { type: "clipboard" }>): string => {
-  if (did === "copy") {
-    return m.canvas_copied({ count });
-  }
-  return did === "cut" ? m.canvas_cut({ count }) : m.canvas_pasted({ count });
+/** Parts copied, cut, pasted, duplicated or added in an array. */
+const CLIPBOARD_TEXT: Readonly<
+  Record<Extract<Announcement, { type: "clipboard" }>["did"], (input: { count: number }) => string>
+> = {
+  copy: m.canvas_copied,
+  cut: m.canvas_cut,
+  paste: m.canvas_pasted,
+  duplicate: m.canvas_duplicated,
+  array: m.canvas_arrayed,
 };
 
 /** The selection, move, delete, tool and pin announcements. */
@@ -198,7 +201,7 @@ const plainText = (
       return m.canvas_deleted({ count: announcement.count });
     }
     case "clipboard": {
-      return clipboardText(announcement);
+      return CLIPBOARD_TEXT[announcement.did]({ count: announcement.count });
     }
     case "tool": {
       return announcement.tool === "pan" ? m.canvas_tool_pan() : m.canvas_tool_select();
