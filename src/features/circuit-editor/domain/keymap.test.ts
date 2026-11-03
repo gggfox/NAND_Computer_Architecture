@@ -98,13 +98,13 @@ describe("wiring keys", () => {
 
   it("Enter connects when armed", () => {
     const { context, state, nand, pieceA } = wiring();
-    expect(commandForKey(press("Enter"), { armed: true })).toEqual({ type: "connect" });
-    expect(commandForKey(press("Enter"), { armed: false })).toEqual({ type: "openMenu" });
+    expect(commandForKey(press("Enter"), { wiring: true })).toEqual({ type: "connect" });
+    expect(commandForKey(press("Enter"), { wiring: false })).toEqual({ type: "openMenu" });
     // The context-menu keys still open the menu while armed.
-    expect(commandForKey(press("ContextMenu"), { armed: true })).toEqual({ type: "openMenu" });
+    expect(commandForKey(press("ContextMenu"), { wiring: true })).toEqual({ type: "openMenu" });
     const armed = run({ ...state, focus: pieceA.id }, context, { type: "arm" }).state;
     const card = { instanceId: nand.id, pin: 0, screen: NAND_A, pinned: true };
-    const key = commandForKey(press("Enter"), { armed: armed.armed !== undefined });
+    const key = commandForKey(press("Enter"), { wiring: armed.armed !== undefined });
     const result = run({ ...armed, card }, context, key!);
     expect(dispatched(result.effects)).toEqual([
       expect.objectContaining({ type: "connectWire", to: { instanceId: nand.id, pin: 0 } }),
@@ -112,13 +112,30 @@ describe("wiring keys", () => {
   });
 });
 
+describe("pin selection keys", () => {
+  it("Shift+Space toggles the card's pin; plain Space is the browser's", () => {
+    expect(commandForKey(press(" ", { shift: true }))).toEqual({ type: "togglePin" });
+    expect(commandForKey(press(" "))).toBeUndefined();
+  });
+
+  it("a and A select the card's pin on all selected chips", () => {
+    expect(commandForKey(press("a"))).toEqual({ type: "selectPinOnAll" });
+    expect(commandForKey(press("A", { shift: true }))).toEqual({ type: "selectPinOnAll" });
+  });
+
+  it("Enter connects while wiring and opens the menu otherwise", () => {
+    expect(commandForKey(press("Enter"), { wiring: true })).toEqual({ type: "connect" });
+    expect(commandForKey(press("Enter"), { wiring: false })).toEqual({ type: "openMenu" });
+  });
+});
+
 describe("rename key", () => {
   it("F2 renames the focused piece; with nothing focused it is the browser's", () => {
     const { state, pieceA } = wiring();
-    expect(commandForKey(press("F2"), { armed: false, focus: pieceA.id })).toEqual({
+    expect(commandForKey(press("F2"), { wiring: false, focus: pieceA.id })).toEqual({
       type: "startRename",
       instanceId: pieceA.id,
     });
-    expect(commandForKey(press("F2"), { armed: false, focus: state.focus })).toBeUndefined();
+    expect(commandForKey(press("F2"), { wiring: false, focus: state.focus })).toBeUndefined();
   });
 });

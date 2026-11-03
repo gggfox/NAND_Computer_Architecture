@@ -61,7 +61,7 @@ const plainTap = (
 const tapAt = (state: InteractionState, gesture: Tap, context: InteractionContext): Interpreted => {
   const hit = hitAt(state, context, gesture.point);
   if (hit.type === "pin") {
-    return onPinTap(state, hit, context);
+    return onPinTap(state, { hit, additive: gesture.modifiers.shift }, context);
   }
   if (state.armed === undefined) {
     return plainTap(state, gesture, { hit, context });

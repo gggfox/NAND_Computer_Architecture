@@ -12,6 +12,12 @@ import type {
   InteractionState,
   Interpreted,
 } from "./interaction";
+import {
+  clearPins,
+  PIN_SELECT_COMMANDS,
+  togglePickedPin,
+  wireSelectedPins,
+} from "./interaction-pin-select";
 import { PLACE_COMMANDS, stopPlacing } from "./interaction-place";
 import { completionFor, legalTargets } from "./wiring-targets";
 
@@ -117,28 +123,43 @@ const reach = (state: InteractionState, aim: Aim, context: InteractionContext): 
     ? armPin(state, aim.target, context)
     : complete(state, { ...aim, armed: state.armed }, context);
 
-/** A tap on a pin: it arms it, or completes the wire from the armed pin. */
+/** Pins are selected and none is armed: a pin aimed at is the source that wires them (D4). */
+const wiresPins = (state: InteractionState): boolean =>
+  state.armed === undefined && state.selection.pins.length > 0;
+
+/**
+ * A tap on a pin: it picks it (`additive`, or Pick pins), wires the selected pins to it, arms it,
+ * or completes the wire from the armed pin.
+ */
 export const onPinTap = (
   state: InteractionState,
-  hit: PinHit,
+  { hit, additive }: { readonly hit: PinHit; readonly additive: boolean },
   context: InteractionContext,
-): Interpreted =>
-  reach(
-    withoutOverlays(state),
-    { target: refOf(hit), screen: worldToScreen(state.camera, hit.anchor) },
-    context,
-  );
+): Interpreted => {
+  const plain = withoutOverlays(state);
+  if (additive || state.pinPick === true) {
+    return togglePickedPin(plain, refOf(hit));
+  }
+  return wiresPins(state)
+    ? wireSelectedPins(plain, refOf(hit), context)
+    : reach(
+        plain,
+        { target: refOf(hit), screen: worldToScreen(state.camera, hit.anchor) },
+        context,
+      );
+};
 
 /**
  * Escape's arming step: the bit picker closes first, then a placement (keeping the selection),
- * then the armed pin (and a wire being drawn, so its release says nothing more); else `undefined`.
+ * then the armed pin (and a wire being drawn, so its release says nothing more), then the pin
+ * list with Pick pins; else `undefined`.
  */
 export const cancelWiring = (state: InteractionState): Interpreted | undefined => {
   if (state.bitPick !== undefined) {
     const { bitPick: _bitPick, ...rest } = state;
     return done(rest);
   }
-  return stopPlacing(state) ?? (state.armed === undefined ? undefined : disarmed(state));
+  return stopPlacing(state) ?? (state.armed === undefined ? clearPins(state) : disarmed(state));
 };
 
 /** `w`: arms the pin in the card, else the focused chip's first pin. */
@@ -153,16 +174,16 @@ const armByKey = (state: InteractionState, context: InteractionContext): Interpr
     : armPin(state, { instanceId: instance.id, pin: first.key }, context);
 };
 
-/** `Enter` while armed: wires the armed pin to the pin in the card. */
+/** `Enter` while armed or with pins selected: wires them to the pin in the card. */
 const connectByKey = (state: InteractionState, context: InteractionContext): Interpreted => {
   const { card } = state;
-  return state.armed === undefined || card === undefined
-    ? done(state)
-    : reach(
-        state,
-        { target: { instanceId: card.instanceId, pin: card.pin }, screen: card.screen },
-        context,
-      );
+  if (card === undefined || (state.armed === undefined && !wiresPins(state))) {
+    return done(state);
+  }
+  const target = { instanceId: card.instanceId, pin: card.pin };
+  return wiresPins(state)
+    ? wireSelectedPins(state, target, context)
+    : reach(state, { target, screen: card.screen }, context);
 };
 
 /** A bit chosen in the picker goes on the bus end, and the wire connects if still legal. */
@@ -206,10 +227,12 @@ type WiringHandlers = {
  * The arming commands, for the command table: a pin's (`arm`, `connect`, `pickBit`,
  * `setWireColor`) and a part's placement. Arming either disarms the other (D6).
  */
-export const WIRING_COMMANDS: WiringHandlers & typeof PLACE_COMMANDS = {
-  arm: (state, _command, context) => armByKey(state, context),
-  connect: (state, _command, context) => connectByKey(state, context),
-  pickBit: (state, command, context) => pickBit(state, command.bit, context),
-  setWireColor: (state, command) => setWireColor(state, command.color),
-  ...PLACE_COMMANDS,
-};
+export const WIRING_COMMANDS: WiringHandlers & typeof PLACE_COMMANDS & typeof PIN_SELECT_COMMANDS =
+  {
+    arm: (state, _command, context) => armByKey(state, context),
+    connect: (state, _command, context) => connectByKey(state, context),
+    pickBit: (state, command, context) => pickBit(state, command.bit, context),
+    setWireColor: (state, command) => setWireColor(state, command.color),
+    ...PLACE_COMMANDS,
+    ...PIN_SELECT_COMMANDS,
+  };

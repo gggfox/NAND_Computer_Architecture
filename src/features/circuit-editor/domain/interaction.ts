@@ -17,7 +17,14 @@ import type { Hit, SpatialIndex } from "./hit-test";
 import { dragPreview } from "./pin-snap";
 import type { DragPreview } from "./pin-snap";
 import { EMPTY_SELECTION, isEmpty } from "./selection";
-import type { Clipboard, ClipboardDid, Selection } from "./selection";
+import type {
+  Clipboard,
+  ClipboardDid,
+  Notice,
+  PinAnnouncement,
+  PinCommand,
+  Selection,
+} from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
 export type Tool = "pan" | "select";
@@ -91,7 +98,9 @@ export interface InteractionState {
   readonly help?: true;
   readonly arraying?: true;
   /** Why the last connection was refused, shown over the canvas until the next gesture or command. */
-  readonly notice?: ConnectionError;
+  readonly notice?: Notice;
+  /** Pick pins is on: a plain tap on a pin picks it (D9). */
+  readonly pinPick?: true;
   readonly renaming?: Renaming;
   /** Armed placement: every tap on the canvas places a copy of this part until cancelled (D6). */
   readonly placing?: PlaceableKind;
@@ -158,7 +167,8 @@ export type InteractionCommand =
   /** Places one `kind` centred on `screen`, or on the viewport's centre without one. */
   | { readonly type: "placeAt"; readonly kind: PlaceableKind; readonly screen?: Point }
   /** Adds one 1-bit pin of the open chip, its piece centred on `screen`. */
-  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point };
+  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point }
+  | PinCommand;
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -191,7 +201,8 @@ export type Announcement =
   /** Placement was armed (`kind`) or cancelled (no `kind`). */
   | { readonly type: "placing"; readonly kind: PlaceableKind | undefined }
   | { readonly type: "placed"; readonly kind: PlaceableKind }
-  | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string };
+  | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string }
+  | PinAnnouncement;
 
 export type Effect =
   | { readonly type: "dispatch"; readonly action: EditorAction }
@@ -260,7 +271,8 @@ export const selected = (
   selection: Selection,
   focus?: InstanceId,
 ): Interpreted => {
-  const { focus: previous, lassoArmed: _lassoArmed, ...rest } = withoutOverlays(state);
+  const { focus: previous, lassoArmed: _lassoArmed, pinPick, ...others } = withoutOverlays(state);
+  const rest = isEmpty(selection) || pinPick === undefined ? others : { ...others, pinPick };
   const next = focus ?? previous;
   return done(
     { ...rest, lassoArmed: false, selection, ...(next === undefined ? {} : { focus: next }) },

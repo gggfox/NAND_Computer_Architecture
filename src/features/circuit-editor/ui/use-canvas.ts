@@ -82,9 +82,9 @@ const attachInput = (
   };
 };
 
-/** The canvas command for a key; `Enter` reads whether a pin is armed, `F2` the focused chip. */
+/** The canvas command for a key; `Enter` reads whether a pin is armed or pins are selected. */
 const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) => {
-  const { armed, focus } = session.interaction.store.getState();
+  const { armed, selection, focus } = session.interaction.store.getState();
   return commandForKey(
     {
       key: event.key,
@@ -92,7 +92,7 @@ const commandFor = (session: EditorSession, event: KeyboardEvent<HTMLElement>) =
       ctrlOrMeta: event.ctrlKey || event.metaKey,
       alt: event.altKey,
     },
-    { armed: armed !== undefined, focus },
+    { wiring: armed !== undefined || selection.pins.length > 0, focus },
   );
 };
 

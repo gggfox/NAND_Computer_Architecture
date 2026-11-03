@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { NONE, gesture, gestures, screen, setup, tap } from "./interaction.fixtures";
+import { selectInstances } from "./selection";
 
 describe("tap", () => {
   it("selects a chip, focuses it and announces it", () => {
@@ -95,11 +96,11 @@ describe("long-press and context menu", () => {
     const result = gesture(state, context, { type: "longPress", point, kind: "touch" });
     expect(result.state.menu).toEqual({ kind: "chip", instanceId: nand.id, screen: point });
     expect([...result.state.selection.instances]).toEqual([nand.id]);
-    const right = gesture(state, context, { type: "contextMenu", point: screen(160, 60) });
+    const right = gesture(state, context, { type: "contextMenu", point: screen(220, 80) });
     expect(right.state.menu).toEqual({
       kind: "chip",
       instanceId: nand.id,
-      screen: screen(160, 60),
+      screen: screen(220, 80),
     });
   });
 
@@ -125,6 +126,20 @@ describe("long-press and context menu", () => {
     const closed = gesture(opened, context, { type: "contextMenu", point: screen(600, 400) });
     expect(closed.state.menu).toEqual({ kind: "canvas", screen: screen(600, 400) });
     expect(closed.effects).toEqual([]);
+  });
+});
+
+describe("right-click on a pin", () => {
+  it("pins its card and keeps the selection (D13)", () => {
+    const { context, state, nand, pieceA, pieceB } = setup();
+    const selected = { ...state, selection: selectInstances([pieceA.id, pieceB.id, nand.id]) };
+    const right = gesture(selected, context, { type: "contextMenu", point: screen(160, 60) });
+    expect(right.state.card).toMatchObject({ instanceId: nand.id, pin: 0, pinned: true });
+    expect(right.state.menu).toBeUndefined();
+    expect(right.state.selection.instances.size).toBe(3);
+    expect(right.effects).toEqual([
+      { type: "announce", announcement: { type: "pin", instanceId: nand.id, pin: 0 } },
+    ]);
   });
 });
 

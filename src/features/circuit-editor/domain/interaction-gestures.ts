@@ -82,13 +82,19 @@ const onLongPress = (
     : openCanvasMenu(state, gesture.point);
 };
 
-/** A right-click: the chip menu on a chip or pin, the wire menu on a wire, else the canvas menu. */
+/**
+ * A right-click: the pin card on a pin (a mouse has no long-press, and the selection stays, D13),
+ * the chip menu on a chip, the wire menu on a wire, else the canvas menu.
+ */
 const onContextMenu = (
   state: InteractionState,
   gesture: Of<"contextMenu">,
   context: InteractionContext,
 ): Interpreted => {
   const hit = hitAt(state, context, gesture.point);
+  if (hit.type === "pin") {
+    return withCard(done(withoutOverlays(state)), hit);
+  }
   const instanceId = chipOf(hit);
   if (instanceId !== undefined) {
     return withMenu(selected(state, selectInstances([instanceId]), instanceId), {
