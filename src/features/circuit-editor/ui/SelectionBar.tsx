@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useStore } from "zustand";
 
 import { m } from "~/i18n/paraglide/messages";
@@ -34,18 +35,42 @@ function BarButtons({ session }: { readonly session: EditorSession }): ReactNode
   );
 }
 
+interface BarProps {
+  readonly session: EditorSession;
+  /** The canvas host, which takes focus when the bar goes away while it had it. */
+  readonly hostRef: RefObject<HTMLElement | null>;
+}
+
+/**
+ * The bar while it shows. Delete and Array… hide it, so a keyboard user pressing one would lose
+ * focus to the page; the host takes it first, before the bar leaves the page.
+ */
+function DockedBar({ session, hostRef }: BarProps): ReactNode {
+  const barRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const host = hostRef.current;
+    return () => {
+      if (bar?.contains(document.activeElement) === true) {
+        host?.focus({ preventScroll: true });
+      }
+    };
+  }, [hostRef]);
+  return (
+    <div className={styles.dock}>
+      <div ref={barRef} className={styles.bar}>
+        <BarButtons session={session} />
+      </div>
+    </div>
+  );
+}
+
 /**
  * Duplicate, Array… and Delete for the selected chips, for touch and mouse users who do not know
  * the shortcuts. It is docked to the canvas (top centre; bottom on phones) rather than floating by
  * the selection, where it would cover the neighbouring chips a user is about to click.
  */
-export function SelectionBar({ session }: { readonly session: EditorSession }): ReactNode {
+export function SelectionBar({ session, hostRef }: BarProps): ReactNode {
   const visible = useStore(session.interaction.store, barVisible);
-  return visible ? (
-    <div className={styles.dock}>
-      <div className={styles.bar}>
-        <BarButtons session={session} />
-      </div>
-    </div>
-  ) : undefined;
+  return visible ? <DockedBar session={session} hostRef={hostRef} /> : undefined;
 }
