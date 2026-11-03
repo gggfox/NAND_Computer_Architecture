@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned, waiting for the owner's approval. Nothing is built yet. Branch `claude/phase-5b-multi-wire`, from `main` at 9ba663f (PR #30, Phase 5a, merged).
+Approved by the owner on 2026-11-03, with every decision as written, including D5, D9 and D13. Nothing is built yet; Task 0 is next. Branch `claude/phase-5b-multi-wire`, from `main` at 9ba663f (PR #30, Phase 5a, merged).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
