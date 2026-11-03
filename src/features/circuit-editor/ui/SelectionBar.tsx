@@ -1,14 +1,12 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
-import type { Point } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import { Button, Toolbar } from "~/shared/ui";
 
 import type { EditorSession } from "../application/editor-session";
 import type { InteractionCommand } from "../domain/interaction";
-import { piecesBounds } from "../domain/pieces-bounds";
-import { barPlacement, barVisible } from "../domain/selection-bar";
+import { barVisible } from "../domain/selection-bar";
 
 import styles from "./SelectionBar.module.css";
 
@@ -36,45 +34,18 @@ function BarButtons({ session }: { readonly session: EditorSession }): ReactNode
   );
 }
 
-/** Room the bar needs: half its width across, and its height down (it never wraps). */
-const HALF_WIDTH = "8rem";
-const HEIGHT = "3rem";
-const EDGE = "0.5rem";
-
 /**
- * The bar at `point`, kept inside the canvas when the selection runs past an edge. Above, the
- * point is the bar's centre-bottom; below, its centre-top (see the translates in the CSS).
- */
-const insideCanvas = (point: Point, side: "above" | "below"): CSSProperties => ({
-  insetInlineStart: `clamp(${HALF_WIDTH}, ${point.x}px, calc(100% - ${HALF_WIDTH}))`,
-  insetBlockStart:
-    side === "above"
-      ? `clamp(${HEIGHT}, ${point.y}px, calc(100% - ${EDGE}))`
-      : `clamp(${EDGE}, ${point.y}px, calc(100% - ${HEIGHT}))`,
-});
-
-/**
- * Duplicate, Array… and Delete over the selected chips, for touch and mouse users who do not
- * know the shortcuts. It follows the selection and flips below it near the canvas top.
+ * Duplicate, Array… and Delete for the selected chips, for touch and mouse users who do not know
+ * the shortcuts. It is docked to the canvas (top centre; bottom on phones) rather than floating by
+ * the selection, where it would cover the neighbouring chips a user is about to click.
  */
 export function SelectionBar({ session }: { readonly session: EditorSession }): ReactNode {
-  const state = useStore(session.interaction.store);
-  const editor = useStore(session.editor);
-  const scene = session.interaction.sceneOf(editor);
-  const chosen = scene.circuit.instances.filter((item) => state.selection.instances.has(item.id));
-  const bounds = barVisible(state) ? piecesBounds(scene, chosen) : undefined;
-  if (bounds === undefined) {
-    return undefined;
-  }
-  const { point, side } = barPlacement(bounds, state.camera);
-  return (
+  const visible = useStore(session.interaction.store, barVisible);
+  return visible ? (
     <div className={styles.dock}>
-      <div
-        className={side === "below" ? `${styles.bar} ${styles.below}` : styles.bar}
-        style={insideCanvas(point, side)}
-      >
+      <div className={styles.bar}>
         <BarButtons session={session} />
       </div>
     </div>
-  );
+  ) : undefined;
 }

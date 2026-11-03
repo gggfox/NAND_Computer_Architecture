@@ -26,7 +26,8 @@ Each PR is usable on its own and merges to `main` before the next one starts.
 ### 3.1 Duplicate and Array (PR 5a)
 
 1. **A selection bar (owner: Array opens from the selection's actions).**
-   - When one or more chips are selected, a small bar floats above the selection. It holds **Duplicate**, **Array…** and **Delete**. On phones it sits at the bottom of the canvas, above the safe area (my call).
+   - When one or more chips are selected, a small bar appears, docked at the top centre of the canvas. It holds **Duplicate**, **Array…** and **Delete**. On phones it sits at the bottom of the canvas, above the safe area (my call).
+   - **It does not float by the selection (owner, 2026-11-03).** A floating bar covered the neighbouring chips, and a click meant for one of them landed on Delete.
    - The bar hides while a drag, wiring or placement is in progress.
    - The chip menu (long-press or right-click) gains Duplicate and Array… too. Phase 2 left Duplicate out until this phase.
 2. **Duplicate.**
@@ -115,7 +116,6 @@ Each PR is usable on its own and merges to `main` before the next one starts.
 
 ## 8. Left to the builder
 
-- The selection bar's exact placement and how it avoids covering the selection near the top of the view.
 - Array dialog defaults beyond those above, and whether the grid column count defaults to √count.
 - Ghost wire styling, within the existing wire tokens and a contrast check.
 - How the numbered-series rule splits a name into stem and number (`d0`, `d_0`, `D[0]`).
