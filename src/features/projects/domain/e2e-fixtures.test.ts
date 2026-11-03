@@ -24,6 +24,10 @@ const SEED = 7;
 const BUS_IDS = 0x2_00;
 const SAVED_IDS = 0x3_00;
 const SAVE_FLOW_IDS = 0x5_00;
+const RAM_CELL_IDS = 0x6_00;
+const BIT_BUS_IDS = 0x7_00;
+const BIT_BUS_OUTPUTS = 4;
+const ROW = 80;
 
 /** A 4-bit input D (its pin at world (40, 80)), a NAND at (160, 40) and an output; no wires. */
 const busProject = (): Project => {
@@ -110,6 +114,57 @@ const saveFlowProject = (): Project => {
   return projectWith("Save flow", [half, full, newChip("Scratch")], SEED);
 };
 
+/**
+ * `Main` (open) holds one `Cell` at (160, 0) and a 1-bit input `clk` at (0, 0). `Cell` is saved,
+ * with inputs `d` and `clk` and output `q`; inside, a NAND of the two inputs.
+ */
+const ramCellProject = (): Project => {
+  const [inD, inClk, outQ] = [pinDef("d", "input"), pinDef("clk", "input"), pinDef("q", "output")];
+  const [pieceD, pieceClk, nand, pieceQ] = [
+    pinPiece(inD, { x: 0, y: 0 }),
+    pinPiece(inClk, { x: 0, y: 80 }),
+    piece({ type: "nand" }, { x: 160, y: 40 }),
+    pinPiece(outQ, { x: 320, y: 40 }),
+  ] as const;
+  const cell = newChip(
+    "Cell",
+    {
+      pins: [inD, inClk, outQ],
+      instances: [pieceD, pieceClk, nand, pieceQ],
+      wires: [
+        wire({ instanceId: pieceD.id, pin: 0 }, { instanceId: nand.id, pin: 0 }),
+        wire({ instanceId: pieceClk.id, pin: 0 }, { instanceId: nand.id, pin: 1 }),
+        wire({ instanceId: nand.id, pin: 2 }, { instanceId: pieceQ.id, pin: 0 }),
+      ],
+    },
+    { saved: true, color: "#22c55e" },
+  );
+  const clk = pinDef("clk", "input");
+  const main = newChip("Main", {
+    pins: [clk],
+    instances: [
+      pinPiece(clk, { x: 0, y: 0 }),
+      piece({ type: "custom", chipId: cell.id }, { x: 160, y: 0 }),
+    ],
+    wires: [],
+  });
+  return projectWith("RAM cell", [main, cell], SEED);
+};
+
+/** A 4-bit input `D` (its pin at world (40, 80)) and four 1-bit outputs at x = 320; no wires. */
+const bitBusProject = (): Project => {
+  const bus = pinDef("D", "input", BUS_WIDTH);
+  const outs = Array.from({ length: BIT_BUS_OUTPUTS }, (_unused, index) =>
+    pinDef(`O${String(index)}`, "output"),
+  );
+  const instances = [pinPiece(bus, { x: 0, y: 40 })];
+  for (const [index, out] of outs.entries()) {
+    instances.push(pinPiece(out, { x: 320, y: index * ROW }));
+  }
+  const draft = { pins: [bus, ...outs], instances, wires: [] };
+  return projectWith("Bit bus", [newChip("Main", draft)], SEED);
+};
+
 /** Random ids replaced, in order of appearance, by fixed ones from `base`, so a file is reproducible. */
 const withFixedIds = (text: string, base: number): string => {
   const ids = new Map<string, string>();
@@ -128,6 +183,8 @@ const FIXTURE_CASES = [
   { file: "bus.json", build: busProject, idBase: BUS_IDS },
   { file: "saved-chip.json", build: savedChipProject, idBase: SAVED_IDS },
   { file: "save-flow.json", build: saveFlowProject, idBase: SAVE_FLOW_IDS },
+  { file: "ram-cell.json", build: ramCellProject, idBase: RAM_CELL_IDS },
+  { file: "bit-bus.json", build: bitBusProject, idBase: BIT_BUS_IDS },
 ] as const;
 
 describe("the E2E fixtures", () => {
