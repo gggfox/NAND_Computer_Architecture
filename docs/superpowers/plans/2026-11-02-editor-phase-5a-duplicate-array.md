@@ -2,7 +2,32 @@
 
 ## Status
 
-Task 0 is done; the routing path stays as planned.
+Tasks 0–5 are done; Task 6 is this update and the PR. The decisions, and the calls made while building, are recorded in [ADR 48](../../adr/0048-duplicate-array-and-selection-bar.md).
+
+What shipped:
+
+- `array.ts` (positions, summary, default columns) and `copiesOf` (every copy in one `pasteItems`, with pin names unique across copies).
+- The `duplicate`, `showArray`, `hideArray` and `array` commands, `Ctrl`/`⌘`+`D` and `Ctrl`/`⌘`+`Shift`+`D`, and announcements in `en` and `es`.
+- The selection bar (Duplicate, Array…, Delete), the Array dialog with its live summary, the chip menu items and the keyboard help rows.
+- E2E: `bulk-editing.spec.ts` (the first half of issue #16's Done-when, Duplicate by `Ctrl`+`D` and `⌘`+`D`, the clipboard left alone, the bar hiding while wiring, the Array by taps on phones and tablets) and `a11y-bulk.spec.ts` (axe with the bar and the dialog, in every theme).
+
+Rulings made while building:
+
+- **The selection bar is docked, not floating (owner, during Task 5).** See D7.
+- The new commands are registered with the clipboard commands, since `interaction-commands.ts` would have passed 10 imports. `Size` is re-exported from `geometry.ts` for the same reason in `interaction.ts`.
+- `ClipboardDid` lives in `selection.ts`, which keeps `interaction.ts` at 299 lines.
+- Announcements say "Chips duplicated: {count}" and "Chips added in an array: {count}", matching "Chips copied" and "Chips pasted" (D8's wording changed).
+- The browser check found a bug the unit tests couldn't: a wide selection squeezed the floating bar into a column that spilled over the toolbar. It became moot when the bar was docked.
+- The Array dialog's number fields commit on blur or Enter. Typing a count and pressing Enter or clicking Create uses it; the e2e spec blurs explicitly.
+- Four older e2e specs pressed "Delete" by name. They now aim at the editor toolbar's Delete, since the bar has one too.
+- No visual baseline changed: none of them shows a selection.
+- `pnpm e2e:perf`: p95 16.8 ms in both drag cases.
+- Firefox can't launch on the machine that built this, so its e2e first runs in CI.
+
+Known follow-ups:
+
+- Warn when Array copies would land on other chips. That case takes about 70 ms to route (see below).
+- `route-perf.test.ts` flakes under load.
 
 - **Spike result.** One `pasteItems` of 64 copies of a 4-NAND cell with 4 automatic wires (256 parts, 256 wires) goes through `applyAction`. The median of 7 runs is about 12 ms, on an empty chip and with 300 NANDs elsewhere on the chip. Both are under the 16 ms frame budget, so the copies are routed as usual.
 - **Seen in the spike:** when the copies land **on top of** existing chips, the same paste takes about 70 ms, because every route has to work around the overlapping bodies. Array doesn't check for room (spec §3.1.3), so this can happen. It is a follow-up, not a blocker: a later fix could warn about overlap in the dialog's summary, or route the copies by translating the originals' routes.
