@@ -2,7 +2,40 @@
 
 ## Status
 
-Approved by the owner on 2026-11-03, with every decision as written, including D5, D9 and D13. Nothing is built yet; Task 0 is next. Branch `claude/phase-5b-multi-wire`, from `main` at 9ba663f (PR #30, Phase 5a, merged).
+Tasks 0–7 are done; Task 8 is this update and the PR. The decisions, and the calls made while building, are recorded in [ADR 49](../../adr/0049-wiring-several-pins.md).
+
+What shipped:
+
+- `pin-selection.ts` (the ordered pin list, `samePinOn` in reading order), `Selection.pins`, and `prune` dropping pins that are gone.
+- `planBulkWires` (fan-out, bit by bit, reverse, all or nothing) and the `connectWires` action, one undo step.
+- The `togglePin`, `selectPinOnAll` and `togglePinPick` commands, `Shift`+tap, `Shift`+`Space`, `a`, `Enter` with pins selected, the Escape step, and a right-click on a pin pinning its card (D13). Announcements and the refusal notice in `en` and `es`.
+- Rings and order numbers on picked pins, a red ring on the refused pin.
+- The card's "Select this pin on all selected chips" button, the **Pick pins** toggle in the selection bar (with a new `shared/ui` `ToggleButton`), and the keyboard help rows.
+- E2E: `multi-wire.spec.ts` (issue #16's "16 `clk` pins in one step" with one Undo and one Redo, keyboard only, `Shift`+click bit by bit with the export's bit order, a refusal, touch with Pick pins) and `a11y-multi-wire.spec.ts` (axe with picked pins, the card's button and a refusal notice, in every theme). Fixtures `ram-cell.json` and `bit-bus.json` come from the fixture generator test.
+
+Spike and timing:
+
+- **Task 0, pin hit targets.** A 4 × 4 Array of NANDs with spacing 0 puts pin anchors 20 world px apart (a chip's own pins are 40 apart). A tap exactly on an anchor gets its own pin at zoom 0.25 (the minimum), 1 (the default) and 4. A tap 6 screen px off lands on a neighbour only below zoom 0.6; 11 px off can at zoom 1, where the pins are 20 px apart. So D2 stands, and `Shift`+tap is not limited to selected chips.
+- **Task 3, `connectWires` of 64 wires** from one source to a 64-NAND column: median about 6 ms (5.98, 6.49 and 6.60 ms in three runs of 7), within the 16 ms frame. Under coverage it takes about 99 ms, so the test asserts under 200 ms.
+
+Rulings made while building:
+
+- **The bar hid the refusal notice.** The browser check found it: with pins selected the docked bar stays up when a bulk wire is refused, and both sat at the top centre. On a wide canvas the notice now sits below the bar. `RefusalNotice` moved to its own file to keep `ModeOverlays.tsx` within its import limit.
+- `prune` takes the scene, not the circuit, since checking that a chip still has a pin needs its layout.
+- `chipLabel` moved to `chip-label.ts`, so `announcements-pins.ts` can use it without a cycle.
+- While Pick pins is on, a tap on any pin picks it, so a touch user turns Pick pins off before tapping the source.
+- `[` and `]` replace the chip selection, so they clear the pins. From the keyboard, `Shift`+`[` or `Shift`+`]` reaches the source with the pins kept.
+- The card's button shows only for a pinned card: moving the mouse onto it would close a hover card.
+- There is no warning token, so the refused pin's ring uses `wire-red`, the colour of the notice's border. Wire colours are already contrast-checked in every theme.
+- Widths that fit no case (a 4-bit source with 8-bit pins) fall through to `checkConnection`'s width mismatch.
+- `interaction.ts` grew 12 lines, not 8 (281 lines, 10 modules), because the `./selection` import became one multi-line statement.
+- `pnpm e2e:perf`: p95 16.8 ms (drag) and 16.7 ms (glow drag). No visual baseline changed.
+- Firefox can't launch on the machine that built this, so its e2e first runs in CI.
+
+Known follow-ups:
+
+- Bulk wiring by dragging, and selecting pins with a box or lasso.
+- `route-perf.test.ts` still flakes under load.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review for the PR.
 
