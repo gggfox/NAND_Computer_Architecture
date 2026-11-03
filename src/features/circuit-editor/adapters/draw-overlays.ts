@@ -4,6 +4,8 @@ import type { Point } from "~/features/projects";
 import { layoutIn, wireRoute } from "../domain/geometry";
 import type { Hit } from "../domain/hit-test";
 import type { Selection } from "../domain/selection";
+import { drawGhosts } from "./draw-ghosts";
+import type { GhostsView } from "./draw-ghosts";
 import { drawPickedPins } from "./draw-picked-pins";
 import type { PickedView } from "./draw-picked-pins";
 import { drawWiring } from "./draw-wiring";
@@ -11,7 +13,7 @@ import type { ArmedView, BendsView, WireDragView } from "./draw-wiring";
 import type { Frame } from "./frame";
 
 /** What the interaction layer adds to a frame; every field is optional. */
-export interface OverlayView extends PickedView {
+export interface OverlayView extends PickedView, GhostsView {
   readonly selection?: Selection;
   readonly hover?: Hit;
   /** A box or lasso being drawn, world units. */
@@ -143,6 +145,7 @@ const drawGuide = (frame: Frame, x: number | undefined, zoom: number): void => {
 export const drawOverlays = (frame: Frame, overlay: OverlayView, zoom: number): void => {
   drawChipOutlines(frame, overlay);
   drawWiring(frame, overlay);
+  drawGhosts(frame, overlay);
   drawHoverRing(frame, overlay.hover, zoom);
   drawPickedPins(frame, overlay);
   drawMarquee(frame, overlay.marquee, zoom);
