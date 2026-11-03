@@ -115,6 +115,7 @@ const paste = (state: InteractionState, context: InteractionContext): Interprete
   const selection = {
     instances: new Set(instances.map((item) => item.id)),
     wires: new Set(wires.map((item) => item.id)),
+    pins: [],
   };
   const result = selected(
     { ...state, clipboard: { ...clipboard, offset: clipboard.offset + 1 } },

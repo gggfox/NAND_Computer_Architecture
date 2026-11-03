@@ -39,6 +39,7 @@ const added = (
   const selection = {
     instances: new Set([...keep.instances, ...instances.map((item) => item.id)]),
     wires: new Set([...keep.wires, ...wires.map((item) => item.id)]),
+    pins: [],
   };
   const { arraying: _arraying, ...open } = state;
   const result = selected(open, selection, instances[0]?.id);

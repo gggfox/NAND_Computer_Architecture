@@ -104,7 +104,7 @@ export const afterHistory = (state: InteractionState, scene: Scene): Interaction
   } = state;
   return {
     ...rest,
-    selection: prune(state.selection, circuit),
+    selection: prune(state.selection, scene),
     ...(focus !== undefined && present.instances.has(focus) ? { focus } : {}),
     ...(menuThere(menu, present) ? { menu } : {}),
     ...(stillThere(card, present.instances) === undefined ? {} : { card }),

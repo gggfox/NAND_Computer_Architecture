@@ -16,6 +16,7 @@ import {
   toggleInstance,
   toggleWire,
   withInnerWires,
+  withPins,
 } from "./selection";
 
 const [first, second, third] = [newInstanceId(), newInstanceId(), newInstanceId()];
@@ -35,6 +36,22 @@ describe("selection sets", () => {
     expect([...addInstances(one, [first, third]).instances]).toEqual([first, third]);
     expect(isEmpty(selectWire(wireId))).toBe(false);
     expect(toggleWire(selectWire(wireId), wireId).wires.size).toBe(0);
+  });
+
+  it("keeps pins through toggles and additions, and drops them on a new selection", () => {
+    const pins = [{ instanceId: first, pin: 0 }];
+    const picked = withPins(selectInstances([first]), pins);
+    expect(picked.pins).toEqual(pins);
+    expect(toggleInstance(picked, second).pins).toBe(pins);
+    expect(toggleWire(picked, newWireId()).pins).toBe(pins);
+    expect(addInstances(picked, [third]).pins).toBe(pins);
+    expect(selectInstances([first]).pins).toEqual([]);
+    expect(selectWire(newWireId()).pins).toEqual([]);
+    expect(EMPTY_SELECTION.pins).toEqual([]);
+  });
+
+  it("counts pins as something selected", () => {
+    expect(isEmpty(withPins(EMPTY_SELECTION, [{ instanceId: first, pin: 0 }]))).toBe(false);
   });
 });
 
@@ -63,7 +80,9 @@ describe("box and lasso", () => {
 });
 
 describe("selection against a circuit", () => {
-  const circuit = createDemoProject("x").chips[0]?.draft ?? EMPTY_CIRCUIT;
+  const project = createDemoProject("x");
+  const circuit = project.chips[0]?.draft ?? EMPTY_CIRCUIT;
+  const scene = { project, circuit };
   const ids = circuit.instances.map((item) => item.id);
 
   it("withInnerWires adds wires whose two ends are selected", () => {
@@ -77,11 +96,28 @@ describe("selection against a circuit", () => {
 
   it("prune drops missing ids, and returns the same selection when nothing is missing", () => {
     const kept = selectInstances(ids);
-    expect(prune(kept, circuit)).toBe(kept);
+    expect(prune(kept, scene)).toBe(kept);
     const stale = addInstances(selectWire(newWireId()), [newInstanceId(), ...ids.slice(0, 1)]);
-    expect(prune(stale, circuit)).toEqual({
+    expect(prune(stale, scene)).toEqual({
       instances: new Set(ids.slice(0, 1)),
       wires: new Set(),
+      pins: [],
     });
+  });
+
+  it("prune drops pins whose chip is gone or whose pin the chip does not have", () => {
+    const [idA, , idNand] = ids;
+    const good = [
+      { instanceId: idNand ?? first, pin: 2 },
+      { instanceId: idA ?? first, pin: 0 },
+    ];
+    const kept = withPins(selectInstances(ids), good);
+    expect(prune(kept, scene)).toBe(kept);
+    const stale = withPins(kept, [
+      ...good,
+      { instanceId: newInstanceId(), pin: 0 },
+      { instanceId: idNand ?? first, pin: 9 },
+    ]);
+    expect(prune(stale, scene).pins).toEqual(good);
   });
 });

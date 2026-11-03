@@ -100,7 +100,7 @@ describe("editing commands", () => {
     const wireId = circuit.wires[0]?.id;
     const chosen = {
       ...state,
-      selection: { instances: new Set([nand.id]), wires: new Set(wireId ? [wireId] : []) },
+      selection: { ...selectInstances([nand.id]), wires: new Set(wireId ? [wireId] : []) },
     };
     const result = command(chosen, context, { type: "deleteSelection" });
     expect(result.effects).toEqual([
