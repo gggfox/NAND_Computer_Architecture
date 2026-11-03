@@ -6,14 +6,8 @@ import type { Rect } from "./chip-layout";
 import { layoutIn } from "./geometry";
 import type { Scene } from "./geometry";
 
-export type {
-  BulkRefusal,
-  BulkWireError,
-  Notice,
-  PinAnnouncement,
-  PinCommand,
-} from "./pin-selection";
-export { appendPins, hasPin, samePinOn, togglePinIn } from "./pin-selection";
+export type { Notice, PinAnnouncement, PinCommand } from "./pin-selection";
+export { appendPins, samePinOn, togglePinIn } from "./pin-selection";
 
 /** What is selected on the open chip. Not an edit: it lives outside undo history. */
 export interface Selection {

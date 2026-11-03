@@ -17,8 +17,8 @@ const GAP = { x: 200, y: 150 } as const;
 const PIN_A_DY = 20;
 
 export const SHIFT = { ...NONE, shift: true };
-export const COLUMNS = 5;
-export const ROWS = 3;
+const COLUMNS = 5;
+const ROWS = 3;
 /** The demo's NAND and the fifteen more in the grid. */
 export const PINS = COLUMNS * ROWS + 1;
 

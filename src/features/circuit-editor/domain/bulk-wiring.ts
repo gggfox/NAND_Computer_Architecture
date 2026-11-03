@@ -7,7 +7,7 @@ import type { Scene } from "./geometry";
 import type { BulkRefusal } from "./pin-selection";
 import { sideWidth } from "./wiring-targets";
 
-export interface PlannedWire {
+interface PlannedWire {
   readonly from: PinRef;
   readonly to: PinRef;
 }
