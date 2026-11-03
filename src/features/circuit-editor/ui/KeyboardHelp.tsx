@@ -31,6 +31,10 @@ const rows = (): readonly (readonly [string, string])[] => [
   [m.help_keys_cancel_wiring(), m.help_cancel_wiring()],
   [m.help_keys_bend_step(), m.help_bend_step()],
   [m.help_keys_bend_move(), m.help_bend_move()],
+  [m.help_keys_suggest(), m.help_suggest()],
+  [m.help_keys_ghost_step(), m.help_ghost_step()],
+  [m.help_keys_ghost_accept(), m.help_ghost_accept()],
+  [m.help_keys_ghost_dismiss(), m.help_ghost_dismiss()],
 ];
 
 function Row({ keys, action }: { readonly keys: string; readonly action: string }): ReactNode {

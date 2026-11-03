@@ -18,7 +18,8 @@ export const MATCH_LIMIT = 20;
 export type QuickAddPick =
   | { readonly type: "place"; readonly kind: PlaceableKind }
   | { readonly type: "pin"; readonly direction: PinDirection }
-  | { readonly type: "tidy" };
+  | { readonly type: "tidy" }
+  | { readonly type: "suggest" };
 
 export interface QuickAddView {
   readonly sections: readonly ListSection[];
@@ -65,6 +66,7 @@ const pinEntries = (): readonly Entry[] => [
 
 const tidyEntries = (): readonly Entry[] => [
   { key: "wires", label: m.canvas_menu_tidy(), pick: { type: "tidy" } },
+  { key: "suggest", label: m.suggest_wires(), pick: { type: "suggest" } },
 ];
 
 const builtinParts = (tree: readonly LibraryNode[]): readonly LibraryNode[] =>
@@ -96,7 +98,7 @@ const searchGroups = (tree: readonly LibraryNode[], query: string): readonly Gro
 };
 
 /**
- * The quick-add's lists (D9). Without a query: Recent, Starred, Pins, Built-in and Tidy wires;
+ * The quick-add's lists (D9). Without a query: Recent, Starred, Pins, Built-in, Tidy wires and Suggest wires;
  * with one, the ranked matches. Chips that can't be placed in the open chip are left out.
  */
 export const quickAddView = (source: Source, query: string): QuickAddView => {

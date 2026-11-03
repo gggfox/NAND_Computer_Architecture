@@ -328,5 +328,13 @@
   "suggestions_bar_count": "Suggested wires: {count}",
   "suggestions_accept_all": "Accept all",
   "suggestions_dismiss": "Dismiss",
-  "suggest_wires": "Suggest wires"
+  "suggest_wires": "Suggest wires",
+  "help_keys_suggest": "Shift+W",
+  "help_suggest": "Suggest wires for the selected chips, or the whole chip",
+  "help_keys_ghost_step": "n / N (with suggested wires)",
+  "help_ghost_step": "Focus the next or previous suggested wire",
+  "help_keys_ghost_accept": "Enter (with a suggested wire focused)",
+  "help_ghost_accept": "Accept the focused suggested wire",
+  "help_keys_ghost_dismiss": "Escape (with suggested wires)",
+  "help_ghost_dismiss": "Dismiss the suggested wires"
 }

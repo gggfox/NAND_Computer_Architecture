@@ -328,5 +328,13 @@
   "suggestions_bar_count": "Cables sugeridos: {count}",
   "suggestions_accept_all": "Aceptar todos",
   "suggestions_dismiss": "Descartar",
-  "suggest_wires": "Sugerir cables"
+  "suggest_wires": "Sugerir cables",
+  "help_keys_suggest": "Mayús+W",
+  "help_suggest": "Sugiere cables para los chips seleccionados, o para todo el chip",
+  "help_keys_ghost_step": "n / N (con cables sugeridos)",
+  "help_ghost_step": "Enfoca el cable sugerido siguiente o anterior",
+  "help_keys_ghost_accept": "Intro (con un cable sugerido enfocado)",
+  "help_ghost_accept": "Acepta el cable sugerido enfocado",
+  "help_keys_ghost_dismiss": "Esc (con cables sugeridos)",
+  "help_ghost_dismiss": "Descarta los cables sugeridos"
 }

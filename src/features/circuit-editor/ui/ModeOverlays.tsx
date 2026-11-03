@@ -7,6 +7,7 @@ import { ArrayDialog } from "./ArrayDialog";
 import { KeyboardHelp } from "./KeyboardHelp";
 import { RefusalNotice } from "./RefusalNotice";
 import { SelectionBar } from "./SelectionBar";
+import { SuggestionsBar } from "./SuggestionsBar";
 import { useFocusHostOnClose } from "./use-focus-host";
 
 const sendCommand = (session: EditorSession, command: InteractionCommand): void => {
@@ -14,7 +15,7 @@ const sendCommand = (session: EditorSession, command: InteractionCommand): void 
 };
 
 /**
- * What the interaction state opens over the canvas: the refusal notice, the selection bar, and the
+ * What the interaction state opens over the canvas: the refusal notice, the selection and suggestions bars, and the
  * keyboard help and Array dialogs.
  */
 export function ModeOverlays({
@@ -31,6 +32,7 @@ export function ModeOverlays({
     <>
       <RefusalNotice session={session} />
       <SelectionBar session={session} hostRef={hostRef} />
+      <SuggestionsBar session={session} hostRef={hostRef} />
       {arraying === true ? (
         <ArrayDialog
           onArray={(request) => {

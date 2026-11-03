@@ -6,12 +6,18 @@ import { newInstanceId, WireIdSchema } from "~/shared/ids";
 import { initialInteraction } from "./interaction";
 import type { InteractionState } from "./interaction";
 import { addInstances, selectInstances, selectWire } from "./selection";
-import { barChipActions, barVisible, offersSelectOnAll } from "./selection-bar";
+import {
+  barChipActions,
+  barVisible,
+  offersSelectOnAll,
+  suggestionsBarVisible,
+} from "./selection-bar";
 
 const CAMERA = { zoom: 1, x: 0, y: 0 };
 const ID = newInstanceId();
 const POINT = { x: 0, y: 0 };
 const PIN = { instanceId: ID, pin: 0 };
+const GHOSTS = { ghosts: [{ from: PIN, to: PIN, route: [] }] };
 const selected = (): InteractionState => ({
   ...initialInteraction(CAMERA, "select"),
   selection: selectInstances([ID]),
@@ -40,6 +46,7 @@ describe("barVisible", () => {
     ["renaming", { renaming: { instanceId: ID, screen: POINT } }],
     ["arraying", { arraying: true }],
     ["bitPick", { bitPick: { armed: PIN, target: PIN, bus: "armed", bits: [0], screen: POINT } }],
+    ["suggestions", { suggestions: GHOSTS }],
   ];
   it.each(blockers)("hides while %s is set", (_name, patch) => {
     expect(barVisible({ ...selected(), ...patch })).toBe(false);
@@ -102,5 +109,36 @@ describe("offersSelectOnAll", () => {
   it("is false when the card's chip is not selected", () => {
     const stranger = card(true, newInstanceId());
     expect(offersSelectOnAll({ ...twoSelected(), card: stranger })).toBe(false);
+  });
+});
+
+const suggesting = (): InteractionState => ({
+  ...initialInteraction(CAMERA, "select"),
+  suggestions: GHOSTS,
+});
+
+describe("suggestionsBarVisible", () => {
+  it("shows while ghosts show", () => {
+    expect(suggestionsBarVisible(suggesting())).toBe(true);
+  });
+
+  it("hides with no ghosts", () => {
+    expect(suggestionsBarVisible(initialInteraction(CAMERA, "select"))).toBe(false);
+  });
+
+  it("hides when the ghosts are an empty list", () => {
+    expect(suggestionsBarVisible({ ...suggesting(), suggestions: { ghosts: [] } })).toBe(false);
+  });
+
+  const blockers: readonly (readonly [string, Partial<InteractionState>])[] = [
+    ["drag", { drag: { kind: "pan", last: POINT } }],
+    ["menu", { menu: { kind: "canvas", screen: POINT } }],
+    ["renaming", { renaming: { instanceId: ID, screen: POINT } }],
+    ["arraying", { arraying: true }],
+    ["help", { help: true }],
+    ["bitPick", { bitPick: { armed: PIN, target: PIN, bus: "armed", bits: [0], screen: POINT } }],
+  ];
+  it.each(blockers)("hides while %s is set", (_name, patch) => {
+    expect(suggestionsBarVisible({ ...suggesting(), ...patch })).toBe(false);
   });
 });

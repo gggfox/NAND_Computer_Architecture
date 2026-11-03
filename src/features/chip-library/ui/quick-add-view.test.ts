@@ -53,7 +53,7 @@ describe("quickAddView without a query", () => {
     expect(labels(view, "starred")).toEqual(["Half adder"]);
     expect(labels(view, "pins")).toEqual(["Add input", "Add output"]);
     expect(labels(view, "builtin")).toHaveLength(7);
-    expect(labels(view, "tidy")).toEqual(["Tidy wires"]);
+    expect(labels(view, "tidy")).toEqual(["Tidy wires", "Suggest wires"]);
   });
 
   it("says what each entry does", () => {
@@ -67,7 +67,7 @@ describe("quickAddView without a query", () => {
       { type: "pin", direction: "input" },
       { type: "pin", direction: "output" },
     ]);
-    expect(picks("tidy")).toEqual([{ type: "tidy" }]);
+    expect(picks("tidy")).toEqual([{ type: "tidy" }, { type: "suggest" }]);
   });
 
   it("leaves out recent and starred chips that can't be placed, and empty sections", () => {
