@@ -40,9 +40,11 @@ Rulings made while building:
 - **`GHOST_ALPHA` = 0.7**, the lowest 0.05 step that gives at least 3:1 in every theme, for the default wire and all 8 wire colours (the light theme binds default, blue, orange and yellow). The test asserts 0.65 fails, so the value stays minimal. The default ghost colour is the `wire` token. The focused ghost gets the selected-wire halo.
 - `DockedBar.tsx` now holds the dock and focus-return logic both bars share. The suggestions bar also hides while the help dialog is open. Accept all is the default button variant and Dismiss is quiet.
 - The e2e ghost-tap point is computed from the fixture, with no test hook.
+- **From the PR review:** a tap goes to a placement, an armed pin or the bit picker before a ghost, so it never accepts a ghost by accident. `Enter` with a pin armed or pins selected still wires, even with a ghost focused.
 
 Known follow-ups:
 
+- An accept that `connectWires` refuses still drops those ghosts and announces "Wires accepted". It can't happen in practice (ghosts are legal when shown and every edit clears them), but the state could wait for the edit's result.
 - A series of 1-bit sources into the bits of a sink bus (D19).
 - Routing ghosts above the cap in the background, or a few at a time.
 - `route-perf.test.ts` and `to-netlist-source-perf.test.ts` still flake under load.

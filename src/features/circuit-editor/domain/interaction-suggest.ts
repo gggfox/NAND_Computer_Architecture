@@ -180,6 +180,10 @@ const awayFrom = (route: readonly Point[], point: Point): number =>
     return from === undefined ? best : Math.min(best, segmentDistance(point, from, to));
   }, Infinity);
 
+/** Placing, an armed pin or the bit picker owns the next tap, so it never accepts a ghost. */
+const tapTaken = (state: InteractionState): boolean =>
+  state.placing !== undefined || state.armed !== undefined || state.bitPick !== undefined;
+
 /**
  * A tap on a ghost accepts it. A pin under the tap wins, so tapping a ghost's end pin works as
  * before (D11); `undefined` when the tap is not on a ghost.
@@ -190,7 +194,7 @@ export const ghostTap = (
   context: InteractionContext,
 ): Interpreted | undefined => {
   const { suggestions } = state;
-  if (gesture.type !== "tap" || suggestions === undefined) {
+  if (gesture.type !== "tap" || suggestions === undefined || tapTaken(state)) {
     return undefined;
   }
   if (hitAt(state, context, gesture.point).type === "pin") {

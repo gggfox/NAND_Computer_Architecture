@@ -52,9 +52,11 @@ All were approved with the plan on 2026-11-03 unless marked as the owner's call.
 - **`DockedBar.tsx`** holds the dock and focus-return logic both bars share. The suggestions bar also hides while the help dialog is open. Accept all is the default button variant and Dismiss is quiet.
 - **The e2e ghost-tap point** is computed from the fixture, with no test hook.
 - **Checks.** `pnpm e2e:perf`: p95 16.8 ms (drag) and 16.8 ms (glow drag). Visual: 7 of 7, no baseline changed. Firefox can't launch on the machine that built this, so its e2e first runs in CI.
+- **From the PR review:** a tap goes to a placement, an armed pin or the bit picker before a ghost, so it never accepts a ghost by accident. `Enter` with a pin armed or pins selected still wires, even with a ghost focused.
 
 ## Follow-ups
 
+- An accept that `connectWires` refuses still drops those ghosts and announces "Wires accepted". It can't happen in practice (ghosts are legal when shown and every edit clears them), but the state could wait for the edit's result.
 - A series of 1-bit sources into the bits of a sink bus (`q0..q3` into a 4-bit output piece).
 - Routing ghosts above the cap in the background, or a few at a time.
 - Fuzzy name matching beyond numbered series, and learning from past choices.

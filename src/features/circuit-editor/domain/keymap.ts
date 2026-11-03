@@ -96,14 +96,15 @@ const ghostKey = (press: KeyPress, context?: KeyContext): InteractionCommand | u
 };
 
 const plainKey = (press: KeyPress, context?: KeyContext): InteractionCommand | undefined => {
-  const ghost = ghostKey(press, context);
-  if (ghost !== undefined) {
-    return ghost;
-  }
+  // An armed pin or picked pins keep `Enter` for wiring, even with a ghost focused.
   if (press.key === "Enter" && context?.wiring === true) {
     return { type: "connect" };
   }
-  return (press.shift ? SHIFTED.get(press.key) : undefined) ?? PLAIN.get(press.key)?.(press.shift);
+  return (
+    ghostKey(press, context) ??
+    (press.shift ? SHIFTED.get(press.key) : undefined) ??
+    PLAIN.get(press.key)?.(press.shift)
+  );
 };
 
 /** With Ctrl or ⌘ (keys lowercased): only the editing shortcuts; the rest stay the browser's. */

@@ -185,10 +185,10 @@ describe("suggested wire keys", () => {
     expect(commandForKey(press("p"), ghosts)).toEqual({ type: "nextPin", backwards: false });
   });
 
-  it("Enter accepts the focused ghost, ahead of wiring", () => {
-    const focused = { wiring: true, ghosts: true, ghostFocused: true };
+  it("Enter accepts the focused ghost, but wiring keeps it", () => {
+    const focused = { wiring: false, ghosts: true, ghostFocused: true };
     expect(commandForKey(press("Enter"), focused)).toEqual({ type: "acceptGhost" });
-    expect(commandForKey(press("Enter"), { ...focused, ghostFocused: false })).toEqual({
+    expect(commandForKey(press("Enter"), { ...focused, wiring: true })).toEqual({
       type: "connect",
     });
     expect(commandForKey(press("Enter"), { wiring: false, ghosts: true })).toEqual({

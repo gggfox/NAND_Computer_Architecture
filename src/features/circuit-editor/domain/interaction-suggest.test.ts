@@ -244,4 +244,20 @@ describe("tapping a ghost", () => {
     const result = gesture(quiet.state, quiet.context, tap({ x: 60, y: 60 }));
     expect(dispatches(result)).toEqual([]);
   });
+
+  it("leaves a tap to a placement or an armed pin, which own the next tap", () => {
+    const { state, context, ghosts, regs } = suggested();
+    const [ghost] = ghosts;
+    const [first] = regs;
+    assert(ghost !== undefined && first !== undefined);
+    const point = middleOf(state, ghost);
+    const armed = { end: pinOf(first), legal: new Set<string>() };
+    const busy = [{ ...state, placing: { type: "nand" } } as const, { ...state, armed }];
+    for (const result of busy.map((item) => gesture(item, context, tap(point)))) {
+      expect(result.state.suggestions?.accepting).toBeUndefined();
+      expect(dispatches(result).some((effect) => effect.action.type === "connectWires")).toBe(
+        false,
+      );
+    }
+  });
 });
