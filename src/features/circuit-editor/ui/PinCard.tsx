@@ -30,7 +30,7 @@ function CardBody({ info }: { readonly info: Info }): ReactNode {
       <ul className={styles.connections}>
         {info.connections.length === 0 ? <li>{m.pin_card_unconnected()}</li> : undefined}
         {info.connections.map((connection) => (
-          <li key={`${connection.chip}.${connection.pin}`}>{m.pin_card_connection(connection)}</li>
+          <li key={connection.key}>{m.pin_card_connection(connection)}</li>
         ))}
       </ul>
     </div>
