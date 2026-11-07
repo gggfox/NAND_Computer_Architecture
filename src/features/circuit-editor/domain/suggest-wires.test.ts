@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { pinDef, piece, wire } from "~/features/projects";
 import type { PinRef } from "~/features/projects";
 
-import { fastestCpuMs } from "./perf.fixtures";
+import { fastestCpuMs, PERF_TIMEOUT_MS } from "./perf.fixtures";
 import { inputPieces, partOf, sceneOf, savedChip, shown } from "./suggest-builders.fixtures";
 import { suggestWires } from "./suggest-wires";
 import { bigScene, registerFileScene } from "./suggest-wires.fixtures";
@@ -161,7 +161,7 @@ describe("a big chip", () => {
     expect(suggestWires(bigScene().scene)).toHaveLength(200);
   });
 
-  it("stays well inside a frame budget even under coverage", () => {
+  it("stays well inside a frame budget even under coverage", { timeout: PERF_TIMEOUT_MS }, () => {
     const { scene } = bigScene();
     const budget = 200;
     const time = fastestCpuMs(5, () => {

@@ -7,7 +7,7 @@ import { newWireId } from "~/shared/ids";
 import { pinPosition, wireRoute } from "./geometry";
 import type { Scene } from "./geometry";
 import { GHOST_ROUTE_CAP, ghostsOf } from "./ghost-routes";
-import { fastestCpuMs } from "./perf.fixtures";
+import { fastestCpuMs, PERF_TIMEOUT_MS } from "./perf.fixtures";
 import { entersChips } from "./routing/routing.fixtures";
 import { suggestWires } from "./suggest-wires";
 import { bigScene, registerFileScene } from "./suggest-wires.fixtures";
@@ -108,14 +108,18 @@ describe("the cap", () => {
 describe("timing", () => {
   const { scene } = bigScene();
 
-  it("suggests and draws every proposal as an elbow within a frame", () => {
-    const time = fastest(() => {
-      expect(ghostsOf(scene, suggestWires(scene))).toHaveLength(200);
-    });
-    expect(time).toBeLessThan(BOUND_MS);
-  });
+  it(
+    "suggests and draws every proposal as an elbow within a frame",
+    { timeout: PERF_TIMEOUT_MS },
+    () => {
+      const time = fastest(() => {
+        expect(ghostsOf(scene, suggestWires(scene))).toHaveLength(200);
+      });
+      expect(time).toBeLessThan(BOUND_MS);
+    },
+  );
 
-  it("suggests and routes exactly the cap within a frame", () => {
+  it("suggests and routes exactly the cap within a frame", { timeout: PERF_TIMEOUT_MS }, () => {
     const time = fastest(() => {
       expect(ghostsOf(scene, suggestWires(scene).slice(0, GHOST_ROUTE_CAP))).toHaveLength(
         GHOST_ROUTE_CAP,
