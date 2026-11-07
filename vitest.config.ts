@@ -20,6 +20,7 @@ export default defineConfig({
         "src/shared/ui/**",
         "src/routes/**",
         "src/routeTree.gen.ts",
+        "src/i18n/paraglide/**",
       ],
       thresholds: {
         // Global Constraint: simulation (adapters/ excluded above), every feature domain, shared (ui/ excluded above).
