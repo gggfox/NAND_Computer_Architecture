@@ -96,6 +96,19 @@ describe("watchForUpdates", () => {
     expect(env.hooks.onUpdateReady).toHaveBeenCalledTimes(1);
   });
 
+  it("offers a later update in a tab that was uncontrolled at first install", () => {
+    const env = harness(false);
+    watchForUpdates(env.container, env.registration, env.hooks);
+    env.fireContainer("controllerchange");
+    const installing = fakeWorker("installing");
+    env.registration.installing = installing.worker;
+    env.fireRegistration("updatefound");
+    installing.worker.state = "installed";
+    env.registration.waiting = installing.worker;
+    installing.fire("statechange");
+    expect(env.hooks.onUpdateReady).toHaveBeenCalledTimes(1);
+  });
+
   it("never offers the first install as an update", () => {
     const env = harness(false);
     watchForUpdates(env.container, env.registration, env.hooks);
@@ -129,5 +142,16 @@ describe("watchForUpdates takeover", () => {
     env.fireContainer("controllerchange");
     expect(env.hooks.beforeReload).not.toHaveBeenCalled();
     expect(env.hooks.reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads on a later takeover in a tab that was uncontrolled at first install", async () => {
+    const env = harness(false);
+    watchForUpdates(env.container, env.registration, env.hooks);
+    env.fireContainer("controllerchange");
+    env.fireContainer("controllerchange");
+    await vi.waitFor(() => {
+      expect(env.hooks.reload).toHaveBeenCalledTimes(1);
+    });
+    expect(env.hooks.beforeReload).toHaveBeenCalledTimes(1);
   });
 });

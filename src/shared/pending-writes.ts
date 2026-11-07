@@ -14,7 +14,19 @@ export const registerPendingWrite = (flush: Flush): (() => void) => {
   };
 };
 
-/** Runs every registered flush and resolves once all of them have settled. */
+/** The longest wait for the flushes. A stuck flush must not block a reload or a language switch. */
+export const FLUSH_TIMEOUT_MS = 2000;
+
+/** Runs every registered flush and resolves once all of them settle, or after `FLUSH_TIMEOUT_MS`. */
 export const flushPendingWrites = async (): Promise<void> => {
-  await Promise.allSettled([...flushes].map((flush) => flush()));
+  let id: ReturnType<typeof setTimeout> | undefined = undefined;
+  // oxlint-disable-next-line promise/avoid-new -- a timer has no promise API in the browser
+  const timeout = new Promise<void>((resolve) => {
+    id = setTimeout(resolve, FLUSH_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([Promise.allSettled([...flushes].map((flush) => flush())), timeout]);
+  } finally {
+    clearTimeout(id);
+  }
 };
