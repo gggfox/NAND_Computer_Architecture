@@ -46,9 +46,10 @@ export const ToEngineSchema = z.discriminatedUnion("type", [
 ]);
 export type ToEngine = z.infer<typeof ToEngineSchema>;
 
-const CompileErrorSchema = z
-  .object({ type: z.literal("SignalOutOfRange"), ref: SignalRefSchema })
-  .readonly() satisfies z.ZodType<CompileError>;
+const CompileErrorSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("SignalOutOfRange"), ref: SignalRefSchema }).readonly(),
+  z.object({ type: z.literal("InvalidInputCount"), inputCount: z.number() }).readonly(),
+]) satisfies z.ZodType<CompileError>;
 
 const EngineErrorSchema = z.union([
   CompileErrorSchema,

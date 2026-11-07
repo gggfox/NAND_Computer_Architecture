@@ -22,6 +22,7 @@ describe("simulationErrorMessage", () => {
       { type: "InvalidWire", path: [instanceId], wireId: newWireId() },
       { type: "WireLoop", path: [], instanceId },
       { type: "SignalOutOfRange", ref: { kind: "nand", index: 3 } },
+      { type: "InvalidInputCount", inputCount: -1 },
       { type: "BadMessage" },
       { type: "WorkerFailed" },
     ];
