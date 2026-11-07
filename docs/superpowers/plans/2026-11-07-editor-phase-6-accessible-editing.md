@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned on 2026-11-07, from the code on `main` at e51472f. Not started. The owner chose the design on 2026-11-07 (spec §3.1): a Parts list and a Wires list, an Actions menu on each row, a "Wire to…" dialog, and a landmark in the side panel. The decisions are recorded in the spec. ADR 51 is written by the last task (T14).
+Planned on 2026-11-07, from the code on `main` at e51472f. Not started. The sub-issues are #45 to #60 (children of #17), with blocking edges. The owner chose the design on 2026-11-07 (spec §3.1): a Parts list and a Wires list, an Actions menu on each row, a "Wire to…" dialog, and a landmark in the side panel. The decisions are recorded in the spec. ADR 51 is written by the last task (T14).
 
 Each task below is a sub-issue of #17 with an "Agent brief". Run them as parallel `sonnet` agents where the blocking edges allow it.
 
@@ -76,22 +76,22 @@ Each task below is a sub-issue of #17 with an "Agent brief". Run them as paralle
 
 | Task | Sub-issue | Blocked by | Files (main) |
 |---|---|---|---|
-| T1 Structure model | {T1} | none | `circuit-editor/domain/structure.ts`, `index.ts` |
-| T2 View commands | {T2} | none | `domain/interaction-view.ts`, `announcements-view.ts`, `interaction.ts` |
-| T3 Structure view | {T3} | T1 | `accessibility/ui/StructureView.tsx` (+ rows), route |
-| T4 Part actions | {T4} | T2, T3 | `accessibility/ui/PartActions.tsx` |
-| T5a Wire targets | {T5A} | T1 | `circuit-editor/domain/wire-targets-list.ts` |
-| T5b Wire to… dialog | {T5B} | T2, T3, T5a | `accessibility/ui/WireToDialog.tsx`, `PinActions.tsx` |
-| T6 Wire actions | {T6} | T2, T3 | `accessibility/ui/WireActions.tsx` |
-| T7 Circuit actions | {T7} | T2, T3 | `accessibility/ui/StructureActions.tsx`, `SuggestedList.tsx` |
-| T8 Live regions | {T8} | T3 | `CircuitSummary` successor, `announcements.ts` |
-| T9 Focus management | {T9} | T4, T5b, T6, T7 | `accessibility/ui/use-row-focus.ts` |
-| T10 Keyboard E2E: half adder | {T10} | T4, T5b, T6, T7, T9 | `e2e/keyboard-half-adder.spec.ts`, `keyboard-support.ts` |
-| T11 Keyboard E2E: full adder | {T11} | T10 | `e2e/keyboard-full-adder.spec.ts` |
-| T12 Axe in every theme | {T12} | T9 | `e2e/a11y-structure.spec.ts` |
-| T13 Linux visual baselines | {T13} | T8, T9, T12 | `e2e/visual.spec.ts`, snapshots |
-| T14 ADR 51 and docs | {T14} | T10, T11, T12, T13 | `docs/adr/0051-…`, `GLOSSARY.md`, this plan |
-| T15 Manual screen-reader pass | {T15} | T9 | none (the owner runs it) |
+| T1 Structure model | #45 | none | `circuit-editor/domain/structure.ts`, `index.ts` |
+| T2 View commands | #46 | none | `domain/interaction-view.ts`, `announcements-view.ts`, `interaction.ts` |
+| T3 Structure view | #47 | T1 | `accessibility/ui/StructureView.tsx` (+ rows), route |
+| T4 Part actions | #48 | T2, T3 | `accessibility/ui/PartActions.tsx` |
+| T5a Wire targets | #49 | T1 | `circuit-editor/domain/wire-targets-list.ts` |
+| T5b Wire to… dialog | #50 | T2, T3, T5a | `accessibility/ui/WireToDialog.tsx`, `PinActions.tsx` |
+| T6 Wire actions | #51 | T2, T3 | `accessibility/ui/WireActions.tsx` |
+| T7 Circuit actions | #52 | T2, T3 | `accessibility/ui/StructureActions.tsx`, `SuggestedList.tsx` |
+| T8 Live regions | #53 | T3 | `CircuitSummary` successor, `announcements.ts` |
+| T9 Focus management | #54 | T4, T5b, T6, T7 | `accessibility/ui/use-row-focus.ts` |
+| T10 Keyboard E2E: half adder | #55 | T4, T5b, T6, T7, T9 | `e2e/keyboard-half-adder.spec.ts`, `keyboard-support.ts` |
+| T11 Keyboard E2E: full adder | #56 | T10 | `e2e/keyboard-full-adder.spec.ts` |
+| T12 Axe in every theme | #57 | T9 | `e2e/a11y-structure.spec.ts` |
+| T13 Linux visual baselines | #58 | T8, T9, T12 | `e2e/visual.spec.ts`, snapshots |
+| T14 ADR 51 and docs | #59 | T10, T11, T12, T13 | `docs/adr/0051-…`, `GLOSSARY.md`, this plan |
+| T15 Manual screen-reader pass | #60 | T9 | none (the owner runs it) |
 
 T1 and T2 start at once. After T3, T4, T5b, T6 and T7 run in parallel (each adds its own file; T3 leaves a placeholder component for each).
 
