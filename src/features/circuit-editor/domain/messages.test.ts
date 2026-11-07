@@ -20,6 +20,7 @@ describe("simulationErrorMessage", () => {
       { type: "RecursiveChip", chipId: newChipId() },
       { type: "UnconnectedPin", path: [], instanceId, pin: 1, bit: 0 },
       { type: "InvalidWire", path: [instanceId], wireId: newWireId() },
+      { type: "MultipleDrivers", path: [], instanceId },
       { type: "WireLoop", path: [], instanceId },
       { type: "SignalOutOfRange", ref: { kind: "nand", index: 3 } },
       { type: "InvalidInputCount", inputCount: -1 },

@@ -20,6 +20,7 @@ const SIMULATION_MESSAGES = {
   RecursiveChip: () => m.netlist_error_recursive_chip(),
   UnconnectedPin: () => m.netlist_error_unconnected_pin(),
   InvalidWire: () => m.netlist_error_invalid_wire(),
+  MultipleDrivers: () => m.netlist_error_multiple_drivers(),
   WireLoop: () => m.netlist_error_wire_loop(),
   SignalOutOfRange: () => m.engine_error_signal_out_of_range(),
   InvalidInputCount: () => m.engine_error_invalid_input_count(),

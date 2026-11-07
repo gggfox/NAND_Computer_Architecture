@@ -83,6 +83,7 @@
   "netlist_error_recursive_chip": "A chip contains itself, so the circuit cannot be simulated.",
   "netlist_error_wire_loop": "Wires form a loop that no gate drives, so the circuit cannot be simulated.",
   "netlist_error_unconnected_pin": "A chip has an unconnected input, so the circuit cannot be simulated. Connect it or undo the change.",
+  "netlist_error_multiple_drivers": "Two wires drive one input, so the circuit cannot be simulated. Remove one of the wires.",
   "netlist_error_invalid_wire": "A wire connects two pins that cannot be joined, so the circuit cannot be simulated.",
   "engine_error_signal_out_of_range": "The simulator rejected the circuit because a signal points outside it.",
   "engine_error_invalid_input_count": "The simulator rejected the circuit because it has an invalid number of inputs.",
