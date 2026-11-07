@@ -54,7 +54,7 @@ export { ChipHeader, type FirstSaveContext, type FirstSaveSlot } from "./ui/Chip
 export { EditorPreferences } from "./ui/EditorPreferences";
 export { EditorToolbar } from "./ui/EditorToolbar";
 export { PinsPanel } from "./ui/PinsPanel";
-export type { EditorSession } from "./application/editor-session";
+export { createEditorSession, type EditorSession } from "./application/editor-session";
 export { useEditorSession } from "./ui/use-editor-session";
 export { useSessionErrors } from "./ui/use-session-errors";
 export {
