@@ -54,7 +54,14 @@ describe("arming by tap", () => {
         color: "teal",
       },
     ]);
-    expect(result.effects.at(-1)).toEqual({ type: "announce", announcement: { type: "wired" } });
+    expect(result.effects.at(-1)).toEqual({
+      type: "announce",
+      announcement: {
+        type: "wired",
+        from: { instanceId: pieceA.id, pin: 0 },
+        to: { instanceId: nand.id, pin: 0 },
+      },
+    });
     const cleared = command(teal, context, { type: "setWireColor" }).state;
     expect(cleared.wireColor).toBeUndefined();
   });

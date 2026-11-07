@@ -15,4 +15,18 @@ export type ViewCommand =
       readonly from: PinRef;
       readonly to: PinRef;
       readonly color?: WireColor;
-    };
+    }
+  /** Says the current output values once, through the announcement region. */
+  | { readonly type: "readOutputs"; readonly readings: readonly OutputReading[] };
+
+/** One output for "Read outputs": its name, and its level (`undefined` when it is not known). */
+export interface OutputReading {
+  readonly name: string;
+  readonly value: number | undefined;
+}
+
+/** The announcement of `readOutputs`. */
+export interface OutputsAnnouncement {
+  readonly type: "outputs";
+  readonly readings: readonly OutputReading[];
+}

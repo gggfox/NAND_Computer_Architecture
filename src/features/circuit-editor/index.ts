@@ -30,6 +30,7 @@ export {
   type SimulationError,
 } from "./domain/messages";
 export { partOf, type Part } from "./domain/geometry";
+export type { OutputReading } from "./domain/view-command-types";
 export {
   structureOf,
   type PartEntry,

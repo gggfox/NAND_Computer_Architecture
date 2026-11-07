@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useStore } from "zustand";
 
 import type { PartEntry } from "~/features/circuit-editor";
 import { m } from "~/i18n/paraglide/messages";
@@ -6,6 +7,7 @@ import { Button, Switch } from "~/shared/ui";
 
 import { PartActions } from "./PartActions";
 import { PinRow } from "./PinRow";
+import { useStructureSession } from "./structure-session";
 
 import styles from "./StructureView.module.css";
 
@@ -21,7 +23,21 @@ export interface PartRowProps {
   readonly onSetInput: (isOn: boolean) => void;
 }
 
-/** An input as a switch, an output as a polite live value, anything else by its label. */
+/**
+ * An output's text. `<output>` has the `status` role, which is a polite live region. While the
+ * clock runs, every tick can change a value, so the region is off. "Read outputs" speaks them.
+ */
+function OutputValue({ text }: { readonly text: string }): ReactNode {
+  const { simulation } = useStructureSession();
+  const running = useStore(simulation, (state) => state.running);
+  return (
+    <output className={styles.output} aria-live={running ? "off" : undefined}>
+      {text}
+    </output>
+  );
+}
+
+/** An input as a switch, an output as a live value, anything else by its label. */
 function PartControl({
   part,
   isOn,
@@ -36,11 +52,7 @@ function PartControl({
     );
   }
   if (part.kind === "output") {
-    return (
-      <output className={styles.output} aria-live="polite">
-        {outputText}
-      </output>
-    );
+    return <OutputValue text={outputText} />;
   }
   return <span>{part.label}</span>;
 }
