@@ -46,9 +46,49 @@ test("an exported project imports back to the same circuit", async ({
 
   const url = page.url();
   await importFile(page, exported);
+  // The file has the id of the open project, so the person chooses what happens.
+  await page.getByRole("dialog").getByRole("button", { name: "Replace" }).click();
   await expect(page.getByText("NAND gate 2", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(url);
   await expect(page.getByRole("heading", { level: 1, name: "NAND demo" })).toBeAttached();
+});
+
+/** Exports the open project and returns the path of the file. */
+const exportOpenProject = async (page: Page, outputPath: string): Promise<void> => {
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export" }).click();
+  const download = await downloadEvent;
+  await download.saveAs(outputPath);
+};
+
+test("importing a saved id and choosing Keep both adds a copy", async ({ page }, testInfo) => {
+  await createProject(page);
+  const exported = testInfo.outputPath("exported.nand.json");
+  await exportOpenProject(page, exported);
+  const url = page.url();
+
+  await importFile(page, exported);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("This project is already saved")).toBeVisible();
+  await dialog.getByRole("button", { name: "Keep both" }).click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "NAND demo (copy)" })).toBeAttached();
+  expect(page.url()).not.toBe(url);
+  await page.getByRole("link", { name: "All projects" }).click();
+  await expect(page.getByRole("link", { name: "NAND demo", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "NAND demo (copy)" })).toBeVisible();
+});
+
+test("cancelling the import dialog changes nothing", async ({ page }, testInfo) => {
+  await createProject(page);
+  const exported = testInfo.outputPath("exported.nand.json");
+  await exportOpenProject(page, exported);
+  const url = page.url();
+
+  await importFile(page, exported);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expectDemoUnchanged(page, url);
 });
 
 test("a file from a newer app version is rejected with a translated message", async ({ page }) => {

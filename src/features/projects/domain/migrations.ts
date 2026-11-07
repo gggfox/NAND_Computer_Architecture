@@ -11,10 +11,19 @@ export type MigrationChain = readonly Migration[];
 
 export const defaultChain: MigrationChain = [];
 
-/** A migration that throws becomes a typed error instead of escaping. */
+const outputVersion = (value: unknown): unknown =>
+  typeof value === "object" && value !== null && "version" in value ? value.version : undefined;
+
+/** A migration that throws, or that does not produce `from + 1`, becomes a typed error. */
 const runStep = (step: Migration, value: unknown): Result<unknown, ImportError> => {
   try {
-    return ok(step.migrate(value));
+    const output = step.migrate(value);
+    return outputVersion(output) === step.from + 1
+      ? ok(output)
+      : err({
+          type: "InvalidProject",
+          issues: [`migration did not produce version ${step.from + 1}`],
+        });
   } catch {
     return err({ type: "InvalidProject", issues: [`migration from version ${step.from} failed`] });
   }

@@ -1,16 +1,17 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import {
   getAppProjectRepository,
+  isDamaged,
   persistenceErrorMessage,
   useStorageDegraded,
 } from "~/features/persistence";
-import type { PersistenceError, ProjectSummary } from "~/features/persistence";
-import { createDemoProject } from "~/features/projects";
+import type { DamagedProject, PersistenceError, ProjectEntry } from "~/features/persistence";
+import { createDemoProject, downloadRawRecord } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
-import { Button, LanguagePicker, StatusMessages } from "~/shared/ui";
+import { Button, LanguagePicker, ModalDialog, StatusMessages } from "~/shared/ui";
 
 export const Route = createFileRoute("/")({
   // Data lives in this browser's IndexedDB, so the loader and component only ever run on the client.
@@ -31,21 +32,107 @@ function Pending(): ReactNode {
   return <main aria-busy="true" />;
 }
 
-function ProjectList({ projects }: { readonly projects: readonly ProjectSummary[] }): ReactNode {
+interface DamagedRowProps {
+  readonly project: DamagedProject;
+  readonly onDelete: (project: DamagedProject) => void;
+}
+
+/** A record that cannot be opened. It offers no open action, only export and delete. */
+function DamagedRow({ project, onDelete }: DamagedRowProps): ReactNode {
+  return (
+    <li>
+      <span>{m.project_damaged_row({ id: project.id })}</span>
+      <Button
+        variant="quiet"
+        aria-label={m.project_damaged_export_label({ id: project.id })}
+        onPress={() => {
+          downloadRawRecord(project.raw, project.id);
+        }}
+      >
+        {m.project_damaged_export()}
+      </Button>
+      <Button
+        variant="quiet"
+        aria-label={m.project_damaged_delete_label({ id: project.id })}
+        onPress={() => {
+          onDelete(project);
+        }}
+      >
+        {m.project_damaged_delete()}
+      </Button>
+    </li>
+  );
+}
+
+interface ProjectListProps {
+  readonly projects: readonly ProjectEntry[];
+  readonly onDelete: (project: DamagedProject) => void;
+}
+
+function ProjectList({ projects, onDelete }: ProjectListProps): ReactNode {
   if (projects.length === 0) {
     return <p>{m.projects_empty()}</p>;
   }
   return (
     <ul>
-      {projects.map((project) => (
-        <li key={project.id}>
-          <Link to="/projects/$projectId" params={{ projectId: project.id }}>
-            {project.name}
-          </Link>
-        </li>
-      ))}
+      {projects.map((project) =>
+        isDamaged(project) ? (
+          <DamagedRow key={project.id} project={project} onDelete={onDelete} />
+        ) : (
+          <li key={project.id}>
+            <Link to="/projects/$projectId" params={{ projectId: project.id }}>
+              {project.name}
+            </Link>
+          </li>
+        ),
+      )}
     </ul>
   );
+}
+
+interface ConfirmDeleteProps {
+  /** The record to delete; nothing is shown while it is unset. */
+  readonly project: DamagedProject | undefined;
+  readonly onConfirm: (project: DamagedProject) => void;
+  readonly onCancel: () => void;
+}
+
+function ConfirmDelete({ project, onConfirm, onCancel }: ConfirmDeleteProps): ReactNode {
+  if (project === undefined) {
+    return undefined;
+  }
+  return (
+    <ModalDialog title={m.project_damaged_delete_title()} onClose={onCancel}>
+      <p>{m.project_damaged_delete_body()}</p>
+      <Button
+        onPress={() => {
+          onConfirm(project);
+        }}
+      >
+        {m.project_damaged_delete_confirm()}
+      </Button>
+      <Button variant="quiet" onPress={onCancel}>
+        {m.project_damaged_delete_cancel()}
+      </Button>
+    </ModalDialog>
+  );
+}
+
+/** Removes a damaged record after the person confirmed, then reloads the list. */
+function useDeleteDamaged(
+  setPending: (project: DamagedProject | undefined) => void,
+  setError: (error: PersistenceError) => void,
+): (project: DamagedProject) => Promise<void> {
+  const router = useRouter();
+  return async (project) => {
+    setPending(undefined);
+    const removed = await getAppProjectRepository().delete(project.id);
+    if (removed.ok) {
+      await router.invalidate();
+    } else {
+      setError(removed.error);
+    }
+  };
 }
 
 function Home(): ReactNode {
@@ -53,6 +140,8 @@ function Home(): ReactNode {
   const degraded = useStorageDegraded();
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<PersistenceError>();
+  const [pendingDelete, setPendingDelete] = useState<DamagedProject>();
+  const deleteDamaged = useDeleteDamaged(setPendingDelete, setSaveError);
 
   const createProject = async (): Promise<void> => {
     const project = createDemoProject(m.demo_project_name());
@@ -83,7 +172,16 @@ function Home(): ReactNode {
       >
         {m.new_project()}
       </Button>
-      <ProjectList projects={listed.ok ? listed.value : []} />
+      <ProjectList projects={listed.ok ? listed.value : []} onDelete={setPendingDelete} />
+      <ConfirmDelete
+        project={pendingDelete}
+        onConfirm={(project) => {
+          void deleteDamaged(project);
+        }}
+        onCancel={() => {
+          setPendingDelete(undefined);
+        }}
+      />
     </main>
   );
 }

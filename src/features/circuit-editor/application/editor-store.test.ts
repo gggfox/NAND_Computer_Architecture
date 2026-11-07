@@ -165,6 +165,7 @@ const rejectingRepo = (sync: boolean): ProjectRepository => ({
   },
   load: () => Promise.resolve(err({ type: "Unavailable" })),
   list: () => Promise.resolve(ok([])),
+  delete: () => Promise.resolve(err({ type: "Unavailable" })),
 });
 
 describe("createEditorStore save rejection", () => {

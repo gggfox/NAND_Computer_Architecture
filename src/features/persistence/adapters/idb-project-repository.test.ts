@@ -66,8 +66,32 @@ const sharedBehaviour = (label: string, make: () => ProjectRepository): void => 
   });
 };
 
+const REMOVED = { ok: true, value: undefined };
+
+const sharedDeleteBehaviour = (label: string, make: () => ProjectRepository): void => {
+  describe(`${label} delete`, () => {
+    it("removes a saved project and ignores an unknown id", async () => {
+      const repo = make();
+      const project = createDemoProject("Gone");
+      await repo.save(project);
+      expect(await repo.delete(project.id)).toEqual(REMOVED);
+      expect(await repo.list()).toEqual({ ok: true, value: [] });
+      expect(await repo.delete(newProjectId())).toEqual(REMOVED);
+    });
+  });
+};
+
 sharedBehaviour("idb repository", () => createProjectRepository(freshDbName()));
 sharedBehaviour("memory repository", () => createMemoryProjectRepository());
+sharedDeleteBehaviour("idb repository", () => createProjectRepository(freshDbName()));
+sharedDeleteBehaviour("memory repository", () => createMemoryProjectRepository());
+
+/** Overwrites a stored record, as a failed write or an old build could leave it. */
+const overwrite = async (name: string, id: string, value: unknown): Promise<void> => {
+  const raw = await openDB(name);
+  await raw.put("projects", value, id);
+  raw.close();
+};
 
 describe("idb repository corrupt records", () => {
   it("returns Corrupt with an InvalidJson cause for an unparsable record", async () => {
@@ -75,26 +99,54 @@ describe("idb repository corrupt records", () => {
     const repo = createProjectRepository(name);
     const project = createDemoProject("Broken");
     await repo.save(project);
-    const raw = await openDB(name);
-    await raw.put("projects", "{", project.id);
-    raw.close();
+    await overwrite(name, project.id, "{");
     expect(await repo.load(project.id)).toEqual({
       ok: false,
       error: { type: "Corrupt", id: project.id, cause: { type: "InvalidJson" } },
     });
   });
 
-  it("skips corrupt records when listing", async () => {
+  it("lists corrupt records as damaged entries with their raw text", async () => {
     const name = freshDbName();
     const repo = createProjectRepository(name);
     const good = createDemoProject("Good");
     const bad = createDemoProject("Bad");
     await repo.save(good);
     await repo.save(bad);
-    const raw = await openDB(name);
-    await raw.put("projects", "{", bad.id);
-    raw.close();
-    expect(await repo.list()).toEqual({ ok: true, value: [{ id: good.id, name: "Good" }] });
+    await overwrite(name, bad.id, "{");
+    expect(await repo.list()).toEqual({
+      ok: true,
+      value: expect.arrayContaining([
+        { id: good.id, name: "Good" },
+        { damaged: true, id: bad.id, cause: { type: "InvalidJson" }, raw: "{" },
+      ]) as unknown,
+    });
+  });
+
+  it("lists a record that is not text as damaged", async () => {
+    const name = freshDbName();
+    const repo = createProjectRepository(name);
+    const bad = createDemoProject("Odd");
+    await repo.save(bad);
+    await overwrite(name, bad.id, { not: "text" });
+    expect(await repo.list()).toEqual({
+      ok: true,
+      value: [
+        { damaged: true, id: bad.id, cause: { type: "NotAProjectFile" }, raw: '{"not":"text"}' },
+      ],
+    });
+  });
+});
+
+describe("idb repository damaged records", () => {
+  it("removes a damaged record", async () => {
+    const name = freshDbName();
+    const repo = createProjectRepository(name);
+    const bad = createDemoProject("Bad");
+    await repo.save(bad);
+    await overwrite(name, bad.id, "{");
+    expect(await repo.delete(bad.id)).toEqual(REMOVED);
+    expect(await repo.list()).toEqual({ ok: true, value: [] });
   });
 });
 
@@ -109,6 +161,7 @@ describe("idb repository environment failures", () => {
     expect(await repo.save(project)).toEqual(unavailable);
     expect(await repo.load(project.id)).toEqual(unavailable);
     expect(await repo.list()).toEqual(unavailable);
+    expect(await repo.delete(project.id)).toEqual(unavailable);
   });
 
   it("returns Unavailable when indexedDB is missing entirely", async () => {
@@ -138,6 +191,44 @@ describe("idb repository environment failures", () => {
     );
     expect(stored).not.toContain("\n");
     raw.close();
+  });
+});
+
+describe("idb repository version changes", () => {
+  it("returns Blocked when an older connection stops the upgrade", async () => {
+    const name = freshDbName();
+    const holder = await openDB(name, 1, {
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- idb handle
+      upgrade(db) {
+        db.createObjectStore("projects");
+      },
+    });
+    const result = await createProjectRepository(name, 2).list();
+    expect(result).toEqual({ ok: false, error: { type: "Blocked" } });
+    holder.close();
+  });
+
+  it("closes its connection when another tab wants to upgrade", async () => {
+    const repo = createProjectRepository(freshDbName());
+    // oxlint-disable-next-line typescript/unbound-method -- called back with the right `this` below
+    const original = IDBObjectStore.prototype.getAll;
+    const closeSpy = vi.spyOn(IDBDatabase.prototype, "close");
+    vi.spyOn(IDBObjectStore.prototype, "getAll").mockImplementation(function getAllAndNotify(
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM types are mutable
+      this: IDBObjectStore,
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM types are mutable
+      ...args: Parameters<IDBObjectStore["getAll"]>
+    ) {
+      // Another tab asks to upgrade while this operation runs.
+      this.transaction.db.dispatchEvent(
+        new IDBVersionChangeEvent("versionchange", { oldVersion: 1, newVersion: 2 }),
+      );
+      return original.apply(this, args);
+    });
+    const listed = await repo.list();
+    expect(listed.ok).toBe(true);
+    // Without the `blocking` callback, the connection closes only twice (once in fake-indexeddb, once at the end of the operation).
+    expect(closeSpy).toHaveBeenCalledTimes(3);
   });
 });
 

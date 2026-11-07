@@ -44,6 +44,7 @@ const PERSISTENCE_ERRORS = {
   NotFound: true,
   Corrupt: true,
   QuotaExceeded: true,
+  Blocked: true,
   Unavailable: true,
 } satisfies Record<PersistenceError["type"], true>;
 

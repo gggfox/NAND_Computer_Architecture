@@ -16,6 +16,8 @@ const repo: ProjectRepository = {
   save: () => Promise.resolve(ok(undefined)),
   load: () => Promise.reject(new Error("unused")),
   list: () => Promise.resolve(ok([])),
+  // oxlint-disable-next-line unicorn/no-useless-undefined -- Result<void, _> success carries no value
+  delete: () => Promise.resolve(ok(undefined)),
 };
 
 const NONE = { shift: false, alt: false, ctrlOrMeta: false, space: false };

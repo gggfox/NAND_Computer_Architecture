@@ -1,5 +1,6 @@
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+/* oxlint-disable import/max-dependencies -- the route wires the editor, the library, storage and the import flow together */
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 
 import { CircuitSummary } from "~/features/accessibility";
@@ -24,11 +25,13 @@ import {
   useStorageDegraded,
 } from "~/features/persistence";
 import type { PersistenceError } from "~/features/persistence";
-import { importErrorMessage, readProjectFile } from "~/features/projects";
-import type { ImportError, Project } from "~/features/projects";
+import type { Project } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 import { ProjectIdSchema } from "~/shared/ids";
 import { StatusMessages } from "~/shared/ui";
+
+import { ImportConflictDialog, importFailureMessage, useImport } from "./-import";
+import type { ImportFailure } from "./-import";
 
 export const Route = createFileRoute("/projects/$projectId")({
   validateSearch: EditorSearchSchema,
@@ -112,66 +115,6 @@ function ProjectRoute(): ReactNode {
   return loaded.error.type === "NotFound" ? <NotFound /> : <Corrupt error={loaded.error} />;
 }
 
-type ImportFailure =
-  | { readonly kind: "import"; readonly error: ImportError }
-  | { readonly kind: "save"; readonly error: PersistenceError };
-
-const importFailureMessage = (failure: ImportFailure): string =>
-  failure.kind === "import"
-    ? importErrorMessage(failure.error)
-    : persistenceErrorMessage(failure.error);
-
-/** Reads and validates the file, saves it, then opens it (reloading if it replaced this project). */
-function useImport(
-  currentId: Project["id"],
-  editor: EditorSession["editor"],
-): {
-  readonly failure: ImportFailure | undefined;
-  readonly onImport: (file: File) => void;
-} {
-  const router = useRouter();
-  const navigate = useNavigate();
-  const [failure, setFailure] = useState<ImportFailure>();
-
-  const open = async (project: Project): Promise<void> => {
-    setFailure(undefined);
-    if (project.id !== currentId) {
-      await navigate({ to: "/projects/$projectId", params: { projectId: project.id } });
-      return;
-    }
-    // The file replaces this project, so its own last-opened chip wins over the URL's (D8).
-    await navigate({
-      to: ".",
-      search: (search) => ({ ...search, chip: undefined }),
-      replace: true,
-    });
-    await router.invalidate();
-  };
-
-  const importFile = async (file: File): Promise<void> => {
-    const read = await readProjectFile(file);
-    if (!read.ok) {
-      setFailure({ kind: "import", error: read.error });
-      return;
-    }
-    // Write any pending autosave first, so it cannot land after (and overwrite) the import.
-    await editor.getState().flush();
-    const saved = await getAppProjectRepository().save(read.value);
-    if (!saved.ok) {
-      setFailure({ kind: "save", error: saved.error });
-      return;
-    }
-    await open(read.value);
-  };
-
-  return {
-    failure,
-    onImport: (file) => {
-      void importFile(file);
-    },
-  };
-}
-
 function useNotices(session: EditorSession, failure: ImportFailure | undefined): readonly string[] {
   const degradedNotice = useDegradedNotice();
   const sessionErrors = useSessionErrors(session);
@@ -227,7 +170,7 @@ interface EditorProps {
 function Editor({ project }: EditorProps): ReactNode {
   const view = Route.useSearch();
   const session = useLinkedSession(project, view);
-  const { failure, onImport } = useImport(project.id, session.editor);
+  const { failure, conflict, onImport, onResolve } = useImport(project.id, session.editor);
   const notices = useNotices(session, failure);
   const library = useLibrary(session);
 
@@ -256,6 +199,7 @@ function Editor({ project }: EditorProps): ReactNode {
         panel={panel}
         library={library.panel}
       />
+      <ImportConflictDialog project={conflict} onResolve={onResolve} />
     </main>
   );
 }
