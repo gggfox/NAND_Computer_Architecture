@@ -3,17 +3,19 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_CIRCUIT, newChip, projectWith } from "~/features/projects";
 import type { Folder } from "~/features/projects";
 import { newFolderId } from "~/shared/ids";
+import { deepFreeze } from "~/shared/testing/deep-freeze";
 
 import { BUILTIN_KEY, keyOf, libraryTree } from "./library-tree";
 import { prunedKeys, toggleKey } from "./tree-expansion";
 
 describe("tree expansion", () => {
   it("toggles a key on and off without mutating", () => {
-    const empty: ReadonlySet<string> = new Set();
-    const open = toggleKey(empty, "a");
+    const empty: ReadonlySet<string> = deepFreeze(new Set<string>());
+    const open = deepFreeze(toggleKey(empty, "a"));
     expect([...open]).toEqual(["a"]);
     expect(empty.size).toBe(0);
     expect(toggleKey(open, "a").size).toBe(0);
+    expect([...open]).toEqual(["a"]);
   });
 
   it("prunedKeys drops deleted folders and keeps live ones and the built-ins", () => {
