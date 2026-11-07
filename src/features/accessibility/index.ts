@@ -1,1 +1,1 @@
-export { CircuitSummary } from "./ui/CircuitSummary";
+export { StructureSkipLink, StructureView } from "./ui/StructureView";

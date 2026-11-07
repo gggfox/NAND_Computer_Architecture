@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
-import { CircuitSummary } from "~/features/accessibility";
+import { StructureSkipLink, StructureView } from "~/features/accessibility";
 import { useLibrary } from "~/features/chip-library";
 import {
   cameraForUrl,
@@ -185,11 +185,12 @@ function Editor({ project }: EditorProps): ReactNode {
   const panel = (
     <>
       <PinsPanel session={session} />
-      <CircuitSummary session={session} />
+      <StructureView session={session} />
     </>
   );
   return (
     <main>
+      <StructureSkipLink />
       <h1 className="visually-hidden">{project.name}</h1>
       <EditorLayout
         toolbar={<EditorToolbar session={session} onImport={onImport} leading={library.toggle} />}

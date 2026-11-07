@@ -83,8 +83,6 @@
   "back_to_projects": "Todos los proyectos",
   "project_corrupt_title": "No se pudo abrir este proyecto",
   "editor_toolbar_label": "Herramientas del editor",
-  "summary_selected": "(en la selección)",
-  "summary_heading": "Resumen del circuito",
   "input_named": "Entrada {name}",
   "nand_numbered": "Puerta NAND {number}",
   "chip_nand": "NAND",
@@ -355,5 +353,18 @@
   "help_keys_ghost_accept": "Intro (con un cable sugerido enfocado)",
   "help_ghost_accept": "Acepta el cable sugerido enfocado",
   "help_keys_ghost_dismiss": "Esc (con cables sugeridos)",
-  "help_ghost_dismiss": "Descarta los cables sugeridos"
+  "help_ghost_dismiss": "Descarta los cables sugeridos",
+  "output_named": "Salida {name}",
+  "structure_bit": "bit {bit}",
+  "structure_heading": "Estructura del circuito",
+  "structure_skip": "Saltar a la estructura del circuito",
+  "structure_parts": "Piezas",
+  "structure_wires": "Cables",
+  "structure_selected": "(en la selección)",
+  "structure_pins_toggle": "Pines",
+  "structure_pins_of": "Pines de {part}",
+  "structure_pin_summary": "{name}, {direction}, ancho {width}, {connections}",
+  "structure_pin_input": "entrada",
+  "structure_pin_output": "salida",
+  "structure_not_connected": "sin conexión"
 }

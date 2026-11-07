@@ -39,7 +39,7 @@ describe("structureOf: the demo circuit", () => {
       "Input A",
       "Input B",
       "NAND gate 1",
-      "OUT",
+      "Output OUT",
     ]);
     expect(structure.parts.map((part) => part.kind)).toEqual(["input", "input", "nand", "output"]);
   });
@@ -47,7 +47,7 @@ describe("structureOf: the demo circuit", () => {
   it("lists the three wires in the reading order of their sinks", () => {
     expect(structure.wires.map((entry) => entry.label)).toEqual([
       "Wire from A of Input A to a of NAND gate 1",
-      "Wire from out of NAND gate 1 to OUT of OUT",
+      "Wire from out of NAND gate 1 to OUT of Output OUT",
       "Wire from B of Input B to b of NAND gate 1",
     ]);
   });
@@ -110,7 +110,7 @@ describe("structureOf: pins and connections", () => {
     expect(connections).toEqual([
       [["a of NAND gate 1"]],
       [["b of NAND gate 1"]],
-      [["A of Input A"], ["B of Input B"], ["OUT of OUT"]],
+      [["A of Input A"], ["B of Input B"], ["OUT of Output OUT"]],
       [["out of NAND gate 1"]],
     ]);
   });
@@ -144,7 +144,7 @@ describe("structureOf: pins and connections", () => {
     const extra = piece({ type: "nand" }, { x: 600, y: 200 });
     const more = { ...scene.circuit, instances: [...scene.circuit.instances, extra] };
     const labels = structureOf(sceneOf(scene.project, more)).parts.map((part) => part.label);
-    expect(labels).toEqual(["Input A", "Input B", "NAND gate 1", "OUT", "NAND gate 2"]);
+    expect(labels).toEqual(["Input A", "Input B", "NAND gate 1", "Output OUT", "NAND gate 2"]);
   });
 });
 
@@ -163,10 +163,10 @@ const busScene = (): Scene => {
 describe("structureOf: a bit tap", () => {
   it("shows the bit in the wire label and in both pins' connections", () => {
     const structure = structureOf(busScene());
-    expect(structure.wires[0]?.label).toBe("Wire from D[4] d2 of Input D to a of NAND gate 1");
+    expect(structure.wires[0]?.label).toBe("Wire from D[4] bit 2 of Input D to a of NAND gate 1");
     const [tap, nand] = structure.parts;
     expect(tap?.pins[0]?.connections).toEqual(["a of NAND gate 1"]);
-    expect(nand?.pins[0]?.connections).toEqual(["D[4] d2 of Input D"]);
+    expect(nand?.pins[0]?.connections).toEqual(["D[4] bit 2 of Input D"]);
     expect(tap?.pins[0]?.width).toBe(4);
   });
 });
