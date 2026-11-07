@@ -14,13 +14,8 @@ export default defineConfig({
    */
   preview: { host: "127.0.0.1" },
   plugins: [
-    paraglideVitePlugin({
-      project: "./project.inlang",
-      outdir: "./src/i18n/paraglide",
-      strategy: ["localStorage", "preferredLanguage", "baseLocale"],
-      // Same output as the `i18n` script, so `pnpm lint` still passes after `pnpm build`.
-      emitTsDeclarations: true,
-    }),
+    // Outdir, strategy and declarations come from project.inlang/paraglide.config.ts, shared with `pnpm i18n`.
+    paraglideVitePlugin({ project: "./project.inlang" }),
     tanstackStart({ spa: { enabled: true } }),
     patchCssModules({ generateSourceTypes: true }),
     react(),
