@@ -27,6 +27,7 @@ import type {
   SuggestAnnouncement,
   SuggestCommand,
   Suggestions,
+  ViewCommand,
 } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
@@ -174,7 +175,8 @@ export type InteractionCommand =
   /** Adds one 1-bit pin of the open chip, its piece centred on `screen`. */
   | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point }
   | PinCommand
-  | SuggestCommand;
+  | SuggestCommand
+  | ViewCommand;
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
