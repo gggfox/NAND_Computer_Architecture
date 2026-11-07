@@ -18,6 +18,7 @@ export {
   type CatalogError,
 } from "./domain/chip-catalog";
 export { chipsUsing, findChip, replaceChip } from "./domain/chips";
+export { copyProject, type CopyError } from "./domain/copy";
 export { canPlace, containsChip, type PlaceError } from "./domain/containment";
 export { createDemoProject } from "./domain/demo";
 export { importErrorMessage, type ImportError } from "./domain/errors";
