@@ -8,7 +8,7 @@ import type { Scene } from "./geometry";
 
 export type { Notice, PinAnnouncement, PinCommand } from "./pin-selection";
 export type { Ghost, SuggestAnnouncement, SuggestCommand, Suggestions } from "./suggestion-types";
-export type { OutputReading, OutputsAnnouncement, ViewCommand } from "./view-command-types";
+export type { OutputsAnnouncement, ViewCommand } from "./view-command-types";
 export { appendPins, samePinOn, togglePinIn } from "./pin-selection";
 
 /** What is selected on the open chip. Not an edit: it lives outside undo history. */
