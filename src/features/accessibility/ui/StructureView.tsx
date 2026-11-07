@@ -8,6 +8,7 @@ import { m } from "~/i18n/paraglide/messages";
 import type { InstanceId, PinId } from "~/shared/ids";
 
 import { PartRow } from "./PartRow";
+import { StructureSessionContext } from "./structure-session";
 import { WireRow } from "./WireRow";
 
 import styles from "./StructureView.module.css";
@@ -105,7 +106,8 @@ const toggled = (set: ReadonlySet<InstanceId>, id: InstanceId): ReadonlySet<Inst
 /**
  * The non-canvas view of the circuit (ADR 3): every part with its pins and every wire. Inputs
  * are switches that go through the store. Outputs are polite live values. Which parts show their
- * pins is view state: it is not saved and not part of the history.
+ * pins is view state: it is not saved and not part of the history. It provides the session to
+ * the action menus through `StructureSessionContext`.
  */
 export function StructureView({ session }: StructureViewProps): ReactNode {
   const { editor, simulation, interaction } = session;
@@ -118,19 +120,21 @@ export function StructureView({ session }: StructureViewProps): ReactNode {
   const structure = useMemo(() => structureOf({ project, circuit }), [project, circuit]);
   const pinNames = useMemo(() => new Map(circuit.pins.map((pin) => [pin.id, pin.name])), [circuit]);
   return (
-    <StructureBody
-      structure={structure}
-      inputs={inputs}
-      outputs={outputs}
-      pinNames={pinNames}
-      selected={selected}
-      expanded={expanded}
-      onToggle={(id) => {
-        setExpanded((current) => toggled(current, id));
-      }}
-      onSetInput={(pinId, value) => {
-        editor.getState().setInput(pinId, value);
-      }}
-    />
+    <StructureSessionContext value={session}>
+      <StructureBody
+        structure={structure}
+        inputs={inputs}
+        outputs={outputs}
+        pinNames={pinNames}
+        selected={selected}
+        expanded={expanded}
+        onToggle={(id) => {
+          setExpanded((current) => toggled(current, id));
+        }}
+        onSetInput={(pinId, value) => {
+          editor.getState().setInput(pinId, value);
+        }}
+      />
+    </StructureSessionContext>
   );
 }
