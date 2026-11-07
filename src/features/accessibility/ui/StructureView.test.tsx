@@ -9,8 +9,6 @@ import { StructureSessionContext } from "./structure-session";
 import { createTestSession } from "./structure-session.fixtures";
 import { StructureBody, StructureSkipLink } from "./StructureView";
 
-const session = createTestSession();
-
 const noop = (): void => undefined;
 
 const project = createDemoProject("demo");
@@ -26,7 +24,7 @@ const render = ({ selected = new Set(), expanded = new Set() }: Options = {}): s
   const output = circuit.pins.find((pin) => pin.direction === "output");
   const outputs = new Map<PinId, number>(output ? [[output.id, 1]] : []);
   return renderToStaticMarkup(
-    <StructureSessionContext value={session}>
+    <StructureSessionContext value={createTestSession(project)}>
       <StructureBody
         structure={structure}
         inputs={new Map()}
@@ -57,7 +55,7 @@ describe("StructureView", () => {
   it("shows the four parts and three wires of the demo", () => {
     const markup = render();
     expect(count(markup, /Pins<\/button>/gu)).toBe(4);
-    expect(count(markup, /Wire from /gu)).toBe(3);
+    expect(count(markup, /<span>Wire from /gu)).toBe(3);
   });
 
   it("words the input switches and the output as before", () => {

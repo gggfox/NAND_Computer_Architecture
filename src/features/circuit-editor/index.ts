@@ -73,3 +73,5 @@ export {
   RecolorChipDialog,
   RenameChipDialog,
 } from "./ui/ChipDialogs";
+export type { InteractionCommand } from "./domain/interaction";
+export { WireColorDialog } from "./ui/WireDialogs";
