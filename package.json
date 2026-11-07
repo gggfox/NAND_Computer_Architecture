@@ -6,7 +6,7 @@
     "dev": "vite dev",
     "build": "vite build && node scripts/build-pwa.ts",
     "preview": "vite preview",
-    "i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/i18n/paraglide --strategy localStorage preferredLanguage baseLocale --emit-ts-declarations --silent",
+    "i18n": "paraglide-js compile --project ./project.inlang --silent",
     "css-types": "vite-css-modules \"src/**/*.module.css\" --silent",
     "tokens": "node scripts/generate-theme-css.ts",
     "typecheck": "pnpm i18n && pnpm css-types && tsc --noEmit && tsc --noEmit -p scripts && tsc --noEmit -p e2e",
