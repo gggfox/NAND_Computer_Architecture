@@ -30,6 +30,13 @@ export {
   type SimulationError,
 } from "./domain/messages";
 export { partOf, type Part } from "./domain/geometry";
+export {
+  structureOf,
+  type PartEntry,
+  type PinEntry,
+  type Structure,
+  type WireEntry,
+} from "./domain/structure";
 export type { Level } from "./domain/signals";
 export {
   connectSimulation,
