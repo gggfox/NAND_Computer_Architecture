@@ -53,21 +53,24 @@ interface Names {
 
 const pinKeyOf = ({ instanceId, pin }: PinRef): string => `${instanceId}/${String(pin)}`;
 
-/** "{pin} of {chip}" for a wire end, as the canvas says it. A bit tap adds its bit: `d[4] d2`. */
+/** "{pin} of {chip}" for a wire end, as the canvas says it. A bit tap adds its bit: `d[4] bit 2`. */
 const endText = (names: Names, end: PinRef): string => {
   const pin = names.pins.get(pinKeyOf(end)) ?? String(end.pin);
   return m.canvas_wire_end({
-    pin: end.bit === undefined ? pin : `${pin} ${m.bit_picker_bit({ bit: end.bit })}`,
+    pin: end.bit === undefined ? pin : `${pin} ${m.structure_bit({ bit: end.bit })}`,
     chip: names.parts.get(end.instanceId) ?? "",
   });
 };
 
-/** The summary's label: an input is "Input A", an output its pin name, any other part numbered. */
+/** The part's label: "Input A", "Output OUT", any other part numbered. */
 const labelOf = (scene: Scene, instance: ChipInstance): string => {
-  const label = chipLabel(scene, instance.id);
-  return instance.kind.type === "pin" && partOf(scene.circuit, instance) === "input"
-    ? m.input_named({ name: label })
-    : label;
+  const name = chipLabel(scene, instance.id);
+  if (instance.kind.type !== "pin") {
+    return name;
+  }
+  return partOf(scene.circuit, instance) === "input"
+    ? m.input_named({ name })
+    : m.output_named({ name });
 };
 
 const kindOf = (scene: Scene, instance: ChipInstance): PartEntry["kind"] => {

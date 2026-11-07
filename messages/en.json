@@ -83,8 +83,6 @@
   "back_to_projects": "All projects",
   "project_corrupt_title": "This project could not be opened",
   "editor_toolbar_label": "Editor tools",
-  "summary_selected": "selected",
-  "summary_heading": "Circuit summary",
   "input_named": "Input {name}",
   "nand_numbered": "NAND gate {number}",
   "chip_nand": "NAND",
@@ -355,5 +353,18 @@
   "help_keys_ghost_accept": "Enter (with a suggested wire focused)",
   "help_ghost_accept": "Accept the focused suggested wire",
   "help_keys_ghost_dismiss": "Escape (with suggested wires)",
-  "help_ghost_dismiss": "Dismiss the suggested wires"
+  "help_ghost_dismiss": "Dismiss the suggested wires",
+  "output_named": "Output {name}",
+  "structure_bit": "bit {bit}",
+  "structure_heading": "Circuit structure",
+  "structure_skip": "Skip to circuit structure",
+  "structure_parts": "Parts",
+  "structure_wires": "Wires",
+  "structure_selected": "selected",
+  "structure_pins_toggle": "Pins",
+  "structure_pins_of": "Pins of {part}",
+  "structure_pin_summary": "{name}, {direction}, width {width}, {connections}",
+  "structure_pin_input": "input",
+  "structure_pin_output": "output",
+  "structure_not_connected": "not connected"
 }
