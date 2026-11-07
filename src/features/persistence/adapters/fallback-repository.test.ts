@@ -13,6 +13,7 @@ const unavailable: ProjectRepository = {
   save: () => Promise.resolve(err({ type: "Unavailable" })),
   load: () => Promise.resolve(err({ type: "Unavailable" })),
   list: () => Promise.resolve(err({ type: "Unavailable" })),
+  delete: () => Promise.resolve(err({ type: "Unavailable" })),
 };
 
 interface Flaky {
@@ -35,6 +36,7 @@ const flaky = (): Flaky => {
     save: (project) => pick().save(project),
     load: (id) => pick().load(id),
     list: () => pick().list(),
+    delete: (id) => pick().delete(id),
   };
   const repo = withMemoryFallback(primary, createMemoryProjectRepository());
   const listener = vi.fn<() => void>();
@@ -145,5 +147,49 @@ describe("withMemoryFallback cache and subscriptions", () => {
     unsubscribe();
     await repo.list();
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe("withMemoryFallback delete", () => {
+  it("removes the record from both stores", async () => {
+    const primary = createMemoryProjectRepository();
+    const fallback = createMemoryProjectRepository();
+    const repo = withMemoryFallback(primary, fallback);
+    const project = createDemoProject("Doomed");
+    await repo.save(project);
+    expect(await repo.delete(project.id)).toEqual({ ok: true, value: undefined });
+    const inPrimary = await primary.list();
+    const inFallback = await fallback.list();
+    expect(inPrimary).toEqual({ ok: true, value: [] });
+    expect(inFallback).toEqual({ ok: true, value: [] });
+  });
+
+  it("deletes from memory and degrades while the primary is unavailable", async () => {
+    const { repo, setDown } = flaky();
+    const project = createDemoProject("Draft");
+    await repo.save(project);
+    setDown(true);
+    expect(await repo.delete(project.id)).toEqual({ ok: true, value: undefined });
+    expect(repo.isDegraded()).toBe(true);
+    expect(await repo.load(project.id)).toEqual({
+      ok: false,
+      error: { type: "NotFound", id: project.id },
+    });
+  });
+
+  it("passes damaged entries through from the primary", async () => {
+    const primary = createMemoryProjectRepository();
+    const damaged = {
+      damaged: true,
+      id: createDemoProject("x").id,
+      cause: { type: "InvalidJson" },
+      raw: "{",
+    } as const;
+    const repo = withMemoryFallback(
+      { ...primary, list: () => Promise.resolve({ ok: true, value: [damaged] }) },
+      createMemoryProjectRepository(),
+    );
+    await repo.save(createDemoProject("Local"));
+    expect(await repo.list()).toEqual({ ok: true, value: [damaged] });
   });
 });

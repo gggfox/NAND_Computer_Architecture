@@ -3,12 +3,13 @@ import type { IDBPDatabase, OpenDBCallbacks } from "idb";
 
 import { parseStoredProject, serializeStoredProject } from "~/features/projects";
 import type { Project } from "~/features/projects";
+import { ProjectIdSchema } from "~/shared/ids";
 import type { ProjectId } from "~/shared/ids";
 import { err, ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { PersistenceError } from "../domain/errors";
-import type { ProjectRepository, ProjectSummary } from "../domain/repository";
+import type { ProjectEntry, ProjectRepository } from "../domain/repository";
 
 // `ok()` needs a value argument, and the unit value is exactly what a void Result carries.
 // oxlint-disable-next-line unicorn/no-useless-undefined
@@ -30,14 +31,24 @@ const parseRecord = (id: ProjectId, text: unknown): Result<Project, PersistenceE
   return parsed.ok ? parsed : err({ type: "Corrupt", id, cause: parsed.error });
 };
 
-/** Unreadable records are skipped so one corrupt project never hides the rest. */
-const summarize = (texts: readonly unknown[]): ProjectSummary[] =>
-  texts.flatMap((text) => {
-    if (typeof text !== "string") {
-      return [];
-    }
-    const parsed = parseStoredProject(text);
-    return parsed.ok ? [{ id: parsed.value.id, name: parsed.value.name }] : [];
+const rawText = (value: unknown): string =>
+  typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+
+/** An unreadable record becomes a damaged entry, so one corrupt project never hides the rest. */
+const toEntry = (id: ProjectId, value: unknown): ProjectEntry => {
+  const parsed = typeof value === "string" ? parseStoredProject(value) : undefined;
+  if (parsed?.ok === true) {
+    return { id: parsed.value.id, name: parsed.value.name };
+  }
+  const cause = parsed === undefined ? ({ type: "NotAProjectFile" } as const) : parsed.error;
+  return { damaged: true, id, cause, raw: rawText(value) };
+};
+
+/** Pairs each stored key with its record. A key that is not a project id never came from this app. */
+const summarize = (keys: readonly unknown[], values: readonly unknown[]): readonly ProjectEntry[] =>
+  keys.flatMap((key, index) => {
+    const id = ProjectIdSchema.safeParse(key);
+    return id.success ? [toEntry(id.data, values[index])] : [];
   });
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- idb handle
@@ -164,14 +175,25 @@ export const createProjectRepository = (
         return text === undefined ? err({ type: "NotFound", id }) : parseRecord(id, text);
       },
     ),
+  delete: (id) =>
+    withDb(
+      dbName,
+      dbVersion,
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- idb handle
+      async (db) => {
+        await db.delete(STORE, id);
+        return SAVED;
+      },
+    ),
   list: () =>
     withDb(
       dbName,
       dbVersion,
       // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- idb handle
       async (db) => {
-        const texts: unknown[] = await db.getAll(STORE);
-        return ok(summarize(texts));
+        const keys: unknown[] = await db.getAllKeys(STORE);
+        const values: unknown[] = await db.getAll(STORE);
+        return ok(summarize(keys, values));
       },
     ),
 });
@@ -191,8 +213,12 @@ export const createMemoryProjectRepository = (): ProjectRepository => {
       );
     },
     list: () => {
-      const summaries = summarize([...records.values()]);
-      return Promise.resolve(ok(summaries));
+      const entries = summarize([...records.keys()], [...records.values()]);
+      return Promise.resolve(ok(entries));
+    },
+    delete: (id) => {
+      records.delete(id);
+      return Promise.resolve(SAVED);
     },
   };
 };

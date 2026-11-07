@@ -1,4 +1,4 @@
-export { downloadProjectFile, readProjectFile } from "./adapters/project-file";
+export { downloadProjectFile, downloadRawRecord, readProjectFile } from "./adapters/project-file";
 export {
   DEFAULT_CHIP_COLOR,
   EMPTY_CIRCUIT,

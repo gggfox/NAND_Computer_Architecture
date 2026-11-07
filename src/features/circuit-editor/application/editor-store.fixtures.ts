@@ -17,6 +17,7 @@ export const fakeRepo = (saveResult: Awaited<ReturnType<ProjectRepository["save"
     },
     load: () => Promise.resolve(err({ type: "Unavailable" })),
     list: () => Promise.resolve(ok([])),
+    delete: () => Promise.resolve(SAVED),
   };
   return { repo, saved };
 };
