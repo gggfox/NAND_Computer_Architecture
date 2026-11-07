@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { WireId } from "~/shared/ids";
 
 import type { Scene } from "../geometry";
-import { fastestCpuMs } from "../perf.fixtures";
+import { fastestCpuMs, PERF_TIMEOUT_MS } from "../perf.fixtures";
 import { rerouted } from "./route";
 import { COLUMNS, gridScene } from "./routing.fixtures";
 
@@ -52,11 +52,11 @@ const MAX_SCALING = 3;
 const ROWS = 2;
 
 describe("routing performance budget", () => {
-  it("re-routes the wires of a 50-chip selection quickly", () => {
+  it("re-routes the wires of a 50-chip selection quickly", { timeout: PERF_TIMEOUT_MS }, () => {
     expect(rerouteTime(CHIPS, SELECTED)).toBeLessThan(REROUTE_50_BUDGET_MS);
   });
 
-  it("scales near-linearly", () => {
+  it("scales near-linearly", { timeout: PERF_TIMEOUT_MS }, () => {
     const small = rerouteTime(CHIPS, ROWS * COLUMNS);
     const large = rerouteTime(CHIPS * 2, ROWS * 2 * COLUMNS);
     expect(large / small).toBeLessThan(MAX_SCALING);

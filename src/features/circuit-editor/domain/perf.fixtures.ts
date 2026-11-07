@@ -1,6 +1,18 @@
 const MICROSECONDS_PER_MS = 1000;
 const DEFAULT_WARM_UPS = 3;
 
+/**
+ * Vitest timeout for a test that uses `fastestCpuMs`, in ms of wall-clock time.
+ *
+ * The budgets in the tests count CPU time, but the Vitest timeout counts wall-clock time. When
+ * parallel `pnpm check` runs load the machine, the OS gives a test only a small share of the CPU.
+ * A test that needs 1 s of CPU time can then need more than the default 5 s. This limit is large,
+ * so the load does not stop the test. A test that hangs still fails.
+ *
+ * The limit does not make the budgets or the ratio limits looser.
+ */
+export const PERF_TIMEOUT_MS = 120_000;
+
 /** CPU time that this thread has used so far, in ms. */
 const threadCpuMs = (): number => {
   const { user, system } = process.threadCpuUsage();

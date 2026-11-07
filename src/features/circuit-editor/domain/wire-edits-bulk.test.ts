@@ -5,7 +5,7 @@ import type { ChipInstance } from "~/features/projects";
 import { newWireId } from "~/shared/ids";
 
 import { copiesOf, copyOf } from "./clipboard";
-import { fastestCpuMs } from "./perf.fixtures";
+import { fastestCpuMs, PERF_TIMEOUT_MS } from "./perf.fixtures";
 import { applyAction } from "./reducer";
 import { NAND_A, NAND_OUT, nandAt } from "./routing/routing.fixtures";
 import { selectInstances } from "./selection";
@@ -100,7 +100,7 @@ describe("connectWires refusals", () => {
 });
 
 describe("connectWires performance budget", () => {
-  it("wires 64 clk-like pins inside the budget", () => {
+  it("wires 64 clk-like pins inside the budget", { timeout: PERF_TIMEOUT_MS }, () => {
     const { project, action } = setup(SINKS);
     expect(action.wires).toHaveLength(SINKS);
     const time = fastestCpuMs(RUNS, () => {

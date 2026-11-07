@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { newChip, piece, projectWith, wire } from "~/features/projects";
 import type { Chip, ChipInstance, PinKey, PinRef, Project, Wire } from "~/features/projects";
 
-import { fastestCpuMs } from "./perf.fixtures";
+import { fastestCpuMs, PERF_TIMEOUT_MS } from "./perf.fixtures";
 import { toNetlistSource } from "./to-netlist-source";
 import { end, io, NAND_OUT, nandPart, notChip, pick } from "./to-netlist-source.fixtures";
 
@@ -84,17 +84,17 @@ const DEEP = 8;
 const HIERARCHY_BUDGET_MS = 1500;
 
 describe("flattening performance budget", () => {
-  it("is near-linear in the open chip's size", () => {
+  it("is near-linear in the open chip's size", { timeout: PERF_TIMEOUT_MS }, () => {
     const small = flattenTime(chain(SMALL), RUNS, WARM_UPS);
     const large = flattenTime(chain(LARGE), RUNS, WARM_UPS);
     expect(large / small).toBeLessThan(MAX_SCALING);
   });
 
-  it("flattens 2000 NANDs within budget", () => {
+  it("flattens 2000 NANDs within budget", { timeout: PERF_TIMEOUT_MS }, () => {
     expect(flattenTime(chain(2000), RUNS, WARM_UPS)).toBeLessThan(CHAIN_2000_BUDGET_MS);
   });
 
-  it("flattens a 65k-NAND hierarchy within budget", () => {
+  it("flattens a 65k-NAND hierarchy within budget", { timeout: PERF_TIMEOUT_MS }, () => {
     const project = hierarchy(DEEP);
     const result = toNetlistSource(project, project.lastOpenedChipId);
     expect(result.ok ? result.value.source.nands.length : 0).toBe(FAN ** DEEP);
