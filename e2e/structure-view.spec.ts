@@ -5,11 +5,13 @@ import {
   GRID,
   nandPosition,
   NAND_AT,
+  spoken,
   test,
 } from "./support";
 
 const DEMO_PARTS = 4;
 const DEMO_WIRES = 3;
+const NANDS_AFTER_ADD = 2;
 
 test("the structure view lists four parts and three wires, with pins behind a button", async ({
   page,
@@ -101,4 +103,26 @@ test("Escape closes the Wire to… dialog without a wire", async ({ page }) => {
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
+});
+
+test("Add part… places a NAND, selects it and says so, by keyboard", async ({ page }) => {
+  await createProject(page);
+  const region = page.getByRole("region", { name: "Circuit structure" });
+  await region.getByRole("button", { name: "Add part…" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu", { name: "Add part…" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "NAND", exact: true }).press("Enter");
+  await expect(region.getByText("NAND gate 2")).toBeVisible();
+  await expect(spoken(page)).toHaveText(/NAND gate 2 selected/u);
+  const file = await exportedProject(page);
+  const nands = file.project.chips[0]?.draft.instances.filter((item) => item.kind.type === "nand");
+  expect(nands).toHaveLength(NANDS_AFTER_ADD);
+});
+
+test("Add part… adds an input pin", async ({ page }) => {
+  await createProject(page);
+  const region = page.getByRole("region", { name: "Circuit structure" });
+  await region.getByRole("button", { name: "Add part…" }).click();
+  await page.getByRole("menuitem", { name: "Input pin" }).click();
+  await expect(region.getByRole("list").first().locator("> li")).toHaveCount(DEMO_PARTS + 1);
 });

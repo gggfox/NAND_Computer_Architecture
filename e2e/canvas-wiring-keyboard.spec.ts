@@ -133,7 +133,10 @@ test("Tidy wires straightens a detour left behind by a moved chip, and keeps a h
   expect(bent?.manualWaypoints).toBe(true);
   expect(wireInto(before, DEMO_PART.nand, NAND_B)?.waypoints).toEqual(detour);
 
-  await page.getByRole("button", { name: "Tidy wires" }).click();
+  await page
+    .getByRole("toolbar", { name: "Editor tools" })
+    .getByRole("button", { name: "Tidy wires" })
+    .click();
   const after = await exportedProject(page);
   // The detour is gone, back to the straight run; the hand-bent wire is untouched.
   expect(wireInto(after, DEMO_PART.nand, NAND_B)?.waypoints).toEqual([]);

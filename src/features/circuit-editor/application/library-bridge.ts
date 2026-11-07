@@ -30,6 +30,11 @@ export const placeAtCentre = (session: EditorSession, kind: PlaceableKind): void
   send(session, { type: "placeAt", kind });
 };
 
+/** Adds one 1-bit pin of the open chip at the centre of the canvas (keyboard and screen readers). */
+export const addPinAtCentre = (session: EditorSession, direction: PinDirection): void => {
+  send(session, { type: "addPinAt", direction });
+};
+
 /** Places one `kind` at a window point (a drop); `false` when the point is not over the canvas. */
 export const placeAtClient = (
   session: EditorSession,

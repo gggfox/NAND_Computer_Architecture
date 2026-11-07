@@ -156,6 +156,11 @@ describe("escape while placing", () => {
   });
 });
 
+const pinPositionOf = (result: ReturnType<typeof command>) => {
+  const [action] = dispatched(result);
+  return action?.type === "addPins" ? action.pins[0]?.position : undefined;
+};
+
 describe("addPinAt", () => {
   it("adds one output pin piece at the point", () => {
     const { context, state } = setup();
@@ -171,6 +176,15 @@ describe("addPinAt", () => {
     const pins = action?.type === "addPins" ? action.pins : [];
     expect(pins).toHaveLength(1);
     expect(pins[0]?.pin).toMatchObject({ direction: "output", width: 1 });
+  });
+
+  it("without a point, centres the pin piece on the viewport like placeAt", () => {
+    const { context, state } = setup();
+    const centre = { x: context.viewport.width / 2, y: context.viewport.height / 2 };
+    const bare = command(state, context, { type: "addPinAt", direction: "input" });
+    const at = command(state, context, { type: "addPinAt", direction: "input", screen: centre });
+    expect(pinPositionOf(bare)).toBeDefined();
+    expect(pinPositionOf(bare)).toEqual(pinPositionOf(at));
   });
 
   it("says which pin it added", () => {
