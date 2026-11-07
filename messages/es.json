@@ -71,7 +71,7 @@
   "project_damaged_delete": "Eliminar",
   "project_damaged_delete_label": "Eliminar el proyecto dañado {id}",
   "project_damaged_delete_title": "¿Eliminar este proyecto dañado?",
-  "project_damaged_delete_body": "Esto elimina el registro dañado de este navegador. No se puede deshacer. Expórtalo antes si quieres conservar una copia.",
+  "project_damaged_delete_body": "Esto elimina el registro dañado de este navegador. No se puede deshacer. Si quieres conservar una copia, usa Exportar antes.",
   "project_damaged_delete_confirm": "Eliminar",
   "project_damaged_delete_cancel": "Cancelar",
   "import_conflict_title": "Este proyecto ya está guardado",
