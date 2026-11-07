@@ -7,7 +7,9 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = 4319;
 // Matches `preview.host` in vite.config.ts.
 const BASE_URL = `http://127.0.0.1:${String(PORT)}`;
-const isCI = "CI" in process.env;
+// An empty value, "0" and "false" count as not CI.
+const ciValue = process.env["CI"] ?? "";
+const isCI = ciValue !== "" && ciValue !== "0" && ciValue !== "false";
 const CI_RETRIES = 2;
 const BUILD_TIMEOUT_MS = 300_000;
 const VISUAL_SPEC = "visual.spec.ts";
