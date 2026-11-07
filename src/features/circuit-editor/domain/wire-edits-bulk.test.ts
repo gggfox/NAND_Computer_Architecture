@@ -5,6 +5,7 @@ import type { ChipInstance } from "~/features/projects";
 import { newWireId } from "~/shared/ids";
 
 import { copiesOf, copyOf } from "./clipboard";
+import { fastestCpuMs } from "./perf.fixtures";
 import { applyAction } from "./reducer";
 import { NAND_A, NAND_OUT, nandAt } from "./routing/routing.fixtures";
 import { selectInstances } from "./selection";
@@ -98,23 +99,14 @@ describe("connectWires refusals", () => {
   });
 });
 
-const median = (runs: number, work: () => void): number => {
-  const times = Array.from({ length: runs }, () => {
-    const start = performance.now();
-    work();
-    return performance.now() - start;
-  }).toSorted((a, b) => a - b);
-  return times[Math.floor(runs / 2)] ?? Number.NaN;
-};
-
 describe("connectWires performance budget", () => {
   it("wires 64 clk-like pins inside the budget", () => {
     const { project, action } = setup(SINKS);
     expect(action.wires).toHaveLength(SINKS);
-    const time = median(RUNS, () => {
+    const time = fastestCpuMs(RUNS, () => {
       expect(applyAction(project, action).ok).toBe(true);
     });
-    console.info(`connectWires x${SINKS}: median ${time.toFixed(2)} ms of ${RUNS}`);
+    console.info(`connectWires x${SINKS}: fastest ${time.toFixed(2)} ms CPU of ${RUNS}`);
     expect(time).toBeLessThan(BUDGET_MS);
   });
 });

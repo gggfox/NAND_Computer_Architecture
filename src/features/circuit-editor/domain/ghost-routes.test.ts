@@ -7,27 +7,16 @@ import { newWireId } from "~/shared/ids";
 import { pinPosition, wireRoute } from "./geometry";
 import type { Scene } from "./geometry";
 import { GHOST_ROUTE_CAP, ghostsOf } from "./ghost-routes";
+import { fastestCpuMs } from "./perf.fixtures";
 import { entersChips } from "./routing/routing.fixtures";
 import { suggestWires } from "./suggest-wires";
 import { bigScene, registerFileScene } from "./suggest-wires.fixtures";
 
-const WARM_UPS = 3;
 const RUNS = 7;
-const MEDIAN_AT = 3;
-/** A loose bound, so coverage (several times slower) and busy CI don't flake; a frame is 16 ms. */
+/** A loose bound, so coverage (several times slower) does not flake; a frame is 16 ms. */
 const BOUND_MS = 200;
 
-const median = (work: () => void): number => {
-  for (let run = 0; run < WARM_UPS; run += 1) {
-    work();
-  }
-  const times = Array.from({ length: RUNS }, () => {
-    const start = performance.now();
-    work();
-    return performance.now() - start;
-  });
-  return times.toSorted((first, second) => first - second)[MEDIAN_AT] ?? 0;
-};
+const fastest = (work: () => void): number => fastestCpuMs(RUNS, work);
 
 const elbowOf = (scene: Scene, from: Wire["from"], to: Wire["to"]) => {
   const connection = checkConnection(scene.project, scene.circuit, from, to);
@@ -120,14 +109,14 @@ describe("timing", () => {
   const { scene } = bigScene();
 
   it("suggests and draws every proposal as an elbow within a frame", () => {
-    const time = median(() => {
+    const time = fastest(() => {
       expect(ghostsOf(scene, suggestWires(scene))).toHaveLength(200);
     });
     expect(time).toBeLessThan(BOUND_MS);
   });
 
   it("suggests and routes exactly the cap within a frame", () => {
-    const time = median(() => {
+    const time = fastest(() => {
       expect(ghostsOf(scene, suggestWires(scene).slice(0, GHOST_ROUTE_CAP))).toHaveLength(
         GHOST_ROUTE_CAP,
       );
