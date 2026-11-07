@@ -37,6 +37,7 @@ export {
   type Structure,
   type WireEntry,
 } from "./domain/structure";
+export { wireTargets, type WireTarget } from "./domain/wire-targets-list";
 export type { Level } from "./domain/signals";
 export {
   connectSimulation,
