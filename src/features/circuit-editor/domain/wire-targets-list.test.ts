@@ -35,14 +35,14 @@ describe("the demo circuit", () => {
     const scene = demo(() => false);
     expect(labels(scene, refAt(scene, 0, 0))).toEqual([
       "a of NAND gate 1",
-      "OUT of OUT",
+      "OUT of Output OUT",
       "b of NAND gate 1",
     ]);
   });
 
   it("does not list a pin that already has a wire", () => {
     const scene = demo((index) => index === 1);
-    expect(labels(scene, refAt(scene, 0, 0))).toEqual(["a of NAND gate 1", "OUT of OUT"]);
+    expect(labels(scene, refAt(scene, 0, 0))).toEqual(["a of NAND gate 1", "OUT of Output OUT"]);
   });
 
   it("lists nothing for Input A out when the whole circuit is wired", () => {
@@ -68,7 +68,7 @@ describe("the demo circuit, from other pins", () => {
 
   it("does not list the pins of the same part (a loop)", () => {
     const scene = demo(() => false);
-    expect(labels(scene, refAt(scene, 2, NAND_OUT))).toEqual(["OUT of OUT"]);
+    expect(labels(scene, refAt(scene, 2, NAND_OUT))).toEqual(["OUT of Output OUT"]);
   });
 
   it("does not list an output for an output", () => {
