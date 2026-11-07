@@ -28,17 +28,23 @@ const violations = async (page: Page) => {
   return results.violations;
 };
 
+/** The `data-theme` value for a theme's display name: "High contrast" becomes "high-contrast". */
+const themeAttribute = (theme: string): string => theme.toLowerCase().replaceAll(" ", "-");
+
 for (const theme of THEMES) {
   test(`index and project pages have no WCAG violations in the ${theme} theme`, async ({
     page,
   }) => {
     await createProject(page);
     await pickTheme(page, theme);
+    // Axe must run on the picked theme, so check that the switch applied it.
+    await expect(page.locator("html")).toHaveAttribute("data-theme", themeAttribute(theme));
     expect(await violations(page)).toEqual([]);
 
     // The index has no theme picker; the choice persists and applies before first paint.
     await page.getByRole("link", { name: "All projects" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", themeAttribute(theme));
     expect(await violations(page)).toEqual([]);
   });
 }
