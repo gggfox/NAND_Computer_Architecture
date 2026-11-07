@@ -1,0 +1,4 @@
+# The image needs only dist/client and deploy/nginx.conf (see Dockerfile).
+*
+!dist/client
+!deploy/nginx.conf

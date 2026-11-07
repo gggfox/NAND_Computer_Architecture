@@ -1,0 +1,14 @@
+# sops + age config for secrets/*.env (ADR 51). Each key below can decrypt every file.
+# After a change to the recipient list, re-key the files:
+#   sops updatekeys secrets/staging.env
+#   sops updatekeys secrets/production.env
+keys:
+  # Gerardo's personal key (~/.config/sops/age/keys.txt).
+  - &gerardo age10wwsmzm9zad32j78t0z2z9ecvhffn2ye0yttjgrdc7c75xgwfvuscwl84d
+  # CI key: repository secret SOPS_AGE_KEY. Local copy: ~/.config/sops/age/nand.txt.
+  - &ci age1faeyxujk7n8k77ymxy9sl7q6536devjpgku530d70rz2ej60s9mq6jfvvz
+creation_rules:
+  - path_regex: secrets/(staging|production)\.env$
+    input_type: dotenv
+    output_type: dotenv
+    age: [*gerardo, *ci]

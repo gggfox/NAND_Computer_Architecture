@@ -1,0 +1,88 @@
+name: Deploy staging
+
+# Every commit on main that passes CI goes to staging (ADR 51).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Never cancel a deploy that runs: a cancel between the image push and the
+# Dokploy rollout leaves the registry ahead of the server. GitHub keeps only the
+# newest pending run, so a burst of merges deploys the last one.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Image names must be lowercase, so this is not derived from github.repository.
+  IMAGE: ghcr.io/garzafox/nand_computer_architecture
+
+jobs:
+  deploy:
+    name: Deploy staging
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://staging.nand.gggfox.com
+    permissions:
+      # Push the staging branch.
+      contents: write
+      # Push the image to GHCR.
+      packages: write
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          build-args: GIT_SHA=${{ env.SHA }}
+          tags: |
+            ${{ env.IMAGE }}:${{ env.SHA }}
+            ${{ env.IMAGE }}:staging
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.SHA }}
+
+      # Fast-forward only: the ruleset blocks force pushes, so an older run can
+      # never move staging back.
+      - name: Fast-forward staging
+        run: git push origin "$SHA:refs/heads/staging"
+
+      - uses: ./.github/actions/dokploy-rollout
+        with:
+          environment: staging
+          image-ref: ${{ env.IMAGE }}:${{ env.SHA }}
+          sha: ${{ env.SHA }}
+          base-url: https://staging.nand.gggfox.com
+          sops-age-key: ${{ secrets.SOPS_AGE_KEY }}

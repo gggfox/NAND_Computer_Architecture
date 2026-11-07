@@ -1,0 +1,73 @@
+name: Promote to production
+
+# Manual: promotes the commit on staging to production (ADR 51). There is no
+# rebuild, so production runs the same image that staging ran.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/garzafox/nand_computer_architecture
+
+jobs:
+  promote:
+    name: Promote staging to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://nand.gggfox.com
+    permissions:
+      # Push the production branch.
+      contents: write
+      # Add the :production tag in GHCR.
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Read the staging commit
+        id: staging
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Promote only what staging serves now. A failed staging deploy stops here.
+      - name: Check that staging serves this commit
+        env:
+          BASE_URL: https://staging.nand.gggfox.com
+          EXPECTED_SHA: ${{ steps.staging.outputs.sha }}
+          TIMEOUT_SECONDS: "30"
+        run: bash .github/scripts/health-gate.sh
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Fails if the image for this commit does not exist.
+      - name: Tag the image as production
+        env:
+          SHA: ${{ steps.staging.outputs.sha }}
+        run: docker buildx imagetools create --tag "$IMAGE:production" "$IMAGE:$SHA"
+
+      # Fast-forward only: the ruleset blocks force pushes.
+      - name: Fast-forward production
+        env:
+          SHA: ${{ steps.staging.outputs.sha }}
+        run: git push origin "$SHA:refs/heads/production"
+
+      - uses: ./.github/actions/dokploy-rollout
+        with:
+          environment: production
+          image-ref: ${{ env.IMAGE }}:${{ steps.staging.outputs.sha }}
+          sha: ${{ steps.staging.outputs.sha }}
+          base-url: https://nand.gggfox.com
+          sops-age-key: ${{ secrets.SOPS_AGE_KEY }}

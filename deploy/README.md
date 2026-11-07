@@ -32,3 +32,74 @@ On Cloudflare Pages and Netlify, `/* /_shell.html 200` only applies when no stat
 
 These files are examples: copy the one you need into the deployed output or host configuration.
 They are not part of the build.
+
+## The live deploy (Dokploy)
+
+[ADR 51](../docs/adr/0051-staging-and-production-deploys.md) describes the design.
+
+| Environment | URL                               | Branch       | Updated by                                |
+| ----------- | --------------------------------- | ------------ | ----------------------------------------- |
+| staging     | <https://staging.nand.gggfox.com> | `staging`    | `Deploy staging`, after CI passes on main |
+| production  | <https://nand.gggfox.com>         | `production` | `Promote to production`, started by hand  |
+
+The image is `ghcr.io/garzafox/nand_computer_architecture`. The Dokploy project is "NAND".
+
+### Promote staging to production
+
+1. Open <https://staging.nand.gggfox.com> and check the release.
+2. Run the workflow:
+
+   ```bash
+   gh workflow run promote-production.yml
+   ```
+
+3. Wait until the run passes. Its health gate checks that production serves the staging commit.
+
+### Edit the deploy secrets
+
+The secrets are in `secrets/staging.env` and `secrets/production.env`, encrypted with sops and age.
+Your age key must be in `~/.config/sops/age/keys.txt`.
+
+1. Open the file in your editor. sops decrypts it and encrypts it again on save:
+
+   ```bash
+   sops secrets/staging.env
+   ```
+
+2. Do the same for `secrets/production.env` if the value applies to both.
+3. Commit the encrypted file.
+
+Each file holds these keys:
+
+| Key                      | Value                                                |
+| ------------------------ | ---------------------------------------------------- |
+| `DOKPLOY_API_URL`        | `https://dokploy.gggfox.com`                         |
+| `DOKPLOY_API_KEY`        | A Dokploy API key                                    |
+| `DOKPLOY_APPLICATION_ID` | The Dokploy application of this environment          |
+| `GHCR_PULL_USERNAME`     | The GitHub user that owns `GHCR_PULL_TOKEN`          |
+| `GHCR_PULL_TOKEN`        | A classic PAT with only `read:packages`, for Dokploy |
+
+The GHCR image is private, so the rollout stops with an error until both files have `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN`.
+
+### Set or rotate the CI age key
+
+The CI key is the repository secret `SOPS_AGE_KEY`. Its local copy is `~/.config/sops/age/nand.txt`.
+
+1. Set the secret from the local copy:
+
+   ```bash
+   grep AGE-SECRET-KEY ~/.config/sops/age/nand.txt | gh secret set SOPS_AGE_KEY
+   ```
+
+2. To rotate it, make a new key with `age-keygen`, and put its public key in `.sops.yaml`.
+3. Re-key both files:
+
+   ```bash
+   sops updatekeys secrets/staging.env
+   ```
+
+   ```bash
+   sops updatekeys secrets/production.env
+   ```
+
+4. Set `SOPS_AGE_KEY` to the new private key (step 1).
