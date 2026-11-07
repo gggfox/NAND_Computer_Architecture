@@ -141,6 +141,44 @@ describe("idb repository environment failures", () => {
   });
 });
 
+describe("idb repository version changes", () => {
+  it("returns Blocked when an older connection stops the upgrade", async () => {
+    const name = freshDbName();
+    const holder = await openDB(name, 1, {
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- idb handle
+      upgrade(db) {
+        db.createObjectStore("projects");
+      },
+    });
+    const result = await createProjectRepository(name, 2).list();
+    expect(result).toEqual({ ok: false, error: { type: "Blocked" } });
+    holder.close();
+  });
+
+  it("closes its connection when another tab wants to upgrade", async () => {
+    const repo = createProjectRepository(freshDbName());
+    // oxlint-disable-next-line typescript/unbound-method -- called back with the right `this` below
+    const original = IDBObjectStore.prototype.getAll;
+    const closeSpy = vi.spyOn(IDBDatabase.prototype, "close");
+    vi.spyOn(IDBObjectStore.prototype, "getAll").mockImplementation(function getAllAndNotify(
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM types are mutable
+      this: IDBObjectStore,
+      // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM types are mutable
+      ...args: Parameters<IDBObjectStore["getAll"]>
+    ) {
+      // Another tab asks to upgrade while this operation runs.
+      this.transaction.db.dispatchEvent(
+        new IDBVersionChangeEvent("versionchange", { oldVersion: 1, newVersion: 2 }),
+      );
+      return original.apply(this, args);
+    });
+    const listed = await repo.list();
+    expect(listed.ok).toBe(true);
+    // Without the `blocking` callback, the connection closes only twice (once in fake-indexeddb, once at the end of the operation).
+    expect(closeSpy).toHaveBeenCalledTimes(3);
+  });
+});
+
 describe("requestPersistentStorage", () => {
   it("returns the browser's answer", async () => {
     vi.stubGlobal("navigator", { storage: { persist: () => Promise.resolve(true) } });

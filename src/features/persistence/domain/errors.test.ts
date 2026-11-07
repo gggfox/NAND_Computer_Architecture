@@ -12,12 +12,13 @@ describe("persistenceErrorMessage", () => {
     const messages = [
       persistenceErrorMessage({ type: "NotFound", id }),
       persistenceErrorMessage({ type: "QuotaExceeded" }),
+      persistenceErrorMessage({ type: "Blocked" }),
       persistenceErrorMessage({ type: "Unavailable" }),
     ];
     for (const message of messages) {
       expect(message.length).toBeGreaterThan(0);
     }
-    expect(new Set(messages).size).toBe(3);
+    expect(new Set(messages).size).toBe(4);
   });
 
   it("includes the import failure reason for corrupt records", () => {

@@ -8,6 +8,7 @@ export type PersistenceError =
   | { readonly type: "NotFound"; readonly id: ProjectId }
   | { readonly type: "Corrupt"; readonly id: ProjectId; readonly cause: ImportError }
   | { readonly type: "QuotaExceeded" }
+  | { readonly type: "Blocked" }
   | { readonly type: "Unavailable" };
 
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
@@ -21,6 +22,9 @@ export const persistenceErrorMessage = (persistenceError: PersistenceError): str
     }
     case "QuotaExceeded": {
       return m.persistence_error_quota();
+    }
+    case "Blocked": {
+      return m.persistence_error_blocked();
     }
     case "Unavailable": {
       return m.persistence_error_unavailable();
