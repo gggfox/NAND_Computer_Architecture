@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import type { FromEngine } from "./protocol";
 import { createEngineSession, SETTLE_TICKS } from "./session";
 
 const NAND_SOURCE = {
@@ -253,5 +254,18 @@ describe("clock determinism", () => {
       }),
     );
     expect(winners).toEqual(new Set(["01", "10"]));
+  });
+});
+
+describe("clock determinism across loads", () => {
+  test("loading the same netlist twice with one seed repeats the same run", () => {
+    const session = createEngineSession();
+    const run = (): FromEngine[] => {
+      session.handle({ type: "load", seed: 5, source: CLOCKED_LATCH });
+      return Array.from({ length: 8 }, () => session.handle({ type: "step" }));
+    };
+    const first = run();
+    expect(first.at(-1)?.type).toBe("state");
+    expect(run()).toEqual(first);
   });
 });
