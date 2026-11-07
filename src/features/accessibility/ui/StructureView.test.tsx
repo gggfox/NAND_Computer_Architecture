@@ -55,7 +55,7 @@ describe("StructureView", () => {
   it("shows the four parts and three wires of the demo", () => {
     const markup = render();
     expect(count(markup, /Pins<\/button>/gu)).toBe(4);
-    expect(count(markup, /Wire from /gu)).toBe(3);
+    expect(count(markup, /<span>Wire from /gu)).toBe(3);
   });
 
   it("words the input switches and the output as before", () => {
