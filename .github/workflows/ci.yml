@@ -20,6 +20,7 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      deploy: ${{ steps.filter.outputs.deploy }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
@@ -32,6 +33,19 @@ jobs:
               - '!**/*.md'
               - '!docs/**'
               - '!LICENSE'
+            deploy:
+              - 'deploy/**'
+
+  # Runs only when deploy/** changes. Not a required check, so a skipped run does not block merges.
+  deploy-configs:
+    name: deploy configs
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.deploy == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - run: deploy/check/check-configs.sh
 
   # Job names are required status checks (ADR 35): keep them exactly check, e2e, visual.
   check:
