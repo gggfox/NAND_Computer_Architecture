@@ -1,4 +1,12 @@
-import { createProject, expect, test } from "./support";
+import {
+  createProject,
+  expect,
+  exportedProject,
+  GRID,
+  nandPosition,
+  NAND_AT,
+  test,
+} from "./support";
 
 const DEMO_PARTS = 4;
 const DEMO_WIRES = 3;
@@ -32,4 +40,22 @@ test("the skip link is the first Tab stop in main and moves focus to the structu
   await expect(skip).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Circuit structure" })).toBeFocused();
+});
+
+test("the part menu opens by keyboard, moves the part one step right and gives focus back", async ({
+  page,
+}) => {
+  await createProject(page);
+  const button = page.getByRole("button", { name: "Actions for NAND gate 1" });
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu", { name: "Actions for NAND gate 1" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(button).toBeFocused();
+  await page.keyboard.press("Space");
+  await page.getByRole("menuitem", { name: "Move right" }).click();
+  const moved = nandPosition(await exportedProject(page));
+  expect(moved?.x).toBe(NAND_AT.x + GRID);
+  expect(moved?.y).toBe(NAND_AT.y);
 });
