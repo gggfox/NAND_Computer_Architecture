@@ -5,6 +5,8 @@ import { structureOf } from "~/features/circuit-editor";
 import { createDemoProject, EMPTY_CIRCUIT } from "~/features/projects";
 import type { InstanceId, PinId } from "~/shared/ids";
 
+import { StructureSessionContext } from "./structure-session";
+import { createTestSession } from "./structure-session.fixtures";
 import { StructureBody, StructureSkipLink } from "./StructureView";
 
 const noop = (): void => undefined;
@@ -22,16 +24,18 @@ const render = ({ selected = new Set(), expanded = new Set() }: Options = {}): s
   const output = circuit.pins.find((pin) => pin.direction === "output");
   const outputs = new Map<PinId, number>(output ? [[output.id, 1]] : []);
   return renderToStaticMarkup(
-    <StructureBody
-      structure={structure}
-      inputs={new Map()}
-      outputs={outputs}
-      pinNames={new Map(circuit.pins.map((pin) => [pin.id, pin.name]))}
-      selected={selected}
-      expanded={expanded}
-      onToggle={noop}
-      onSetInput={noop}
-    />,
+    <StructureSessionContext value={createTestSession(project)}>
+      <StructureBody
+        structure={structure}
+        inputs={new Map()}
+        outputs={outputs}
+        pinNames={new Map(circuit.pins.map((pin) => [pin.id, pin.name]))}
+        selected={selected}
+        expanded={expanded}
+        onToggle={noop}
+        onSetInput={noop}
+      />
+    </StructureSessionContext>,
   );
 };
 
