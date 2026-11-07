@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { newChip, piece, projectWith, wire } from "~/features/projects";
 import type { Chip, ChipInstance, Project } from "~/features/projects";
-import { newChipId } from "~/shared/ids";
+import { newChipId, newWireId } from "~/shared/ids";
 
 import type { Frame, Walk } from "./flatten-walk";
 import { build } from "./to-netlist-source";
@@ -207,5 +207,24 @@ describe("flattening errors: chips", () => {
     const project = projectWith("p", [host, chipA]);
     expect(errorOf(project, host.id)).toEqual({ type: "RecursiveChip", chipId });
     expect(errorOf(project, chipId)).toEqual({ type: "RecursiveChip", chipId });
+  });
+});
+
+describe("resolving a circuit with two drivers", () => {
+  it("two wires into one sink bit are MultipleDrivers", () => {
+    const { project, top } = outputFrom(piece({ type: "clock" }));
+    const rivals = top.circuit.wires.map((item) => ({ ...item, id: newWireId() }));
+    const doubled: Frame = {
+      ...top,
+      circuit: { ...top.circuit, wires: [...top.circuit.wires, ...rivals] },
+    };
+    expect(build(walkOf(project), doubled)).toEqual({
+      ok: false,
+      error: {
+        type: "MultipleDrivers",
+        path: [],
+        instanceId: top.circuit.wires[0]?.to.instanceId,
+      },
+    });
   });
 });

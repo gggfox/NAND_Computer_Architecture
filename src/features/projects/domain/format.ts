@@ -7,7 +7,8 @@ import type { ImportError } from "./errors";
 import { defaultChain, migrateToCurrent } from "./migrations";
 import type { MigrationChain } from "./migrations";
 import { ProjectSchema } from "./model";
-import type { Project } from "./model";
+import type { Circuit, Project } from "./model";
+import { findDoublyDrivenWire } from "./wiring";
 
 export const CURRENT_FORMAT_VERSION = 1;
 export const MAX_IMPORT_BYTES = 5_000_000;
@@ -69,15 +70,31 @@ const checkVersion = (version: number, current: number): Result<number, ImportEr
   return version < 1 ? err({ type: "UnsupportedVersion", version }) : ok(version);
 };
 
+/** One issue per circuit that has a wire into a sink bit another wire also joins. */
+/* oxlint-disable typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; nothing is mutated */
+const doubleDriverIssues = (project: Project): readonly string[] =>
+  project.chips.flatMap((chip, index) =>
+    (["draft", "saved"] as const).flatMap((slot) => {
+      const circuit: Circuit | undefined = chip[slot];
+      const wire = circuit && findDoublyDrivenWire(circuit);
+      return wire === undefined
+        ? []
+        : [`chips.${String(index)}.${slot}.wires: input driven by more than one wire`];
+    }),
+  );
+/* oxlint-enable typescript/prefer-readonly-parameter-types */
+
 const validate = (data: unknown): Result<Project, ImportError> => {
   const parsed = PayloadSchema.safeParse(data);
-  return parsed.success
-    ? ok(parsed.data.project)
-    : err({
-        type: "InvalidProject",
-        /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- zod issues are only read */
-        issues: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`),
-      });
+  if (!parsed.success) {
+    return err({
+      type: "InvalidProject",
+      /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- zod issues are only read */
+      issues: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`),
+    });
+  }
+  const issues = doubleDriverIssues(parsed.data.project);
+  return issues.length === 0 ? ok(parsed.data.project) : err({ type: "InvalidProject", issues });
 };
 const migrateAndValidate = (
   envelope: Envelope,
