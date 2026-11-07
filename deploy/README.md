@@ -12,12 +12,12 @@ SPA entry at `dist/client/_shell.html` (there is no `index.html`).
 
 ## Examples
 
-| File          | Host                      | Notes                                                                                      |
-| ------------- | ------------------------- | ------------------------------------------------------------------------------------------ |
-| `nginx.conf`  | Dokploy, any nginx        | `index _shell.html;` + `try_files $uri /_shell.html;` plus cache headers                   |
-| `.htaccess`   | Hostinger, Apache         | `FallbackResource` (off for `/assets/`), `DirectoryIndex _shell.html`; needs `mod_headers` |
-| `vercel.json` | Vercel                    | Rewrite excludes `sw.js`, manifest and `assets/`                                           |
-| `_redirects`  | Cloudflare Pages, Netlify | `/* /_shell.html 200`; add a `_headers` rule for `sw.js`                                   |
+| File          | Host                      | Notes                                                                                         |
+| ------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| `nginx.conf`  | Dokploy, any nginx        | `index _shell.html;` + `try_files $uri /_shell.html;` plus cache headers                      |
+| `.htaccess`   | Hostinger, Apache         | `FallbackResource` (off for `/assets/`), `DirectoryIndex _shell.html`; needs `mod_headers`    |
+| `vercel.json` | Vercel                    | Rewrite excludes `sw.js`, manifest and `assets/`                                              |
+| `_redirects`  | Cloudflare Pages, Netlify | `/assets/*` 404 (Netlify only), then `/* /_shell.html 200`; add a `_headers` rule for `sw.js` |
 
 For Cloudflare Pages, add a `_headers` file next to `_redirects`:
 
@@ -27,6 +27,7 @@ For Cloudflare Pages, add a `_headers` file next to `_redirects`:
 ```
 
 On Cloudflare Pages and Netlify, `/* /_shell.html 200` only applies when no static file matches, so `sw.js`, the manifest and assets are served as-is.
+Netlify returns 404 for a missing `/assets/*` file. Cloudflare Pages does not support the 404 status in `_redirects`, so it serves the shell for a missing asset.
 
 `vercel.json` must be copied to the project root (Vercel reads it from there, not from the output directory).
 
