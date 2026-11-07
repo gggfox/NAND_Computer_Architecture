@@ -86,6 +86,7 @@
   "netlist_error_invalid_wire": "A wire connects two pins that cannot be joined, so the circuit cannot be simulated.",
   "engine_error_signal_out_of_range": "The simulator rejected the circuit because a signal points outside it.",
   "engine_error_invalid_input_count": "The simulator rejected the circuit because it has an invalid number of inputs.",
+  "engine_error_work_budget_exceeded": "This circuit is too large to simulate.",
   "engine_error_bad_message": "The simulator received a request it could not understand.",
   "engine_error_worker_failed": "The simulator stopped working. Reload the page to try again.",
   "update_ready": "A new version of the app is ready.",

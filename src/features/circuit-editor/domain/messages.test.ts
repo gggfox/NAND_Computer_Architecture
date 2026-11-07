@@ -23,6 +23,7 @@ describe("simulationErrorMessage", () => {
       { type: "WireLoop", path: [], instanceId },
       { type: "SignalOutOfRange", ref: { kind: "nand", index: 3 } },
       { type: "InvalidInputCount", inputCount: -1 },
+      { type: "WorkBudgetExceeded" },
       { type: "BadMessage" },
       { type: "WorkerFailed" },
     ];

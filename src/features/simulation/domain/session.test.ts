@@ -69,6 +69,19 @@ describe("createEngineSession errors", () => {
     });
   });
 
+  test.each([
+    { type: "setInput", index: 2, value: 1 },
+    { type: "setInput", index: 1000, value: 0 },
+  ] as const)("%o past the last input is BadMessage and changes nothing", (message) => {
+    const session = createEngineSession();
+    const first = session.handle({ type: "load", seed: 1, source: NAND_SOURCE });
+    expect(session.handle(message)).toEqual({ type: "error", error: { type: "BadMessage" } });
+    expect(session.handle({ type: "settle", maxTicks: 1 })).toMatchObject({
+      tick: (first.type === "state" ? first.tick : 0) + 1,
+      outputs: [1],
+    });
+  });
+
   test.each([{ type: "setInput", index: 0, value: 1 }, { type: "nope" }, 42] as const)(
     "%o without a loaded engine or malformed is BadMessage",
     (message) => {

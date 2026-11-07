@@ -23,6 +23,7 @@ const SIMULATION_MESSAGES = {
   WireLoop: () => m.netlist_error_wire_loop(),
   SignalOutOfRange: () => m.engine_error_signal_out_of_range(),
   InvalidInputCount: () => m.engine_error_invalid_input_count(),
+  WorkBudgetExceeded: () => m.engine_error_work_budget_exceeded(),
   BadMessage: () => m.engine_error_bad_message(),
   WorkerFailed: () => m.engine_error_worker_failed(),
 } satisfies Record<SimulationError["type"], () => string>;
