@@ -17,6 +17,12 @@ describe("EditorSearchSchema", () => {
       y: 0,
     });
   });
+  test("numeric NaN and infinities in x and y fall back to 0", () => {
+    const values = [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+    expect(values.map((value) => EditorSearchSchema.parse({ x: value, y: value }))).toEqual(
+      values.map(() => ({ zoom: 1, x: 0, y: 0 })),
+    );
+  });
   test("out-of-range zoom falls back", () => {
     expect(EditorSearchSchema.parse({ zoom: 999 }).zoom).toBe(1);
   });

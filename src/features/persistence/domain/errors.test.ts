@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { importErrorMessage } from "~/features/projects";
+import { overwriteGetLocale } from "~/i18n/paraglide/runtime";
 import { ProjectIdSchema } from "~/shared/ids";
 
 import { persistenceErrorMessage } from "./errors";
@@ -26,6 +27,29 @@ describe("persistenceErrorMessage", () => {
     expect(persistenceErrorMessage({ type: "Corrupt", id, cause })).toContain(
       importErrorMessage(cause),
     );
+  });
+
+  describe("in Spanish", () => {
+    afterEach(() => {
+      overwriteGetLocale(() => "en");
+    });
+    it("describes every error case in Spanish", () => {
+      overwriteGetLocale(() => "es");
+      const cause = { type: "InvalidJson" } as const;
+      expect([
+        persistenceErrorMessage({ type: "NotFound", id }),
+        persistenceErrorMessage({ type: "Corrupt", id, cause }),
+        persistenceErrorMessage({ type: "QuotaExceeded" }),
+        persistenceErrorMessage({ type: "Unavailable" }),
+      ]).toEqual([
+        "No se encontró ese proyecto en este navegador.",
+        expect.stringContaining(
+          "El proyecto guardado está dañado y no se pudo abrir. El archivo no es un JSON válido.",
+        ),
+        expect.stringContaining("almacenamiento del navegador está lleno"),
+        expect.stringContaining("almacenamiento del navegador no está disponible"),
+      ]);
+    });
   });
 
   it("rejects an unknown error with assertNever", () => {

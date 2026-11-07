@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { expect, output, PROJECT_URL, test } from "./support";
 
@@ -11,30 +11,29 @@ const focusedName = (page: Page) =>
     return (focused?.closest("label") ?? focused)?.textContent.trim() ?? "";
   });
 
-/**
- * The computed outline of the focused control's visible ring. A switch's `<input>` is visually
- * hidden, so its ring is drawn on the track inside the same `<label>`.
- */
-const focusRingStyle = (page: Page) =>
-  page.evaluate(() => {
-    const focused = document.activeElement;
-    if (!(focused instanceof HTMLElement)) {
-      return "none";
-    }
-    const label = focused.closest("label");
-    const candidates =
-      label === null
-        ? [focused]
-        : [...label.querySelectorAll("*")].filter((node) => !node.contains(focused));
-    const ring = candidates.find((node) => getComputedStyle(node).outlineStyle !== "none");
-    return ring === undefined ? "none" : getComputedStyle(ring).outlineStyle;
-  });
+type Control = "button" | "switch";
 
-const tabTo = async (page: Page, name: string): Promise<void> => {
+/**
+ * The element that draws the focus ring. A button draws its own ring. A switch's `<input>` is
+ * visually hidden, so the ring is drawn on the track: the `<span>` that holds the thumb `<span>`
+ * inside the switch's `<label>`. Only that track counts, so a ring on any other element fails.
+ */
+const ringTarget = (page: Page, control: Control, name: string): Locator =>
+  control === "button"
+    ? page.getByRole("button", { name, exact: true })
+    : page.locator("label").filter({ hasText: name }).locator("span:has(> span)");
+
+const outlineStyle = (target: Locator): Promise<string> =>
+  target.evaluate((element) => getComputedStyle(element).outlineStyle);
+
+const tabTo = async (page: Page, control: Control, name: string): Promise<void> => {
+  const target = ringTarget(page, control, name);
+  const unfocusedOutline = await outlineStyle(target);
   for (let step = 0; step < MAX_TABS; step += 1) {
     await page.keyboard.press("Tab");
     if ((await focusedName(page)) === name) {
-      expect(await focusRingStyle(page)).not.toBe("none");
+      expect(unfocusedOutline).toBe("none");
+      expect(await outlineStyle(target)).not.toBe(unfocusedOutline);
       return;
     }
   }
@@ -45,16 +44,16 @@ test("create a project and drive the NAND with the keyboard alone", async ({ pag
   await page.goto("/");
   await expect(page.getByRole("button", { name: "New project" })).toBeVisible();
 
-  await tabTo(page, "New project");
+  await tabTo(page, "button", "New project");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(PROJECT_URL);
   await expect(output(page)).toHaveText("Output OUT: 1");
 
-  await tabTo(page, "Input A");
+  await tabTo(page, "switch", "Input A");
   await page.keyboard.press("Space");
   await expect(output(page)).toHaveText("Output OUT: 1");
 
-  await tabTo(page, "Input B");
+  await tabTo(page, "switch", "Input B");
   await page.keyboard.press("Space");
   await expect(output(page)).toHaveText("Output OUT: 0");
 });
