@@ -1,7 +1,10 @@
 name: CI
 
+# Branch pushes run only as pull_request runs, so one push does not start two runs (ADR 55).
+# Pushes to main still run, and deploy-staging.yml waits for them.
 on:
   push:
+    branches: [main]
   pull_request:
 
 concurrency:
@@ -81,23 +84,14 @@ jobs:
         with:
           vite-config-path: vitest.config.ts
 
-  # One runner per Playwright project: run serially on one 2-vCPU runner they hit the 30 min timeout.
-  e2e-project:
-    name: e2e (${{ matrix.project }})
+  # Builds the app one time. The e2e and visual jobs download dist/ and only start the preview server.
+  build:
+    name: build
     needs: changes
     # Fail-safe: only a positive docs-only result skips; a failed changes job still runs everything.
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [chromium, firefox, webkit, mobile-chrome, mobile-safari, tablet-safari]
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
-      options: --ipc=host
-    env:
-      HOME: /root
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -106,6 +100,49 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # One runner per Playwright project: run serially on one 2-vCPU runner they hit the 30 min timeout.
+  # Pull requests run one Blink and one WebKit touch project. Pushes to main run all six (ADR 55).
+  # If build fails, these jobs still start and fail at the download, so the required checks fail too.
+  e2e-project:
+    name: e2e (${{ matrix.project }})
+    needs: [changes, build]
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: >-
+          ${{ fromJSON(github.event_name == 'push'
+          && '["chromium", "firefox", "webkit", "mobile-chrome", "mobile-safari", "tablet-safari"]'
+          || '["chromium", "mobile-safari"]') }}
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    env:
+      HOME: /root
+      E2E_PREBUILT: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
       - run: pnpm e2e --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -127,8 +164,8 @@ jobs:
 
   visual:
     name: visual
-    needs: changes
-    # Fail-safe: only a positive docs-only result skips; a failed changes job still runs everything.
+    needs: [changes, build]
+    # Fail-safe: only a positive docs-only result skips; a failed build fails this job at the download.
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -137,6 +174,7 @@ jobs:
       options: --ipc=host
     env:
       HOME: /root
+      E2E_PREBUILT: "1"
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -145,6 +183,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
       - run: pnpm e2e:visual
       - uses: actions/upload-artifact@v4
         if: always()
