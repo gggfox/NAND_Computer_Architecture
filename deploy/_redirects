@@ -1,4 +1,10 @@
 # Cloudflare Pages / Netlify. Copy next to the contents of dist/client.
 # Static files (sw.js, manifest.webmanifest, assets) win over this rule because redirects
 # without a force flag (!) only apply when no file matches.
+# A missing hashed asset (a stale tab asking for an old chunk) must be a 404, never the HTML
+# shell, which the browser would try to run as JavaScript. Netlify applies the first matching
+# rule, so this rule must stay before the shell rule. Netlify shows its own 404 page when the
+# site has no 404.html. Cloudflare Pages does not support the 404 status in this file and ignores
+# this line, so a missing asset on Cloudflare Pages still gets the shell.
+/assets/*  /404.html  404
 /*  /_shell.html  200

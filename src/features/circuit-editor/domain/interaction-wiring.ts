@@ -20,6 +20,7 @@ import {
 } from "./interaction-pin-select";
 import { PLACE_COMMANDS, stopPlacing } from "./interaction-place";
 import { dismissGhosts, SUGGEST_COMMANDS } from "./interaction-suggest";
+import { VIEW_COMMANDS } from "./interaction-view";
 import { completionFor, legalTargets } from "./wiring-targets";
 
 type PinHit = Extract<Hit, { type: "pin" }>;
@@ -79,7 +80,7 @@ const connected = (
       type: "dispatch",
       action: { type: "connectWire", chipId: context.chipId, wireId: context.newWireId(), ...ends },
     },
-    announce({ type: "wired" }),
+    announce({ type: "wired", from: ends.from, to: ends.to }),
   );
 
 /** Why a connection was refused: shown over the canvas as `notice` and announced. */
@@ -234,7 +235,8 @@ type WiringHandlers = {
 export const WIRING_COMMANDS: WiringHandlers &
   typeof PLACE_COMMANDS &
   typeof PIN_SELECT_COMMANDS &
-  typeof SUGGEST_COMMANDS = {
+  typeof SUGGEST_COMMANDS &
+  typeof VIEW_COMMANDS = {
   arm: (state, _command, context) => armByKey(state, context),
   connect: (state, _command, context) => connectByKey(state, context),
   pickBit: (state, command, context) => pickBit(state, command.bit, context),
@@ -242,4 +244,5 @@ export const WIRING_COMMANDS: WiringHandlers &
   ...PLACE_COMMANDS,
   ...PIN_SELECT_COMMANDS,
   ...SUGGEST_COMMANDS,
+  ...VIEW_COMMANDS,
 };

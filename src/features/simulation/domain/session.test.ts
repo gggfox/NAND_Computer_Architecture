@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import type { FromEngine } from "./protocol";
 import { createEngineSession, SETTLE_TICKS } from "./session";
 
 const NAND_SOURCE = {
@@ -66,6 +67,19 @@ describe("createEngineSession errors", () => {
     expect(session.handle({ type: "settle", maxTicks: 1 })).toEqual({
       type: "error",
       error: { type: "BadMessage" },
+    });
+  });
+
+  test.each([
+    { type: "setInput", index: 2, value: 1 },
+    { type: "setInput", index: 1000, value: 0 },
+  ] as const)("%o past the last input is BadMessage and changes nothing", (message) => {
+    const session = createEngineSession();
+    const first = session.handle({ type: "load", seed: 1, source: NAND_SOURCE });
+    expect(session.handle(message)).toEqual({ type: "error", error: { type: "BadMessage" } });
+    expect(session.handle({ type: "settle", maxTicks: 1 })).toMatchObject({
+      tick: (first.type === "state" ? first.tick : 0) + 1,
+      outputs: [1],
     });
   });
 
@@ -240,5 +254,18 @@ describe("clock determinism", () => {
       }),
     );
     expect(winners).toEqual(new Set(["01", "10"]));
+  });
+});
+
+describe("clock determinism across loads", () => {
+  test("loading the same netlist twice with one seed repeats the same run", () => {
+    const session = createEngineSession();
+    const run = (): FromEngine[] => {
+      session.handle({ type: "load", seed: 5, source: CLOCKED_LATCH });
+      return Array.from({ length: 8 }, () => session.handle({ type: "step" }));
+    };
+    const first = run();
+    expect(first.at(-1)?.type).toBe("state");
+    expect(run()).toEqual(first);
   });
 });

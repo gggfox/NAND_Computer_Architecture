@@ -22,10 +22,9 @@ export interface Netlist {
   readonly outputs: Int32Array;
 }
 
-export interface CompileError {
-  readonly type: "SignalOutOfRange";
-  readonly ref: SignalRef;
-}
+export type CompileError =
+  | { readonly type: "SignalOutOfRange"; readonly ref: SignalRef }
+  | { readonly type: "InvalidInputCount"; readonly inputCount: number };
 
 const NOT_FOUND = -1;
 
@@ -61,31 +60,38 @@ const resolveAll = (
 const outOfRange = (ref: SignalRef): Result<never, CompileError> =>
   err({ type: "SignalOutOfRange", ref });
 
-export const compileNetlist = (src: NetlistSource): Result<Netlist, CompileError> => {
-  const nandCount = src.nands.length;
-  const indexOf = signalIndexer(src.inputCount, nandCount);
+/** Resolves the NAND inputs and the outputs of a netlist whose `inputCount` is already valid. */
+const resolveSignals = (
+  src: NetlistSource,
+  indexOf: (ref: SignalRef) => number,
+): Result<Pick<Netlist, "nandA" | "nandB" | "outputs">, SignalRef> => {
   const nandA = resolveAll(
     src.nands.map((nand) => nand.a),
     indexOf,
   );
-  if (!nandA.ok) {
-    return outOfRange(nandA.error);
-  }
   const nandB = resolveAll(
     src.nands.map((nand) => nand.b),
     indexOf,
   );
-  if (!nandB.ok) {
-    return outOfRange(nandB.error);
-  }
   const outputs = resolveAll(src.outputs, indexOf);
+  if (!nandA.ok) {
+    return nandA;
+  }
+  if (!nandB.ok) {
+    return nandB;
+  }
   return outputs.ok
-    ? ok({
-        inputCount: src.inputCount,
-        nandCount,
-        nandA: nandA.value,
-        nandB: nandB.value,
-        outputs: outputs.value,
-      })
-    : outOfRange(outputs.error);
+    ? ok({ nandA: nandA.value, nandB: nandB.value, outputs: outputs.value })
+    : outputs;
+};
+
+export const compileNetlist = (src: NetlistSource): Result<Netlist, CompileError> => {
+  if (!Number.isInteger(src.inputCount) || src.inputCount < 0) {
+    return err({ type: "InvalidInputCount", inputCount: src.inputCount });
+  }
+  const nandCount = src.nands.length;
+  const resolved = resolveSignals(src, signalIndexer(src.inputCount, nandCount));
+  return resolved.ok
+    ? ok({ inputCount: src.inputCount, nandCount, ...resolved.value })
+    : outOfRange(resolved.error);
 };

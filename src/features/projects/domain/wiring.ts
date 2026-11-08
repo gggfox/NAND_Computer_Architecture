@@ -157,6 +157,18 @@ const matches = (stored: Wire, connection: Connection): boolean =>
 
 const sinkKey = (ref: PinRef): string => `${ref.instanceId}:${String(ref.pin)}`;
 
+/** True when another wire in `sinks` joins a sink bit that `item` also joins. */
+const hasRival = (sinks: ReadonlyMap<string, readonly Wire[]>, item: Wire): boolean =>
+  (sinks.get(sinkKey(item.to)) ?? []).some(
+    (other) => other.id !== item.id && overlaps(other.to, item.to),
+  );
+
+/** The first wire that joins a sink bit another wire also joins, or `undefined`. */
+export const findDoublyDrivenWire = (circuit: Circuit): Wire | undefined => {
+  const sinks = groupBy(circuit.wires, (item) => sinkKey(item.to));
+  return circuit.wires.find((item) => hasRival(sinks, item));
+};
+
 /**
  * The first stored wire that no longer passes `checkConnection` as stored. Linear in the circuit:
  * instances are looked up by id and the single-driver check only compares wires into the same pin.
@@ -167,10 +179,6 @@ export const findInvalidWire = (project: Project, circuit: Circuit): Wire | unde
   const sinks = groupBy(circuit.wires, (item) => sinkKey(item.to));
   return circuit.wires.find((item) => {
     const result = connectionOf(scope, [item.from, item.to]);
-    if (!result.ok || !matches(item, result.value)) {
-      return true;
-    }
-    const rivals = sinks.get(sinkKey(item.to)) ?? [];
-    return rivals.some((other) => other.id !== item.id && overlaps(other.to, item.to));
+    return !result.ok || !matches(item, result.value) || hasRival(sinks, item);
   });
 };

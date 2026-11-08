@@ -17,17 +17,24 @@ export const readProjectFile = async (file: File): Promise<Result<Project, Impor
 
 const REVOKE_DELAY_MS = 60_000;
 
-/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
-export const downloadProjectFile = (project: Project): void => {
-  const url = URL.createObjectURL(
-    new Blob([serializeProject(project)], { type: "application/json" }),
-  );
+const downloadText = (text: string, fileName: string): void => {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = projectFileName(project.name);
+  link.download = fileName;
   link.click();
   // Revoking synchronously can abort the download in Safari; give it time to start.
   setTimeout(() => {
     URL.revokeObjectURL(url);
   }, REVOKE_DELAY_MS);
+};
+
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- branded ids are mutable object types; the value is never mutated */
+export const downloadProjectFile = (project: Project): void => {
+  downloadText(serializeProject(project), projectFileName(project.name));
+};
+
+/** Saves a stored record exactly as it is, so a damaged project can still be recovered by hand. */
+export const downloadRawRecord = (raw: string, id: string): void => {
+  downloadText(raw, projectFileName(`damaged-${id}`));
 };

@@ -1,0 +1,90 @@
+.structure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-display);
+  text-transform: var(--heading-case);
+  letter-spacing: var(--heading-tracking);
+}
+
+.subheading {
+  margin: 0;
+  font-size: var(--font-size-small);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.suggested {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.part > .list {
+  padding-inline-start: 1rem;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  min-block-size: 2.75rem;
+}
+
+.output {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.selected {
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+}
+
+/*
+ * Hidden below the viewport until it has focus. Focused, it sits at the bottom of the viewport.
+ * At the top it would cover the "All projects" link, and WCAG 2.5.8 needs 24 px around that link.
+ */
+.skip {
+  position: fixed;
+  inset-block-end: 1rem;
+  inset-inline-start: 1rem;
+  z-index: var(--z-overlay);
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  padding-inline: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-text-muted);
+  transform: translateY(calc(100% + 2rem));
+}
+
+.skip:focus {
+  transform: none;
+}

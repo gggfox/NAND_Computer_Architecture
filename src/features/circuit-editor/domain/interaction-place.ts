@@ -81,7 +81,7 @@ const addPinAt = (
   command: Extract<InteractionCommand, { type: "addPinAt" }>,
   context: InteractionContext,
 ): Interpreted => {
-  const world = screenToWorld(state.camera, command.screen);
+  const world = screenToWorld(state.camera, command.screen ?? viewportCentre(context));
   const added = pinAt(context.scene.circuit, command.direction, world);
   const { direction, name } = added.pin;
   return done(

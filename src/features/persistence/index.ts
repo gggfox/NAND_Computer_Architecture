@@ -10,5 +10,11 @@ export {
 export { registerServiceWorker } from "./adapters/service-worker";
 export { requestPersistentStorage } from "./adapters/storage-persist";
 export { persistenceErrorMessage, type PersistenceError } from "./domain/errors";
-export type { ProjectRepository, ProjectSummary } from "./domain/repository";
+export {
+  isDamaged,
+  type DamagedProject,
+  type ProjectEntry,
+  type ProjectRepository,
+  type ProjectSummary,
+} from "./domain/repository";
 export { useStorageDegraded } from "./ui/use-storage-degraded";

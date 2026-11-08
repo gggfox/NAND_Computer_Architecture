@@ -1,4 +1,4 @@
-# 52. A drop lines wires up when half a grid is all it takes
+# 54. A drop lines wires up when half a grid is all it takes
 
 Chips snap to the 40 px grid, but pins sit on 20 px half-grid rows. A pin piece's pin is half a grid below its top, and a NAND's output is a whole grid below its top. On the grid alone, a NAND's output and an output piece can never line up, so the wire between them always bends.
 

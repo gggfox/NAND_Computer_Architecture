@@ -1,4 +1,4 @@
-# 51. Amber is the default theme, and the index is a landing page
+# 53. Amber is the default theme, and the index is a landing page
 
 The index page now explains the project before it lists the projects. It has a hero with a NAND schematic and its truth table, the saved projects, and the five steps from NAND to a computer. The look is a heads-up display: a faint grid, thin frame lines, corner brackets and uppercase labels.
 

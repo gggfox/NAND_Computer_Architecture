@@ -3,7 +3,7 @@ import { ok } from "~/shared/result";
 import type { Result } from "~/shared/result";
 
 import type { PersistenceError } from "../domain/errors";
-import type { ProjectRepository, ProjectSummary } from "../domain/repository";
+import type { ProjectEntry, ProjectRepository } from "../domain/repository";
 import { createMemoryProjectRepository, createProjectRepository } from "./idb-project-repository";
 
 export interface AppProjectRepository extends ProjectRepository {
@@ -104,19 +104,35 @@ const loadFrom =
 
 /** Projects saved to memory only are listed from memory, so they stay reachable after recovery. */
 const withDrafts = async (
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- summaries carry branded ids; only read
-  listed: readonly ProjectSummary[],
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- entries carry branded ids; only read
+  listed: readonly ProjectEntry[],
   fallback: ProjectRepository,
   state: Degradation,
-): Promise<readonly ProjectSummary[]> => {
+): Promise<readonly ProjectEntry[]> => {
   const memory = await fallback.list();
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- summaries carry branded ids; only read
-  const isDraft = (summary: ProjectSummary): boolean => state.isUnsynced(summary.id);
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- entries carry branded ids; only read
+  const isDraft = (entry: ProjectEntry): boolean => state.isUnsynced(entry.id);
   const drafts = memory.ok ? memory.value.filter(isDraft) : [];
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- summaries carry branded ids; only read
-  const kept = listed.filter((summary) => !isDraft(summary));
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- entries carry branded ids; only read
+  const kept = listed.filter((entry) => !isDraft(entry));
   return [...kept, ...drafts];
 };
+
+const deleteFrom =
+  ([primary, fallback]: Repos, state: Degradation): ProjectRepository["delete"] =>
+  async (id) => {
+    const result = await primary.delete(id);
+    if (isUnavailable(result)) {
+      state.update(true);
+      return fallback.delete(id);
+    }
+    if (result.ok) {
+      state.markSynced(id);
+      await fallback.delete(id);
+    }
+    state.update(false);
+    return result;
+  };
 
 const listFrom =
   ([primary, fallback]: Repos, state: Degradation): ProjectRepository["list"] =>
@@ -149,6 +165,7 @@ export const withMemoryFallback = (
     save: saveTo(repos, state),
     load: loadFrom(repos, state),
     list: listFrom(repos, state),
+    delete: deleteFrom(repos, state),
     isDegraded: state.isDegraded,
     subscribe: state.subscribe,
   };

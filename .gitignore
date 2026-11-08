@@ -1,6 +1,8 @@
 .DS_Store
 *.app/
 node_modules
+# pnpm content store; the Docker visual script keeps it outside the repo, this is a safety net.
+.pnpm-store/
 dist
 .output
 .tanstack

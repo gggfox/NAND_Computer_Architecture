@@ -62,20 +62,29 @@ export const watchForUpdates = (
   registration: WorkerRegistration,
   hooks: UpdateHooks,
 ): void => {
-  if (container.controller === null || container.controller === undefined) {
-    return;
+  /*
+   * A page with no controller is on its first install. It already runs the newest code, so the
+   * first claim needs no reload and no offer. The page is controlled after that claim, so a later
+   * update in the same tab gets the banner and the reload like any other tab.
+   */
+  let controlled = container.controller !== null && container.controller !== undefined;
+  if (controlled) {
+    offerWaiting(registration, hooks);
   }
-  offerWaiting(registration, hooks);
   registration.addEventListener("updatefound", () => {
     const { installing } = registration;
     installing?.addEventListener("statechange", () => {
-      if (installing.state === "installed") {
+      if (installing.state === "installed" && controlled) {
         offerWaiting(registration, hooks);
       }
     });
   });
   let reloading = false;
   container.addEventListener("controllerchange", () => {
+    if (!controlled) {
+      controlled = true;
+      return;
+    }
     if (reloading) {
       return;
     }

@@ -22,6 +22,8 @@ interface LandingProps {
   readonly notices: ReactNode;
   /** The saved projects, each opened by its card. */
   readonly projects: readonly ProjectLink[];
+  /** Rows (`<li>`) for records that cannot be opened, listed after the cards. */
+  readonly damaged: readonly ReactNode[];
 }
 
 interface Step {
@@ -163,20 +165,30 @@ function ProjectCard({ project }: { readonly project: ProjectLink }): ReactNode 
   );
 }
 
-function ProjectList({ projects }: { readonly projects: readonly ProjectLink[] }): ReactNode {
-  if (projects.length === 0) {
+interface ProjectListProps {
+  readonly projects: readonly ProjectLink[];
+  readonly damaged: readonly ReactNode[];
+}
+
+function ProjectList({ projects, damaged }: ProjectListProps): ReactNode {
+  if (projects.length === 0 && damaged.length === 0) {
     return <p className={styles.summary}>{m.projects_empty()}</p>;
   }
   return (
-    <ul className={styles.projects}>
-      {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} />
-      ))}
-    </ul>
+    <>
+      {projects.length === 0 ? undefined : (
+        <ul className={styles.projects}>
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </ul>
+      )}
+      {damaged.length === 0 ? undefined : <ul className={styles.damaged}>{damaged}</ul>}
+    </>
   );
 }
 
-function Projects({ projects }: { readonly projects: readonly ProjectLink[] }): ReactNode {
+function Projects({ projects, damaged }: ProjectListProps): ReactNode {
   const headingId = useId();
   return (
     <section className={styles.section} aria-labelledby={headingId}>
@@ -185,20 +197,25 @@ function Projects({ projects }: { readonly projects: readonly ProjectLink[] }): 
         tag={m.landing_workspace_tag()}
         heading={m.projects_heading()}
       />
-      <ProjectList projects={projects} />
+      <ProjectList projects={projects} damaged={damaged} />
     </section>
   );
 }
 
 /** The index page: what the app is, the saved projects, and the way from NAND to a computer. */
-export function Landing({ primaryAction, notices, projects }: Readonly<LandingProps>): ReactNode {
+export function Landing({
+  primaryAction,
+  notices,
+  projects,
+  damaged,
+}: Readonly<LandingProps>): ReactNode {
   return (
     <div className={styles.root}>
       <Header />
       <main className={styles.main}>
         {notices}
         <Hero primaryAction={primaryAction} />
-        <Projects projects={projects} />
+        <Projects projects={projects} damaged={damaged} />
         <Path />
       </main>
       <footer className={styles.footer}>

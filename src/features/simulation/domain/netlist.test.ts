@@ -74,4 +74,14 @@ describe("compileNetlist clock", () => {
       expect([...result.value.outputs]).toEqual([3]);
     }
   });
+
+  test.each([-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "inputCount %s is InvalidInputCount",
+    (inputCount) => {
+      expect(compileNetlist({ inputCount, nands: [], outputs: [] })).toEqual({
+        ok: false,
+        error: { type: "InvalidInputCount", inputCount },
+      });
+    },
+  );
 });

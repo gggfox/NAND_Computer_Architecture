@@ -1,10 +1,12 @@
 /* oxlint-disable typescript/prefer-readonly-parameter-types -- projects carry branded ids (mutable object types); none is mutated */
+/* oxlint-disable import/max-dependencies -- one test file covers the whole format module, plus the locale switch */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 import { z } from "zod";
 
+import { overwriteGetLocale } from "~/i18n/paraglide/runtime";
 import { newChipId, newInstanceId } from "~/shared/ids";
 
 import { createDemoProject } from "./demo";
@@ -259,6 +261,22 @@ describe("importErrorMessage", () => {
     expect(cases.map((importError) => importErrorMessage(importError).length > 0)).toEqual(
       cases.map(() => true),
     );
+  });
+  describe("in Spanish", () => {
+    afterEach(() => {
+      overwriteGetLocale(() => "en");
+    });
+    test("every case has its own Spanish message", () => {
+      overwriteGetLocale(() => "es");
+      expect(cases.map((importError) => importErrorMessage(importError))).toEqual([
+        "El archivo es demasiado grande para importar (máximo 5 MB).",
+        "El archivo no es un JSON válido.",
+        "El archivo no es un proyecto NAND.",
+        expect.stringContaining("La versión 0 del archivo de proyecto"),
+        expect.stringContaining("(versión del archivo 2, compatible 1)"),
+        "El archivo de proyecto está dañado o no es válido.",
+      ]);
+    });
   });
   test("an unknown case is rejected by assertNever", () => {
     /* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Deliberately violates the exhaustive union to hit assertNever */

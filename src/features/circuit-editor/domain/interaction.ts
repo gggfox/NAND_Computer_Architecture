@@ -22,11 +22,13 @@ import type {
   ClipboardDid,
   Notice,
   PinAnnouncement,
+  OutputsAnnouncement,
   PinCommand,
   Selection,
   SuggestAnnouncement,
   SuggestCommand,
   Suggestions,
+  ViewCommand,
 } from "./selection";
 
 /** What a one-finger drag on empty canvas does (spec §5.3). */
@@ -171,10 +173,11 @@ export type InteractionCommand =
   | { readonly type: "cancelPlacement" }
   /** Places one `kind` centred on `screen`, or on the viewport's centre without one. */
   | { readonly type: "placeAt"; readonly kind: PlaceableKind; readonly screen?: Point }
-  /** Adds one 1-bit pin of the open chip, its piece centred on `screen`. */
-  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point }
+  /** Adds one 1-bit pin of the open chip, its piece centred on `screen`, or on the viewport centre. */
+  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen?: Point }
   | PinCommand
-  | SuggestCommand;
+  | SuggestCommand
+  | ViewCommand;
 
 export type InteractionInput =
   | { readonly type: "gesture"; readonly gesture: Gesture }
@@ -196,7 +199,8 @@ export type Announcement =
   | { readonly type: "tool"; readonly tool: Tool }
   | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
-  | { readonly type: "wired" }
+  /** A wire was added: both ends are named. */
+  | { readonly type: "wired"; readonly from: PinRef; readonly to: PinRef }
   | { readonly type: "disarmed" }
   /** A connection was refused: `reason` says why. */
   | { readonly type: "refused"; readonly reason: ConnectionError }
@@ -209,6 +213,7 @@ export type Announcement =
   | { readonly type: "placed"; readonly kind: PlaceableKind }
   | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string }
   | PinAnnouncement
+  | OutputsAnnouncement
   | SuggestAnnouncement;
 
 export type Effect =

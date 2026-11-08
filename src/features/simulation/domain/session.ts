@@ -1,14 +1,21 @@
+import { err } from "~/shared/result";
+import type { Result } from "~/shared/result";
+
 import { DEFAULT_STEPS_PER_SECOND, stepsDue } from "./clock";
 import { createEngine } from "./engine";
 import type { Engine } from "./engine";
 import { compileNetlist } from "./netlist";
-import { ToEngineSchema } from "./protocol";
+import type { Netlist } from "./netlist";
+import { exceedsWorkBudget, ToEngineSchema } from "./protocol";
 import type { FromEngine, ToEngine } from "./protocol";
+
+type EngineError = Extract<FromEngine, { type: "error" }>["error"];
 
 /** Tick budget for the settle that follows every `load`, `setInput` and clock step. */
 export const SETTLE_TICKS = 1000;
 
 const BAD_MESSAGE: FromEngine = { type: "error", error: { type: "BadMessage" } };
+const WORK_BUDGET_EXCEEDED: FromEngine = { type: "error", error: { type: "WorkBudgetExceeded" } };
 
 export interface EngineSession {
   /** Validates one untrusted message, applies it and returns the reply. */
@@ -27,6 +34,9 @@ interface LoadedNetlist {
   /** One step is half a clock cycle: toggle the clock, then settle. */
   readonly runSteps: (count: number) => void;
   readonly snapshot: (running: boolean) => FromEngine;
+  readonly inputCount: number;
+  /** True when settling `maxTicks` ticks would be more work than the budget allows. */
+  readonly overBudget: (maxTicks: number) => boolean;
 }
 
 /** Run state that outlives a reload, so a reload while playing keeps playing at the same speed. */
@@ -43,7 +53,11 @@ type LoadMessage = Extract<ToEngine, { type: "load" }>;
 type ControlMessage = Exclude<ToEngine, LoadMessage>;
 
 /** A fresh engine starts with the clock low. */
-const loadNetlist = (engine: Engine, outputCount: number): LoadedNetlist => {
+const loadNetlist = (
+  engine: Engine,
+  { inputCount, nandCount }: Netlist,
+  outputCount: number,
+): LoadedNetlist => {
   let clock: 0 | 1 = 0;
   let stable = true;
   const settle = (maxTicks: number): void => {
@@ -62,6 +76,8 @@ const loadNetlist = (engine: Engine, outputCount: number): LoadedNetlist => {
         settle(SETTLE_TICKS);
       }
     },
+    inputCount,
+    overBudget: (maxTicks) => exceedsWorkBudget(maxTicks, nandCount),
     snapshot: (running) => ({
       type: "state",
       tick: engine.tickCount,
@@ -135,18 +151,36 @@ const advanceLoaded = (
   return steps > 0 ? loaded.snapshot(run.running()) : undefined;
 };
 
+/** Compiles a source and refuses one whose load-time settle is more work than the budget. */
+const compileWithinBudget = (source: LoadMessage["source"]): Result<Netlist, EngineError> => {
+  const compiled = compileNetlist(source);
+  return compiled.ok && exceedsWorkBudget(SETTLE_TICKS, compiled.value.nandCount)
+    ? err({ type: "WorkBudgetExceeded" })
+    : compiled;
+};
+
+/** The reply that refuses a control message the loaded netlist cannot take, if any. */
+const refuse = (loaded: LoadedNetlist, message: ControlMessage): FromEngine | undefined => {
+  if (message.type === "setInput" && message.index >= loaded.inputCount) {
+    return BAD_MESSAGE;
+  }
+  return message.type === "settle" && loaded.overBudget(message.maxTicks)
+    ? WORK_BUDGET_EXCEEDED
+    : undefined;
+};
+
 /** The worker's logic, kept pure so it is unit-tested; the worker only moves messages and time. */
 export const createEngineSession = (): EngineSession => {
   let loaded: LoadedNetlist | undefined = undefined;
   const run = createRunClock();
 
   const load = ({ source, seed }: LoadMessage): FromEngine => {
-    const compiled = compileNetlist(source);
+    const compiled = compileWithinBudget(source);
     if (!compiled.ok) {
       loaded = undefined;
       return { type: "error", error: compiled.error };
     }
-    loaded = loadNetlist(createEngine(compiled.value, seed), source.outputs.length);
+    loaded = loadNetlist(createEngine(compiled.value, seed), compiled.value, source.outputs.length);
     run.resetCarry();
     loaded.settle(SETTLE_TICKS);
     return loaded.snapshot(run.running());
@@ -156,8 +190,9 @@ export const createEngineSession = (): EngineSession => {
     if (message.type === "load") {
       return load(message);
     }
-    if (loaded === undefined) {
-      return BAD_MESSAGE;
+    const refusal = loaded && refuse(loaded, message);
+    if (loaded === undefined || refusal !== undefined) {
+      return refusal ?? BAD_MESSAGE;
     }
     control(loaded, run, message);
     return loaded.snapshot(run.running());

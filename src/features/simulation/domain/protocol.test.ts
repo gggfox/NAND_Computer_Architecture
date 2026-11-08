@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
 
-import { FromEngineSchema, ToEngineSchema } from "./protocol";
+import {
+  exceedsWorkBudget,
+  FromEngineSchema,
+  MAX_SETTLE_TICKS,
+  MAX_SETTLE_WORK,
+  ToEngineSchema,
+} from "./protocol";
 
 describe("ToEngineSchema", () => {
   test.each([
@@ -80,4 +86,23 @@ test("a state reply needs clock and running", () => {
   expect(FromEngineSchema.safeParse({ ...base, clock: 0 }).success).toBe(false);
   expect(FromEngineSchema.safeParse({ ...base, running: false }).success).toBe(false);
   expect(FromEngineSchema.safeParse({ ...base, clock: 0, running: false }).success).toBe(true);
+});
+
+describe("exceedsWorkBudget", () => {
+  test("allows work up to the budget and refuses more", () => {
+    expect(exceedsWorkBudget(MAX_SETTLE_WORK, 1)).toBe(false);
+    expect(exceedsWorkBudget(MAX_SETTLE_WORK + 1, 1)).toBe(true);
+    expect(exceedsWorkBudget(1, MAX_SETTLE_WORK + 1)).toBe(true);
+    expect(exceedsWorkBudget(MAX_SETTLE_TICKS, 0)).toBe(false);
+  });
+
+  test("the largest e2e circuit (300 NANDs) stays under it with the longest settle", () => {
+    expect(exceedsWorkBudget(MAX_SETTLE_TICKS, 300)).toBe(false);
+  });
+
+  test("the WorkBudgetExceeded error is a valid engine reply", () => {
+    expect(
+      FromEngineSchema.safeParse({ type: "error", error: { type: "WorkBudgetExceeded" } }).success,
+    ).toBe(true);
+  });
 });

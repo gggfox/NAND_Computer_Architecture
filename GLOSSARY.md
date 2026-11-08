@@ -61,3 +61,8 @@ Terms used across code, issues and docs. Use these names; avoid the listed synon
 - **Tidy wires**: re-route every automatic wire in the open chip from scratch. The only time the router moves wires an edit did not touch.
 - **Wire colour**: one of eight named colours (blue, red, orange, yellow, green, teal, purple, pink) a wire can carry, or the default. On wires are full colour, off wires muted and dashed.
 - **Bend mode**: editing one wire's bends by dragging a handle on each segment, or with `]`/`[` and the arrow keys. Not an edit until a bend moves.
+- **Structure view**: the region "Circuit structure" in the side panel, under the Pins panel. It lists the open chip as a Parts list and a Wires list, and gives every row an Actions menu. It replaces the circuit summary. A skip link, "Skip to circuit structure", moves focus to it. _Avoid_: circuit summary, outline, tree view.
+- **Parts list**: the first list of the structure view. One row per part, in canvas order, with its name, its state (an input as a switch, an output as a value, "selected") and a "Pins" disclosure. Each pin shows its name, direction, width and what it connects to.
+- **Wires list**: the second list of the structure view. One row per wire, such as `Input A out to NAND gate 1 a`, in the reading order of the sink pin.
+- **Row actions menu**: the "Actions for {row}" menu button on a part, pin or wire row of the structure view. Its entries send the same interaction commands as the canvas menus. _Avoid_: context menu, command palette.
+- **Wire to… dialog**: the dialog opened from a pin's Actions menu ("Wire to…" on an output, "Wire from…" on an input). It lists only legal pins, with a search field and a bit field for buses. A refusal shows inside the dialog.

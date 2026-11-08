@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { newChip, piece, projectWith, wire } from "~/features/projects";
 import type { Chip, ChipInstance, PinKey, PinRef, Project, Wire } from "~/features/projects";
 
+import { fastestCpuMs, PERF_TIMEOUT_MS } from "./perf.fixtures";
 import { toNetlistSource } from "./to-netlist-source";
 import { end, io, NAND_OUT, nandPart, notChip, pick } from "./to-netlist-source.fixtures";
 
@@ -57,25 +58,23 @@ const hierarchy = (depth: number): Project => {
   return projectWith("hierarchy", [pick(chips, 0), ...chips.slice(1)]);
 };
 
-const median = (runs: number, work: () => void): number => {
-  const times = Array.from({ length: runs }, () => {
-    const start = performance.now();
-    work();
-    return performance.now() - start;
-  });
-  return times.toSorted((first, second) => first - second)[Math.floor(runs / 2)] ?? 0;
-};
-
-const flattenTime = (project: Project, runs: number): number =>
-  median(runs, () => {
-    expect(toNetlistSource(project, project.lastOpenedChipId).ok).toBe(true);
-  });
+const flattenTime = (project: Project, runs: number, warmUps: number): number =>
+  fastestCpuMs(
+    runs,
+    () => {
+      expect(toNetlistSource(project, project.lastOpenedChipId).ok).toBe(true);
+    },
+    warmUps,
+  );
 
 /*
  * Budgets are a few times the fixed time on a slow container (about 10 ms and 700 ms), so they
  * catch a regression to the old cost (about 230 ms and 2400 ms there) without flaking on CI.
+ * The tests measure the fastest CPU time of the runs (see `fastestCpuMs`), so a busy machine does
+ * not change the result.
  */
-const RUNS = 5;
+const RUNS = 9;
+const WARM_UPS = 3;
 const SMALL = 1000;
 const LARGE = 4000;
 /** Linear scaling gives 4x; the old quadratic cost gave about 16x. */
@@ -85,20 +84,21 @@ const DEEP = 8;
 const HIERARCHY_BUDGET_MS = 1500;
 
 describe("flattening performance budget", () => {
-  it("is near-linear in the open chip's size", () => {
-    const small = flattenTime(chain(SMALL), RUNS);
-    const large = flattenTime(chain(LARGE), RUNS);
+  it("is near-linear in the open chip's size", { timeout: PERF_TIMEOUT_MS }, () => {
+    const small = flattenTime(chain(SMALL), RUNS, WARM_UPS);
+    const large = flattenTime(chain(LARGE), RUNS, WARM_UPS);
     expect(large / small).toBeLessThan(MAX_SCALING);
   });
 
-  it("flattens 2000 NANDs within budget", () => {
-    expect(flattenTime(chain(2000), RUNS)).toBeLessThan(CHAIN_2000_BUDGET_MS);
+  it("flattens 2000 NANDs within budget", { timeout: PERF_TIMEOUT_MS }, () => {
+    expect(flattenTime(chain(2000), RUNS, WARM_UPS)).toBeLessThan(CHAIN_2000_BUDGET_MS);
   });
 
-  it("flattens a 65k-NAND hierarchy within budget", () => {
+  it("flattens a 65k-NAND hierarchy within budget", { timeout: PERF_TIMEOUT_MS }, () => {
     const project = hierarchy(DEEP);
     const result = toNetlistSource(project, project.lastOpenedChipId);
     expect(result.ok ? result.value.source.nands.length : 0).toBe(FAN ** DEEP);
-    expect(flattenTime(project, 3)).toBeLessThan(HIERARCHY_BUDGET_MS);
+    // The check above already ran the flattening once, so it serves as the only warm-up.
+    expect(flattenTime(project, 3, 0)).toBeLessThan(HIERARCHY_BUDGET_MS);
   });
 });

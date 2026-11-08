@@ -10,7 +10,7 @@
 | 3 | `2026-10-30-editor-phase-3-wiring.md` | **Wiring.** Tap-tap and drag wiring with an armed state and legal-target highlighting, the orthogonal auto-router, wire animation, moving waypoints on long-press, branches with junction dots, the bit picker. | 5.2, 5.10 (UI) |
 | 4 | `…-phase-4-library-and-pins.md` | **Library and pins.** `chip-library` feature: bottom sheet / side panel, search, starred, folders and tags, drag-to-canvas, the quick-add menu, New chip, the Pins panel, placing input/output pins, the save/discard flow with confirmation, breadcrumbs and look-inside. | 5.4, 5.5 (UI), 5.6 (UI), 5.11 |
 | 5 | `…-phase-5-bulk-editing.md` | **Bulk editing.** Duplicate, copy and paste, Array, wiring several pins at once, Suggest wires (ghost wires plus accept or dismiss). | 5.7 |
-| 6 | `…-phase-6-accessible-editing.md` | **Accessible editing.** The full structural screen-reader view with commands for every action, plus keyboard-only E2E flows covering phases 2–5. Axe across all new UI, and visual baselines updated. | 2.10, ADR 3/21 |
+| 6 | `…-phase-6-accessible-editing.md` | **Accessible editing.** The full structural screen-reader view with commands for every action, plus keyboard-only E2E flows covering phases 2–5. Axe across all new UI, and visual baselines updated. **Done**, except the owner's manual screen-reader pass (#60); see the plan's Status and ADR 52. | 2.10, ADR 3/21 |
 
 Phases run in order. Phase 1 is planned in detail now. Each later phase gets its own detailed plan once the phase before it is merged, so that plan can work from real code instead of guesses.
 

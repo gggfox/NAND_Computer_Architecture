@@ -25,6 +25,11 @@ export type NetlistSourceError =
       readonly wireId: WireId;
     }
   | {
+      readonly type: "MultipleDrivers";
+      readonly path: readonly InstanceId[];
+      readonly instanceId: InstanceId;
+    }
+  | {
       readonly type: "WireLoop";
       readonly path: readonly InstanceId[];
       readonly instanceId: InstanceId;

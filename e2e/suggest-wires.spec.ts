@@ -203,3 +203,35 @@ test("on a touch screen: long-press, pick Suggest wires, tap Accept all", async 
   await expect(spoken(page)).toHaveText(/Wires accepted: 20/u);
   expect(await wireCount(page)).toBe(SUGGESTIONS);
 });
+
+const structure = (page: Page) => page.getByRole("region", { name: "Circuit structure" });
+
+test("in the structure view: suggest, accept one wire, then accept all", async ({ page }) => {
+  await importFixture(page);
+  await structure(page).getByRole("button", { name: "Suggest wires" }).click();
+  const list = structure(page).getByRole("region", { name: "Suggested wires: 20" });
+  await expect(list.getByRole("listitem")).toHaveCount(SUGGESTIONS);
+  // The ghosts are proposals: the export has no wire yet.
+  expect(await wireCount(page)).toBe(0);
+
+  await list
+    .getByRole("button", { name: /^Accept wire /u })
+    .first()
+    .click();
+  await expect.poll(() => wireCount(page)).toBe(1);
+  await expect(structure(page).getByRole("region", { name: "Suggested wires: 19" })).toBeVisible();
+
+  await structure(page).getByRole("button", { name: "Accept all" }).click();
+  await expect.poll(() => wireCount(page)).toBe(SUGGESTIONS);
+  await expect(structure(page).getByRole("region", { name: /^Suggested wires/u })).toHaveCount(0);
+  expectRegisterWires(await exportedProject(page));
+});
+
+test("in the structure view: Dismiss clears the list and keeps the circuit", async ({ page }) => {
+  await importFixture(page);
+  await structure(page).getByRole("button", { name: "Suggest wires" }).click();
+  await expect(structure(page).getByRole("button", { name: "Accept all" })).toBeVisible();
+  await structure(page).getByRole("button", { name: "Dismiss" }).click();
+  await expect(structure(page).getByRole("region", { name: /^Suggested wires/u })).toHaveCount(0);
+  expect(await wireCount(page)).toBe(0);
+});

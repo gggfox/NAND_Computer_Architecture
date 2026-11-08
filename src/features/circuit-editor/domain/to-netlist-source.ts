@@ -74,12 +74,16 @@ const resolveSink = (
   return resolved;
 };
 
-/** Follows the one wire into the sink bit back to the bit of the source that drives it. */
+/** Follows the one wire into the sink bit (more than one is `MultipleDrivers`) back to the bit of the source that drives it. */
 const drive = (resolver: Resolver, frame: Frame, at: PinBit): Outcome<SignalRef> => {
   const wires = indexOf(frame.circuit).sinks.get(pinKeyOf(at.instanceId, at.pin));
-  const driver = wires?.find((item) => item.to.bit === undefined || item.to.bit === at.bit);
+  const drivers = wires?.filter((item) => item.to.bit === undefined || item.to.bit === at.bit);
+  const [driver, rival] = drivers ?? [];
   if (driver === undefined) {
     return err(unconnected(frame, at));
+  }
+  if (rival !== undefined) {
+    return err({ type: "MultipleDrivers", path: frame.path, instanceId: at.instanceId });
   }
   const bit = driver.from.bit ?? (driver.to.bit === undefined ? at.bit : 0);
   return source(resolver, frame, { instanceId: driver.from.instanceId, pin: driver.from.pin, bit });

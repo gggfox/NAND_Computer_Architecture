@@ -1,0 +1,47 @@
+name: Roll out to Dokploy
+description: >-
+  Pin a Dokploy application to an immutable image, deploy it, then wait until the
+  public URL serves that commit (ADR 51).
+
+inputs:
+  environment:
+    description: Secrets file to decrypt, secrets/<environment>.env (staging or production)
+    required: true
+  image-ref:
+    description: Immutable image reference, ghcr.io/<image>:<sha>
+    required: true
+  sha:
+    description: Commit that the image serves
+    required: true
+  base-url:
+    description: Public base URL with no trailing slash, for the health gate
+    required: true
+  sops-age-key:
+    description: The CI age identity (repository secret SOPS_AGE_KEY)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install sops
+      shell: bash
+      run: sudo sh .github/scripts/install-sops.sh
+
+    # `sops exec-env` puts the decrypted values only in the environment of this one
+    # command. GitHub does not mask them, so never print the environment here.
+    - name: Pin and deploy the image
+      shell: bash
+      env:
+        SOPS_AGE_KEY: ${{ inputs.sops-age-key }}
+        SECRETS_FILE: secrets/${{ inputs.environment }}.env
+        IMAGE_REF: ${{ inputs.image-ref }}
+        DEPLOY_TITLE: ${{ inputs.environment }} @ ${{ inputs.sha }}
+      run: sops exec-env "$SECRETS_FILE" 'bash .github/scripts/dokploy-rollout.sh'
+
+    - name: Health gate
+      shell: bash
+      env:
+        BASE_URL: ${{ inputs.base-url }}
+        EXPECTED_SHA: ${{ inputs.sha }}
+        EXPECTED_IMAGE: ${{ inputs.image-ref }}
+      run: bash .github/scripts/health-gate.sh

@@ -9,6 +9,8 @@ import { usedBits } from "./wiring-targets";
 
 /** One wire end across from the pin: the part's title and its pin's label (`.n` for a bit tap). */
 interface PinConnection {
+  /** The wire's id. Two parts of the same chip can show the same `chip` and `pin`. */
+  readonly key: string;
   readonly chip: string;
   readonly pin: string;
 }
@@ -42,7 +44,7 @@ const valueText = (value: number | undefined, width: BitWidth): string => {
     : `${value.toString(BINARY).padStart(width, "0")} = ${String(value)}`;
 };
 
-const describeEnd = (scene: Scene, end: PinRef): PinConnection | undefined => {
+const describeEnd = (scene: Scene, end: PinRef): Omit<PinConnection, "key"> | undefined => {
   const instance = scene.circuit.instances.find((item) => item.id === end.instanceId);
   if (instance === undefined) {
     return undefined;
@@ -78,7 +80,7 @@ export const pinInfo = (
   const connections = scene.circuit.wires.flatMap((wire) => {
     const other = otherEnd(wire, instanceId, pin);
     const described = other && describeEnd(scene, other);
-    return described === undefined ? [] : [described];
+    return described === undefined ? [] : [{ key: wire.id, ...described }];
   });
   return {
     name: layout.label,

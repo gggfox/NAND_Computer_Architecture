@@ -30,6 +30,15 @@ export {
   type SimulationError,
 } from "./domain/messages";
 export { partOf, type Part } from "./domain/geometry";
+export type { OutputReading } from "./domain/view-command-types";
+export {
+  structureOf,
+  type PartEntry,
+  type PinEntry,
+  type Structure,
+  type WireEntry,
+} from "./domain/structure";
+export { wireTargets, type WireTarget } from "./domain/wire-targets-list";
 export type { Level } from "./domain/signals";
 export {
   connectSimulation,
@@ -46,10 +55,11 @@ export { ChipHeader, type FirstSaveContext, type FirstSaveSlot } from "./ui/Chip
 export { EditorPreferences } from "./ui/EditorPreferences";
 export { EditorToolbar } from "./ui/EditorToolbar";
 export { PinsPanel } from "./ui/PinsPanel";
-export type { EditorSession } from "./application/editor-session";
+export { createEditorSession, type EditorSession } from "./application/editor-session";
 export { useEditorSession } from "./ui/use-editor-session";
 export { useSessionErrors } from "./ui/use-session-errors";
 export {
+  addPinAtCentre,
   armPlacement,
   cancelPlacement,
   placeAtCentre,
@@ -65,3 +75,6 @@ export {
   RecolorChipDialog,
   RenameChipDialog,
 } from "./ui/ChipDialogs";
+export type { InteractionCommand } from "./domain/interaction";
+export type { Ghost } from "./domain/suggestion-types";
+export { WireColorDialog } from "./ui/WireDialogs";

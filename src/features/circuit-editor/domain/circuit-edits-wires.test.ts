@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { newWireId } from "~/shared/ids";
+import { deepFreeze } from "~/shared/testing/deep-freeze";
 
 import { moveChip, moveWaypoint, placeChip, removeChip, removeWire } from "./circuit-edits";
 import { at, draftOf, nandPiece, twoChips, unwired } from "./circuit-edits.fixtures";
@@ -132,7 +133,8 @@ describe("moveWaypoint errors", () => {
 describe("every edit", () => {
   it("leaves its input project unchanged after every edit", () => {
     const { project, host, nand, pieceA, circuit } = twoChips();
-    const before = structuredClone(project);
+    // Clone first: the frozen original then proves that no edit mutates it.
+    const before = structuredClone(deepFreeze(project));
     const wireId = circuit.wires[0]?.id ?? newWireId();
     placeChip(project, { type: "placeChip", chipId: host.id, instance: nandPiece() });
     moveChip(project, { type: "moveChip", chipId: host.id, instanceId: nand.id, position: at(1) });

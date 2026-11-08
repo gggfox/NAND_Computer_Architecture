@@ -118,6 +118,15 @@ describe("createEngine bounds", () => {
     expect(engine.runUntilStable(0)).toEqual({ stable: false, ticks: 0 });
   });
 
+  test("a fractional or negative budget runs whole ticks only and reports them", () => {
+    const engine = createEngine(compile(SELF_LOOP), 9);
+    expect(engine.runUntilStable(2.5)).toEqual({ stable: false, ticks: 2 });
+    expect(engine.tickCount).toBe(2);
+    expect(engine.runUntilStable(-3)).toEqual({ stable: false, ticks: 0 });
+    expect(engine.runUntilStable(Number.NaN)).toEqual({ stable: false, ticks: 0 });
+    expect(engine.tickCount).toBe(2);
+  });
+
   test("out-of-range setInput and readOutput are ignored / read low", () => {
     const engine = createEngine(compile(NAND), 1);
     engine.setInput(2, 1);

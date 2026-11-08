@@ -231,6 +231,8 @@ test("a reorder inside a saved chip changes its draft; the placed chip keeps the
     mimeType: "application/json",
     buffer: Buffer.from(onMain),
   });
+  // The file has the id of the open project, so it replaces the saved one on request.
+  await page.getByRole("dialog").getByRole("button", { name: "Replace" }).click();
   await expect(canvasHost(page)).toHaveAccessibleName("Main");
   // P reads the placed chip's pins in order: still X then Y, from the saved version.
   await selectInner(page);

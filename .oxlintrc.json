@@ -29,7 +29,8 @@
     "dist/**",
     "coverage/**",
     ".output/**",
-    ".tanstack/**"
+    ".tanstack/**",
+    ".pnpm-store/**"
   ],
   "settings": {
     "import/resolver": { "typescript": true },
@@ -167,8 +168,8 @@
       }
     },
     {
-      // React components and their CSS Modules are PascalCase (ThemePicker.tsx); everything else is kebab-case.
-      "files": ["**/*.tsx"],
+      // React components are PascalCase (ThemePicker.tsx) and live in ui/ folders; everything else is kebab-case.
+      "files": ["**/src/**/ui/**/*.tsx"],
       "rules": {
         "unicorn/filename-case": ["error", { "cases": { "kebabCase": true, "pascalCase": true } }]
       }
@@ -184,10 +185,21 @@
       "rules": { "typescript/prefer-readonly-parameter-types": "off" }
     },
     {
-      // Editor actions and state carry branded ids (mutable object types), so no parameter can satisfy the rule; `a`/`b` are the NAND pin names.
+      // Editor actions and state carry branded ids (mutable object types), so no parameter can satisfy the rule. Domain, adapters, application and ui all fail it in most files, so the relaxation stays feature-wide.
       "files": ["**/features/circuit-editor/**"],
+      "rules": { "typescript/prefer-readonly-parameter-types": "off" }
+    },
+    {
+      // `a`/`b` are the NAND pin names; only these editor files use them as identifiers.
+      "files": [
+        "**/features/circuit-editor/domain/bulk-wiring.ts",
+        "**/features/circuit-editor/domain/pin-rows.test.ts",
+        "**/features/circuit-editor/domain/pin-selection.ts",
+        "**/features/circuit-editor/domain/suggest-names.ts",
+        "**/features/circuit-editor/domain/to-netlist-source.ts",
+        "**/features/circuit-editor/domain/to-netlist-source.test.ts"
+      ],
       "rules": {
-        "typescript/prefer-readonly-parameter-types": "off",
         "eslint/id-length": ["error", { "checkGeneric": false, "exceptions": ["a", "b"] }]
       }
     },

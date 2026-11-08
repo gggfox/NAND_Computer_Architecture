@@ -58,6 +58,9 @@ const commit = ({ netlist, signals, next, random, holdProbability }: Core): bool
   return quiet;
 };
 
+/** A tick budget as a whole number of ticks; negative and NaN budgets run no ticks. */
+const wholeTicks = (maxTicks: number): number => Math.floor(Math.max(0, maxTicks || 0));
+
 const createCore = (netlist: Netlist, seed: number, options?: EngineOptions): Core => ({
   netlist,
   signals: new Uint8Array(netlist.inputCount + 1 + netlist.nandCount),
@@ -92,12 +95,13 @@ export const createEngine = (netlist: Netlist, seed: number, options?: EngineOpt
       step();
     },
     runUntilStable: (maxTicks) => {
-      for (let ticks = 1; ticks <= maxTicks; ticks += 1) {
+      const limit = wholeTicks(maxTicks);
+      for (let ticks = 1; ticks <= limit; ticks += 1) {
         if (step()) {
           return { stable: true, ticks };
         }
       }
-      return { stable: false, ticks: Math.max(0, maxTicks) };
+      return { stable: false, ticks: limit };
     },
     readOutput: (index) => (at(core.signals, at(netlist.outputs, index)) === 1 ? 1 : 0),
     get tickCount() {

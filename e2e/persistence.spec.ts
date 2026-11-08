@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import type { Page } from "@playwright/test";
 
 import { createProject, expect, test } from "./support";
@@ -90,4 +92,61 @@ test("switching language right after an edit keeps the edit", async ({ page }) =
   await page.getByRole("option", { name: "Español" }).click();
   await expect(page.getByRole("button", { name: "Deshacer" })).toBeVisible();
   await expect(page.getByText("Puerta NAND 2")).toBeVisible();
+});
+
+/** Overwrites every stored project record with text that is not a project, straight in IndexedDB. */
+const corruptStoredProject = (page: Page): Promise<void> =>
+  page.evaluate(
+    () =>
+      // oxlint-disable-next-line promise/avoid-new -- the page has no IndexedDB promise wrapper; adapt request events
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open("nand");
+        request.addEventListener("error", () => {
+          reject(new Error("could not open the nand database"));
+        });
+        request.addEventListener("success", () => {
+          const db = request.result;
+          const tx = db.transaction("projects", "readwrite");
+          const store = tx.objectStore("projects");
+          const keys = store.getAllKeys();
+          keys.addEventListener("success", () => {
+            for (const key of keys.result) {
+              store.put("{ not a project", key);
+            }
+          });
+          tx.addEventListener("complete", () => {
+            db.close();
+            resolve();
+          });
+        });
+      }),
+  );
+
+test("a damaged project is listed with export and delete, and can be deleted", async ({
+  page,
+}, testInfo) => {
+  await createProject(page);
+  await expect.poll(() => storedNandCount(page)).toBe(1);
+  await corruptStoredProject(page);
+  await page.goto("/");
+
+  const damaged = page.getByRole("listitem").filter({ hasText: "Damaged project" });
+  await expect(damaged).toHaveCount(1);
+  await expect(damaged.getByRole("link")).toHaveCount(0);
+
+  const downloadEvent = page.waitForEvent("download");
+  await damaged.getByRole("button", { name: /^Export damaged project/u }).click();
+  const download = await downloadEvent;
+  const saved = testInfo.outputPath("damaged.json");
+  await download.saveAs(saved);
+  expect(await readFile(saved, "utf-8")).toBe("{ not a project");
+
+  // Cancelling keeps the record; confirming removes it.
+  await damaged.getByRole("button", { name: /^Delete damaged project/u }).click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(damaged).toHaveCount(1);
+  await damaged.getByRole("button", { name: /^Delete damaged project/u }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+  await expect(damaged).toHaveCount(0);
+  await expect(page.getByText("No projects yet")).toBeVisible();
 });
