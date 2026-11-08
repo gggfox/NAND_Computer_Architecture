@@ -83,7 +83,11 @@ export const chooseEntry = async (page: Page, button: Locator, entry: string): P
     if (attempt === MENU_TRIES) {
       await expect(item).toBeVisible();
     }
-    await page.keyboard.press("Escape");
+    // Close only a menu that opened without the entry.
+    // With no menu open, Escape closes the panel around the button (the library sheet on a phone).
+    if ((await page.getByRole("menu").count()) > 0) {
+      await page.keyboard.press("Escape");
+    }
   }
   await item.press("Enter");
 };
