@@ -8,6 +8,7 @@ import {
   DEMO_PART,
   expect,
   exportedProject,
+  output,
   spoken,
   test,
 } from "./support";
@@ -27,13 +28,19 @@ const GRID_DEMO = path.join(
   "v1-demo.json",
 );
 
+/** The project id inside `v1-demo.json`. */
+const GRID_DEMO_URL = /\/projects\/00000000-0000-4000-8000-000000000001(?:\?|$)/u;
+
 const importGridDemo = async (page: Page): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Import" }).click();
   const chooser = await chooserEvent;
   await chooser.setFiles(GRID_DEMO);
+  // The import opens the file's project at its own id; keys pressed before that editor mounts go nowhere.
+  await expect(page).toHaveURL(GRID_DEMO_URL);
   await expect(page.getByRole("heading", { level: 1, name: "Demo" })).toBeAttached();
+  await expect(output(page)).toHaveText(/Output OUT: [01]/u);
 };
 
 /** `]` from nothing: Input A, Input B, then the NAND. */
