@@ -25,13 +25,9 @@ export const storeTheme = (id: ThemeId): void => {
   }
 };
 
-/** Resolves stored choice or OS preferences, applies it to the document and returns it. */
+/** Resolves the stored choice or the OS contrast preference, applies it to the document and returns it. */
 export const initTheme = (): ThemeId => {
-  const id = resolveInitialTheme(
-    readStoredTheme(),
-    matchMedia("(prefers-color-scheme: dark)").matches,
-    matchMedia("(prefers-contrast: more)").matches,
-  );
+  const id = resolveInitialTheme(readStoredTheme(), matchMedia("(prefers-contrast: more)").matches);
   applyTheme(document.documentElement, id);
   return id;
 };

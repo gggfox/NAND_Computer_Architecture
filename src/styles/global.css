@@ -1,14 +1,126 @@
+@import url("@fontsource-variable/orbitron/wght.css");
+@import url("@fontsource/chakra-petch/latin-400.css");
+@import url("@fontsource/chakra-petch/latin-600.css");
 @import url("../features/theming/tokens.css");
 
 :root {
   --motion-duration: 150ms;
   --font-mono: "SF Mono", menlo, consolas, "Liberation Mono", monospace;
+  --font-body: system-ui, sans-serif;
+  --font-display: var(--font-body);
   --font-size-small: 0.875rem;
   --font-size-title: 1.25rem;
+  --font-size-heading: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+  --font-size-display: clamp(2.25rem, 1.2rem + 4.6vw, 4.5rem);
+
+  /*
+   * Shape tokens. The defaults are the plain look; a theme can change them. Controls are buttons,
+   * fields and menus; frames are the toolbar, the canvas and the side panels.
+   */
+  --radius-control: 0.5rem;
+  --radius-frame: 0.5rem;
+  --radius-dialog: 0.75rem;
+  --control-case: none;
+  --control-tracking: normal;
+  --heading-case: none;
+  --heading-tracking: normal;
+  --radius-pill: 1rem;
+  --radius-dot: 50%;
+  --frame-line: var(--color-grid);
+  --frame-corners: none;
+  --frame-clip: none;
+  --page-pattern: none;
+
+  /* How the canvas draws chip and pin bodies: `round` or `bevel` (corners cut at 45 degrees). */
+  --canvas-corners: round;
 
   /* Stacking: overlays on the canvas (pin card), then modal dialogs above everything. */
   --z-overlay: 2;
   --z-modal: 10;
+}
+
+/*
+ * Amber is a whole look, not only colours: a heads-up display with a wide display face, a
+ * technical body face, sharp controls, uppercase labels, bevelled frames with an accent line on
+ * each cut corner, bevelled chips on the canvas and a faint grid behind the page.
+ */
+:root[data-theme="amber"] {
+  --font-body: "Chakra Petch", system-ui, sans-serif;
+  --font-display: "Orbitron Variable", "Chakra Petch", system-ui, sans-serif;
+  --radius-control: 0.125rem;
+  --radius-frame: 0;
+  --radius-dialog: 0;
+  --radius-pill: 0.125rem;
+  --radius-dot: 0.0625rem;
+  --control-case: uppercase;
+  --control-tracking: 0.05em;
+  --heading-case: uppercase;
+  --heading-tracking: 0.04em;
+  --frame-line: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --bevel: 0.625rem;
+
+  /* An octagon: each corner cut at 45 degrees. A frame's border is clipped there... */
+  --frame-clip: polygon(
+    var(--bevel) 0,
+    calc(100% - var(--bevel)) 0,
+    100% var(--bevel),
+    100% calc(100% - var(--bevel)),
+    calc(100% - var(--bevel)) 100%,
+    var(--bevel) 100%,
+    0 calc(100% - var(--bevel)),
+    0 var(--bevel)
+  );
+
+  /* ...so these draw a bright accent line along each cut, and a short way along each edge. */
+  --frame-corners:
+    linear-gradient(
+        to bottom right,
+        transparent 50%,
+        var(--color-accent) 50% calc(50% + 1.5px),
+        transparent calc(50% + 1.5px)
+      )
+      top left / var(--bevel) var(--bevel) no-repeat border-box,
+    linear-gradient(
+        to bottom left,
+        transparent 50%,
+        var(--color-accent) 50% calc(50% + 1.5px),
+        transparent calc(50% + 1.5px)
+      )
+      top right / var(--bevel) var(--bevel) no-repeat border-box,
+    linear-gradient(
+        to top right,
+        transparent 50%,
+        var(--color-accent) 50% calc(50% + 1.5px),
+        transparent calc(50% + 1.5px)
+      )
+      bottom left / var(--bevel) var(--bevel) no-repeat border-box,
+    linear-gradient(
+        to top left,
+        transparent 50%,
+        var(--color-accent) 50% calc(50% + 1.5px),
+        transparent calc(50% + 1.5px)
+      )
+      bottom right / var(--bevel) var(--bevel) no-repeat border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) top left / 1.5rem 1.5px no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) top left / 1.5px 1.5rem no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) top right / 1.5rem 1.5px no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) top right / 1.5px 1.5rem no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom left / 1.5rem 1.5px no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom left / 1.5px 1.5rem no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom right / 1.5rem 1.5px no-repeat
+      border-box,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom right / 1.5px 1.5rem no-repeat
+      border-box;
+  --canvas-corners: bevel;
+  --page-pattern:
+    linear-gradient(var(--color-grid) 1px, transparent 1px) 0 0 / 3rem 3rem,
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px) 0 0 / 3rem 3rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -25,9 +137,9 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-body);
   color: var(--color-text);
-  background-color: var(--color-background);
+  background: var(--page-pattern), var(--color-background);
 }
 
 a {

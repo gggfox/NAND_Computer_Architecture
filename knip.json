@@ -10,5 +10,9 @@
     "tooling/lint-rules/index.js"
   ],
   "project": ["src/**", "scripts/**", "tooling/lint-rules/**"],
-  "ignoreDependencies": ["@inlang/plugin-message-format"]
+  "ignoreDependencies": [
+    "@inlang/plugin-message-format",
+    "@fontsource-variable/orbitron",
+    "@fontsource/chakra-petch"
+  ]
 }

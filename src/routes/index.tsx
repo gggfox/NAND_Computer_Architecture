@@ -1,16 +1,17 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { Landing } from "~/features/landing";
 import {
   getAppProjectRepository,
   persistenceErrorMessage,
   useStorageDegraded,
 } from "~/features/persistence";
-import type { PersistenceError, ProjectSummary } from "~/features/persistence";
+import type { PersistenceError } from "~/features/persistence";
 import { createDemoProject } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
-import { Button, LanguagePicker, StatusMessages } from "~/shared/ui";
+import { Button, StatusMessages } from "~/shared/ui";
 
 export const Route = createFileRoute("/")({
   // Data lives in this browser's IndexedDB, so the loader and component only ever run on the client.
@@ -29,23 +30,6 @@ export const Route = createFileRoute("/")({
  */
 function Pending(): ReactNode {
   return <main aria-busy="true" />;
-}
-
-function ProjectList({ projects }: { readonly projects: readonly ProjectSummary[] }): ReactNode {
-  if (projects.length === 0) {
-    return <p>{m.projects_empty()}</p>;
-  }
-  return (
-    <ul>
-      {projects.map((project) => (
-        <li key={project.id}>
-          <Link to="/projects/$projectId" params={{ projectId: project.id }}>
-            {project.name}
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function Home(): ReactNode {
@@ -71,19 +55,18 @@ function Home(): ReactNode {
   ];
 
   return (
-    <main className="page">
-      <h1>{m.app_title()}</h1>
-      <LanguagePicker />
-      <StatusMessages messages={notices} />
-      <h2>{m.projects_heading()}</h2>
-      <Button
-        onPress={() => {
-          void createProject();
-        }}
-      >
-        {m.new_project()}
-      </Button>
-      <ProjectList projects={listed.ok ? listed.value : []} />
-    </main>
+    <Landing
+      notices={<StatusMessages messages={notices} />}
+      primaryAction={
+        <Button
+          onPress={() => {
+            void createProject();
+          }}
+        >
+          {m.new_project()}
+        </Button>
+      }
+      projects={listed.ok ? listed.value : []}
+    />
   );
 }

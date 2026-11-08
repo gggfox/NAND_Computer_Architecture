@@ -99,22 +99,25 @@ describe("tokens", () => {
 
 interface InitialCase {
   readonly stored: string | undefined;
-  readonly prefersDark: boolean;
   readonly prefersMoreContrast: boolean;
   readonly want: ThemeId;
 }
 
 const initialCases: readonly InitialCase[] = [
-  { stored: undefined, prefersDark: true, prefersMoreContrast: false, want: "dark" },
-  { stored: undefined, prefersDark: false, prefersMoreContrast: true, want: "high-contrast" },
-  { stored: "light", prefersDark: true, prefersMoreContrast: true, want: "light" },
-  { stored: "bogus", prefersDark: false, prefersMoreContrast: false, want: "light" },
-  { stored: "bogus", prefersDark: true, prefersMoreContrast: false, want: "dark" },
-  { stored: undefined, prefersDark: false, prefersMoreContrast: false, want: "light" },
+  { stored: undefined, prefersMoreContrast: false, want: "amber" },
+  { stored: undefined, prefersMoreContrast: true, want: "high-contrast" },
+  { stored: "light", prefersMoreContrast: true, want: "light" },
+  { stored: "dark", prefersMoreContrast: false, want: "dark" },
+  { stored: "bogus", prefersMoreContrast: false, want: "amber" },
+  { stored: "bogus", prefersMoreContrast: true, want: "high-contrast" },
 ];
 
 describe("resolveInitialTheme", () => {
-  test.each(initialCases)("%o", ({ stored, prefersDark, prefersMoreContrast, want }) => {
-    expect(resolveInitialTheme(stored, prefersDark, prefersMoreContrast)).toBe(want);
+  test("amber is the first id, so the boot script uses it as the default", () => {
+    expect(themeIds[0]).toBe("amber");
+  });
+
+  test.each(initialCases)("%o", ({ stored, prefersMoreContrast, want }) => {
+    expect(resolveInitialTheme(stored, prefersMoreContrast)).toBe(want);
   });
 });

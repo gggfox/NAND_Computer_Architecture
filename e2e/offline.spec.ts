@@ -11,6 +11,6 @@ test("the app shell loads offline once the service worker is active", async ({ p
   await context.setOffline(true);
   await page.reload();
   await expect(
-    page.getByRole("heading", { level: 1, name: "NAND Computer Architecture" }),
+    page.getByRole("heading", { level: 1, name: "Build a computer from one NAND gate" }),
   ).toBeVisible();
 });

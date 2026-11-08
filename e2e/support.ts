@@ -18,8 +18,8 @@ export { expect } from "@playwright/test";
 /** The editor adds its view (`?zoom=…&x=…&y=…`) to the URL. */
 export const PROJECT_URL = /\/projects\/[0-9a-f-]{36}(?:\?|$)/u;
 
-export type Theme = "Light" | "Dark" | "High contrast";
-export const THEMES: readonly Theme[] = ["Light", "Dark", "High contrast"];
+export type Theme = "Amber" | "Light" | "Dark" | "High contrast";
+export const THEMES: readonly Theme[] = ["Amber", "Light", "Dark", "High contrast"];
 
 /** Opens the index and creates the demo project (two inputs into one NAND), landing on its page. */
 export const createProject = async (page: Page): Promise<void> => {

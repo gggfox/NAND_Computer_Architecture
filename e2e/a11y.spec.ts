@@ -36,7 +36,7 @@ for (const theme of THEMES) {
     await pickTheme(page, theme);
     expect(await violations(page)).toEqual([]);
 
-    // The index has no theme picker; the choice persists and applies before first paint.
+    // The choice persists and applies before first paint on the index too.
     await page.getByRole("link", { name: "All projects" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     expect(await violations(page)).toEqual([]);

@@ -2,7 +2,7 @@
   display: inline-flex;
   padding: 0.125rem;
   border: 1px solid var(--color-accent);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-control);
 }
 
 .segment {
@@ -12,10 +12,12 @@
   padding-inline: 0.75rem;
   font: inherit;
   color: var(--color-text);
+  text-transform: var(--control-case);
+  letter-spacing: var(--control-tracking);
   cursor: pointer;
   background-color: transparent;
   border: 0;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-control);
 }
 
 .segment[data-selected] {

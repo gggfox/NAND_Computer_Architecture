@@ -22,7 +22,7 @@
   padding: 0.125rem;
   background-color: var(--color-surface);
   border: 1px solid var(--color-wire);
-  border-radius: 1rem;
+  border-radius: var(--radius-pill);
 }
 
 @media screen and (prefers-reduced-motion: reduce) {
@@ -30,7 +30,7 @@
     inline-size: 1.125rem;
     block-size: 1.125rem;
     background-color: var(--color-wire);
-    border-radius: 50%;
+    border-radius: var(--radius-dot);
     transition: none;
   }
 }
@@ -39,7 +39,7 @@
   inline-size: 1.125rem;
   block-size: 1.125rem;
   background-color: var(--color-wire);
-  border-radius: 50%;
+  border-radius: var(--radius-dot);
   transition: transform var(--motion-duration) ease;
 }
 

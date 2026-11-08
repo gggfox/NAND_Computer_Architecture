@@ -6,6 +6,9 @@
 
 .heading {
   margin: 0;
+  font-family: var(--font-display);
+  text-transform: var(--heading-case);
+  letter-spacing: var(--heading-tracking);
 }
 
 .list {
