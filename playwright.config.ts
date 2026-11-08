@@ -10,6 +10,9 @@ const BASE_URL = `http://127.0.0.1:${String(PORT)}`;
 // An empty value, "0" and "false" count as not CI.
 const ciValue = process.env["CI"] ?? "";
 const isCI = ciValue !== "" && ciValue !== "0" && ciValue !== "false";
+// CI builds dist/ in one job and sets E2E_PREBUILT in the jobs that download it (ADR 55).
+const isPrebuilt = (process.env["E2E_PREBUILT"] ?? "") !== "";
+const PREVIEW = `pnpm preview --port ${String(PORT)} --strictPort`;
 const CI_RETRIES = 2;
 const BUILD_TIMEOUT_MS = 300_000;
 const VISUAL_SPEC = "visual.spec.ts";
@@ -36,7 +39,7 @@ export default defineConfig({
     { name: "tablet-safari", use: { ...devices["iPad Pro 11"] }, testIgnore: VISUAL_SPEC },
   ],
   webServer: {
-    command: `pnpm build && pnpm preview --port ${String(PORT)} --strictPort`,
+    command: isPrebuilt ? PREVIEW : `pnpm build && ${PREVIEW}`,
     url: BASE_URL,
     reuseExistingServer: !isCI,
     timeout: BUILD_TIMEOUT_MS,
