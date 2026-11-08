@@ -69,6 +69,33 @@ const wireText = (
   return from === undefined || to === undefined ? "" : m.canvas_wire_selected({ from, to });
 };
 
+/** "Wire added: {from} to {to}", or "Wire added" when an end is gone. */
+const wiredText = (
+  scene: Scene,
+  known: KnownLevels,
+  announcement: Extract<Announcement, { type: "wired" }>,
+): string => {
+  const from = endText(scene, known, announcement.from);
+  const to = endText(scene, known, announcement.to);
+  return from === undefined || to === undefined
+    ? m.canvas_wired()
+    : m.canvas_wired_pins({ from, to });
+};
+
+/** "Outputs: SUM 1, CARRY 0": every output once, for the "Read outputs" button. */
+const outputsText = ({ readings }: Extract<Announcement, { type: "outputs" }>): string =>
+  readings.length === 0
+    ? m.announce_outputs_none()
+    : m.announce_outputs({
+        list: readings
+          .map(({ name, value }) =>
+            value === undefined
+              ? m.announce_output_unknown({ name })
+              : m.announce_output_reading({ name, value }),
+          )
+          .join(m.announce_outputs_separator()),
+      });
+
 type WiringAnnouncement = Extract<
   Announcement,
   { type: "armed" | "wired" | "disarmed" | "refused" | "bends" | "wireSelected" }
@@ -96,7 +123,7 @@ const wiringText = (scene: Scene, known: KnownLevels, announcement: WiringAnnoun
       return armedText(scene, known, announcement);
     }
     case "wired": {
-      return m.canvas_wired();
+      return wiredText(scene, known, announcement);
     }
     case "disarmed": {
       return m.canvas_disarmed();
@@ -139,6 +166,9 @@ export const announcementText = (
   known: KnownLevels,
   announcement: Announcement,
 ): string => {
+  if (announcement.type === "outputs") {
+    return outputsText(announcement);
+  }
   if (isListAnnouncement(announcement)) {
     return listAnnouncementText(scene, known, announcement);
   }
@@ -171,7 +201,10 @@ const plainText = (
   known: KnownLevels,
   announcement: Exclude<
     Announcement,
-    WiringAnnouncement | PlacementAnnouncement | ListAnnouncement
+    | WiringAnnouncement
+    | PlacementAnnouncement
+    | ListAnnouncement
+    | Extract<Announcement, { type: "outputs" }>
   >,
 ): string => {
   switch (announcement.type) {

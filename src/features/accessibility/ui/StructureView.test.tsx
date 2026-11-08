@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { structureOf } from "~/features/circuit-editor";
+import type { EditorSession } from "~/features/circuit-editor";
 import { createDemoProject, EMPTY_CIRCUIT } from "~/features/projects";
 import type { InstanceId, PinId } from "~/shared/ids";
 
@@ -18,13 +19,18 @@ const structure = structureOf({ project, circuit });
 interface Options {
   readonly selected?: ReadonlySet<InstanceId>;
   readonly expanded?: ReadonlySet<InstanceId>;
+  readonly session?: EditorSession;
 }
 
-const render = ({ selected = new Set(), expanded = new Set() }: Options = {}): string => {
+const render = ({
+  selected = new Set(),
+  expanded = new Set(),
+  session = createTestSession(project),
+}: Options = {}): string => {
   const output = circuit.pins.find((pin) => pin.direction === "output");
   const outputs = new Map<PinId, number>(output ? [[output.id, 1]] : []);
   return renderToStaticMarkup(
-    <StructureSessionContext value={createTestSession(project)}>
+    <StructureSessionContext value={session}>
       <StructureBody
         structure={structure}
         inputs={new Map()}
@@ -40,6 +46,20 @@ const render = ({ selected = new Set(), expanded = new Set() }: Options = {}): s
 };
 
 const count = (markup: string, pattern: RegExp): number => markup.match(pattern)?.length ?? 0;
+
+describe("output live regions", () => {
+  it("leaves the output as the default status live region while the clock is paused", () => {
+    expect(render()).not.toMatch(/<output[^>]*aria-live/u);
+  });
+
+  it("turns the output live region off while the clock runs", () => {
+    const session = createTestSession(project);
+    // Server rendering reads the store's initial state, so make the initial state a running one.
+    const running = { ...session.simulation.getState(), running: true };
+    session.simulation.getInitialState = () => running;
+    expect(render({ session })).toMatch(/<output[^>]*aria-live="off"[^>]*>Output OUT: 1</u);
+  });
+});
 
 describe("StructureView", () => {
   it("is a region named Circuit structure with Parts and Wires headings", () => {
@@ -62,7 +82,7 @@ describe("StructureView", () => {
     const markup = render();
     expect(markup).toContain("Input A");
     expect(markup).toContain("Input B");
-    expect(markup).toMatch(/<output[^>]*aria-live="polite"[^>]*>Output OUT: 1</u);
+    expect(markup).toMatch(/<output[^>]*>Output OUT: 1</u);
   });
 
   it("hides the pins until a part opens", () => {

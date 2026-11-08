@@ -105,6 +105,12 @@ test("Escape closes the Wire to… dialog without a wire", async ({ page }) => {
   await expect(page.getByRole("dialog")).toBeHidden();
 });
 
+test("Read outputs speaks every output once through the canvas region", async ({ page }) => {
+  await createProject(page);
+  await page.getByRole("button", { name: "Read outputs" }).click();
+  await expect(spoken(page)).toHaveText("Outputs: OUT 1");
+});
+
 test("Add part… places a NAND, selects it and says so, by keyboard", async ({ page }) => {
   await createProject(page);
   const region = page.getByRole("region", { name: "Circuit structure" });

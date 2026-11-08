@@ -106,7 +106,25 @@ describe("connectPins", () => {
         to: nandA,
       },
     ]);
-    expect(result.effects.at(-1)).toEqual({ type: "announce", announcement: { type: "wired" } });
+    expect(result.effects.at(-1)).toEqual({
+      type: "announce",
+      announcement: { type: "wired", from: aOut, to: nandA },
+    });
+  });
+});
+
+describe("readOutputs", () => {
+  it("announces every reading once and changes nothing else", () => {
+    const { state, context } = rig();
+    const readings = [
+      { name: "SUM", value: 1 },
+      { name: "CARRY", value: undefined },
+    ];
+    const result = command(state, context, { type: "readOutputs", readings });
+    expect(result.state).toBe(state);
+    expect(result.effects).toEqual([
+      { type: "announce", announcement: { type: "outputs", readings } },
+    ]);
   });
 });
 

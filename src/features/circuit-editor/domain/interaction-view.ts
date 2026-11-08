@@ -71,12 +71,22 @@ const connectPins = (
         ...color,
       },
     },
-    { type: "announce", announcement: { type: "wired" } },
+    {
+      type: "announce",
+      announcement: { type: "wired", from: result.value.from, to: result.value.to },
+    },
   );
 };
 
+/** Says all outputs in one announcement. */
+const readOutputs = (state: InteractionState, command: Of<"readOutputs">): Interpreted =>
+  done(state, {
+    type: "announce",
+    announcement: { type: "outputs", readings: command.readings },
+  });
+
 type ViewHandlers = {
-  readonly [Type in "selectItems" | "connectPins"]: (
+  readonly [Type in "selectItems" | "connectPins" | "readOutputs"]: (
     state: InteractionState,
     command: Of<Type>,
     context: InteractionContext,
@@ -84,4 +94,4 @@ type ViewHandlers = {
 };
 
 /** The commands the structure view sends, for the wiring command table. */
-export const VIEW_COMMANDS: ViewHandlers = { selectItems, connectPins };
+export const VIEW_COMMANDS: ViewHandlers = { selectItems, connectPins, readOutputs };

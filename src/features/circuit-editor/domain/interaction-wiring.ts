@@ -80,7 +80,7 @@ const connected = (
       type: "dispatch",
       action: { type: "connectWire", chipId: context.chipId, wireId: context.newWireId(), ...ends },
     },
-    announce({ type: "wired" }),
+    announce({ type: "wired", from: ends.from, to: ends.to }),
   );
 
 /** Why a connection was refused: shown over the canvas as `notice` and announced. */
