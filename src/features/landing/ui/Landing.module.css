@@ -107,12 +107,18 @@
   flex-direction: column;
   gap: 1.5rem;
   align-items: flex-start;
+  container-type: inline-size;
 }
 
+/*
+ * The longest word must fit the column ("COMPUTADORA" in Spanish does not at full size).
+ * Display capitals are about 0.83em wide; 0.9em per letter leaves a margin.
+ */
 .title {
+  max-inline-size: 100%;
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--font-size-display);
+  font-size: min(var(--font-size-display), 100cqi / (var(--title-letters, 12) * 0.9));
   font-weight: 600;
   line-height: 1.08;
   text-transform: uppercase;

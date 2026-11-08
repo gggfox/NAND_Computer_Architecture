@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useId } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { ThemePicker, themeOptionLabels } from "~/features/theming";
 import { m } from "~/i18n/paraglide/messages";
@@ -63,10 +63,20 @@ function Header(): ReactNode {
   );
 }
 
+/** The number of letters in the longest word of `text`. */
+const longestWord = (text: string): number =>
+  Math.max(...text.split(/\s+/u).map((word) => word.length));
+
 function Title(): ReactNode {
+  const lead = m.landing_title_lead();
+  const accent = m.landing_title_accent();
+  // The CSS makes the title small enough that its longest word fits the column.
+  const fit: CSSProperties & Record<"--title-letters", number> = {
+    "--title-letters": longestWord(`${lead} ${accent}`),
+  };
   return (
-    <h1 className={styles.title}>
-      {m.landing_title_lead()} <span className={styles.accent}>{m.landing_title_accent()}</span>
+    <h1 className={styles.title} style={fit}>
+      {lead} <span className={styles.accent}>{accent}</span>
     </h1>
   );
 }
