@@ -2,7 +2,7 @@
 
 ## Status
 
-Tasks T1–T14 are done; T15 (#60) is the owner's manual screen-reader pass and is open. Issue #17 stays open until the owner reports that pass. The decisions, and the calls made while building, are recorded in [ADR 52](../../adr/0052-accessible-structure-view.md). Planned on 2026-11-07, from the code on `main` at e51472f. The owner chose the design on 2026-11-07 (spec §3.1). The plan named the record ADR 51, but ADR 51 was already used for the staging and production deploys, so the record is ADR 52.
+Tasks T1–T14 are done; T15 (#60) is the owner's manual screen-reader pass and is open. Issue #17 stays open until the owner reports that pass. The decisions, and the calls made while building, are recorded in [ADR 52](../../adr/0052-accessible-structure-view.md). Planned on 2026-11-07, from the code on `main` at e51472f. The owner chose the design on 2026-11-07 (spec §3.1). The plan and the spec named the record ADR 51, but ADR 51 was already used for the staging and production deploys, so the record is ADR 52.
 
 What shipped (the PR for each task is in brackets):
 
@@ -51,7 +51,7 @@ Known follow-ups:
 - T15 (#60): the owner's manual pass with VoiceOver (macOS and iOS) and NVDA with Firefox. Axe and the keyboard E2E cannot show how the view reads. The result goes into a comment on #17.
 - The Docker visual run (`pnpm e2e:visual:docker`) once failed in the container's `pnpm install` (`ERR_PNPM_ENOENT`), and the script then ran Playwright without `node_modules`. A second run worked (PR #86). PR #81 keeps the pnpm store out of the repo.
 - `route-perf.test.ts` and `to-netlist-source-perf.test.ts` timed out under heavy machine load in PR #68 and PR #69. PR #72 raised their Vitest timeout.
-- The spec still says "ADR 51" (§2 and the proof item). Read it as ADR 52. This update did not change the spec.
+- The spec named this record ADR 51. ADR 51 was already used for the deploys, so the spec and this plan now say ADR 52.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review per PR.
 

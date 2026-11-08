@@ -24,7 +24,7 @@ Phase 5 shipped as three PRs. Phase 6 is split finer, so that parallel agents ca
 2. **The structure view.** It replaces `CircuitSummary`. Pins and wires are readable.
 3. **Commands for every action.** Part menu, "Wire to…" dialog, wire menu, circuit-level actions.
 4. **Live regions and focus.** One policy for what is spoken, and one rule for where focus goes.
-5. **Proof.** Keyboard-only E2E for a half adder and a full adder, axe in every theme, Linux visual baselines, ADR 51.
+5. **Proof.** Keyboard-only E2E for a half adder and a full adder, axe in every theme, Linux visual baselines, ADR 52.
 
 ## 3. Goals
 
