@@ -5,6 +5,10 @@ const ROW_GAP = 80;
 const NAND_X = 160;
 const NAND_Y = 40;
 const OUTPUT_X = 320;
+/** Half a grid: a pin piece's pin is this far below its top, a NAND's out twice as far. */
+const HALF_GRID = 20;
+/** Half a grid below the NAND's top: the output piece's pin then lines up with the NAND's out. */
+const OUTPUT_Y = NAND_Y + HALF_GRID;
 const NAND_OUT_PIN = 2;
 
 const randomSeed = (): number =>
@@ -19,7 +23,7 @@ export const createDemoProject = (name: string): Project => {
   const inputA = pinPiece(pinA, { x: 0, y: 0 });
   const inputB = pinPiece(pinB, { x: 0, y: ROW_GAP });
   const nand = piece({ type: "nand" }, { x: NAND_X, y: NAND_Y });
-  const output = pinPiece(pinOut, { x: OUTPUT_X, y: NAND_Y });
+  const output = pinPiece(pinOut, { x: OUTPUT_X, y: OUTPUT_Y });
   /* oxlint-enable eslint/id-length */
   const draft = {
     pins: [pinA, pinB, pinOut],

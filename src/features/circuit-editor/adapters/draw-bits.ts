@@ -3,6 +3,7 @@ import type { PinDef } from "~/features/projects";
 import { bitCells, bitOf } from "../domain/bit-grid";
 import type { Rect } from "../domain/chip-layout";
 import type { Level } from "../domain/signals";
+import { traceBox } from "./draw-box";
 import { levelColor } from "./frame";
 import type { Frame } from "./frame";
 
@@ -16,7 +17,7 @@ const drawSwitch = (frame: Frame, rect: Rect, level: Level | undefined): void =>
   ctx.fillStyle = levelColor(frame.palette, level);
   ctx.setLineDash(level === 0 ? LOW_DASH : SOLID);
   ctx.beginPath();
-  ctx.roundRect(rect.x, rect.y, rect.width, rect.height, SWITCH_RADIUS);
+  traceBox(ctx, rect, { corners: frame.palette.corners, radius: SWITCH_RADIUS, bevel: 0 });
   ctx.fill();
   ctx.stroke();
 };

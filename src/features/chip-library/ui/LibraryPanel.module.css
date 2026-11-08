@@ -5,14 +5,18 @@
   align-self: start;
   inline-size: clamp(12rem, 25vw, 18rem);
   padding: 0.75rem;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-grid);
-  border-radius: 0.5rem;
+  background: var(--frame-corners), var(--color-surface);
+  border: 1px solid var(--frame-line);
+  border-radius: var(--radius-frame);
+  clip-path: var(--frame-clip);
 }
 
 .heading {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
+  text-transform: var(--heading-case);
+  letter-spacing: var(--heading-tracking);
 }
 
 .body {

@@ -1,7 +1,8 @@
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { Landing } from "~/features/landing";
 import {
   getAppProjectRepository,
   isDamaged,
@@ -11,7 +12,7 @@ import {
 import type { DamagedProject, PersistenceError, ProjectEntry } from "~/features/persistence";
 import { createDemoProject, downloadRawRecord } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
-import { Button, LanguagePicker, ModalDialog, StatusMessages } from "~/shared/ui";
+import { Button, ModalDialog, StatusMessages } from "~/shared/ui";
 
 export const Route = createFileRoute("/")({
   // Data lives in this browser's IndexedDB, so the loader and component only ever run on the client.
@@ -64,31 +65,11 @@ function DamagedRow({ project, onDelete }: DamagedRowProps): ReactNode {
   );
 }
 
-interface ProjectListProps {
-  readonly projects: readonly ProjectEntry[];
-  readonly onDelete: (project: DamagedProject) => void;
-}
-
-function ProjectList({ projects, onDelete }: ProjectListProps): ReactNode {
-  if (projects.length === 0) {
-    return <p>{m.projects_empty()}</p>;
-  }
-  return (
-    <ul>
-      {projects.map((project) =>
-        isDamaged(project) ? (
-          <DamagedRow key={project.id} project={project} onDelete={onDelete} />
-        ) : (
-          <li key={project.id}>
-            <Link to="/projects/$projectId" params={{ projectId: project.id }}>
-              {project.name}
-            </Link>
-          </li>
-        ),
-      )}
-    </ul>
-  );
-}
+/** The projects that open, as links, and the damaged records, as rows with export and delete. */
+const splitEntries = (entries: readonly ProjectEntry[]) => ({
+  healthy: entries.flatMap((entry) => (isDamaged(entry) ? [] : [entry])),
+  damaged: entries.filter((entry) => isDamaged(entry)),
+});
 
 interface ConfirmDeleteProps {
   /** The record to delete; nothing is shown while it is unset. */
@@ -135,23 +116,27 @@ function useDeleteDamaged(
   };
 }
 
-function Home(): ReactNode {
-  const { listed } = Route.useLoaderData();
-  const degraded = useStorageDegraded();
+/** Saves a new demo project and opens it; a failed save is reported through `setError`. */
+function useCreateProject(setError: (error: PersistenceError) => void): () => Promise<void> {
   const navigate = useNavigate();
-  const [saveError, setSaveError] = useState<PersistenceError>();
-  const [pendingDelete, setPendingDelete] = useState<DamagedProject>();
-  const deleteDamaged = useDeleteDamaged(setPendingDelete, setSaveError);
-
-  const createProject = async (): Promise<void> => {
+  return async () => {
     const project = createDemoProject(m.demo_project_name());
     const saved = await getAppProjectRepository().save(project);
     if (!saved.ok) {
-      setSaveError(saved.error);
+      setError(saved.error);
       return;
     }
     await navigate({ to: "/projects/$projectId", params: { projectId: project.id } });
   };
+}
+
+function Home(): ReactNode {
+  const { listed } = Route.useLoaderData();
+  const degraded = useStorageDegraded();
+  const [saveError, setSaveError] = useState<PersistenceError>();
+  const [pendingDelete, setPendingDelete] = useState<DamagedProject>();
+  const deleteDamaged = useDeleteDamaged(setPendingDelete, setSaveError);
+  const createProject = useCreateProject(setSaveError);
 
   const notices = [
     ...(degraded ? [m.persistence_error_unavailable()] : []),
@@ -159,20 +144,26 @@ function Home(): ReactNode {
     ...(saveError === undefined ? [] : [persistenceErrorMessage(saveError)]),
   ];
 
+  const { healthy, damaged } = splitEntries(listed.ok ? listed.value : []);
+
   return (
-    <main className="page">
-      <h1>{m.app_title()}</h1>
-      <LanguagePicker />
-      <StatusMessages messages={notices} />
-      <h2>{m.projects_heading()}</h2>
-      <Button
-        onPress={() => {
-          void createProject();
-        }}
-      >
-        {m.new_project()}
-      </Button>
-      <ProjectList projects={listed.ok ? listed.value : []} onDelete={setPendingDelete} />
+    <>
+      <Landing
+        notices={<StatusMessages messages={notices} />}
+        primaryAction={
+          <Button
+            onPress={() => {
+              void createProject();
+            }}
+          >
+            {m.new_project()}
+          </Button>
+        }
+        projects={healthy}
+        damaged={damaged.map((project) => (
+          <DamagedRow key={project.id} project={project} onDelete={setPendingDelete} />
+        ))}
+      />
       <ConfirmDelete
         project={pendingDelete}
         onConfirm={(project) => {
@@ -182,6 +173,6 @@ function Home(): ReactNode {
           setPendingDelete(undefined);
         }}
       />
-    </main>
+    </>
   );
 }

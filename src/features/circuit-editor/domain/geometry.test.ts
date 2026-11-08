@@ -65,7 +65,7 @@ describe("chip geometry", () => {
   it("drives from an input's right edge and enters an output's left edge", () => {
     const scene = demo();
     expect(pinPosition(scene, at(scene, 0), 0)).toEqual({ x: 40, y: 20 });
-    expect(pinPosition(scene, at(scene, 3), 0)).toEqual({ x: 320, y: 60 });
+    expect(pinPosition(scene, at(scene, 3), 0)).toEqual({ x: 320, y: 80 });
   });
 
   it("moves a dragged instance's layout to its preview position", () => {

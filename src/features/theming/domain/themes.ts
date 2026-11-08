@@ -1,4 +1,5 @@
-export const themeIds = ["light", "dark", "high-contrast"] as const;
+/** The first id is the default theme. */
+export const themeIds = ["amber", "light", "dark", "high-contrast"] as const;
 
 export type ThemeId = (typeof themeIds)[number];
 
@@ -36,6 +37,37 @@ export interface ThemeTokens {
 }
 
 export const themes: Readonly<Record<ThemeId, ThemeTokens>> = {
+  amber: {
+    colorBackground: "#050505",
+    colorSurface: "#111111",
+    colorText: "#f5f3ef",
+    colorTextMuted: "#b5b0a8",
+    colorAccent: "#ff9800",
+    colorFocusRing: "#5fe3ff",
+    colorSignalHigh: "#ffb627",
+    colorSignalLow: "#6b6258",
+    colorWire: "#8a8178",
+    colorChipNand: "#ff6a3d",
+    colorChipText: "#050505",
+    colorChipTextLow: "#ffffff",
+    colorGrid: "#1c1915",
+    colorWireBlue: "#94b4ff",
+    colorWireBlueMuted: "#2d5ed2",
+    colorWireRed: "#ff9999",
+    colorWireRedMuted: "#c22929",
+    colorWireOrange: "#ff9a4d",
+    colorWireOrangeMuted: "#9c5621",
+    colorWireYellow: "#dbaf00",
+    colorWireYellowMuted: "#7a671a",
+    colorWireGreen: "#00d134",
+    colorWireGreenMuted: "#197630",
+    colorWireTeal: "#00ccc5",
+    colorWireTealMuted: "#18726f",
+    colorWirePurple: "#d79eff",
+    colorWirePurpleMuted: "#9235d4",
+    colorWirePink: "#ff8fd0",
+    colorWirePinkMuted: "#b9277c",
+  },
   light: {
     colorBackground: "#f3f4f9",
     colorSurface: "#ffffff",
@@ -153,17 +185,13 @@ export const renderThemeCss = (all: Readonly<Record<ThemeId, ThemeTokens>>): str
 export const isThemeId = (value: string | null | undefined): value is ThemeId =>
   themeIds.some((id) => id === value);
 
-/** A valid stored choice wins; otherwise (including an unknown stored value) follow OS preferences (more-contrast beats dark). */
+/** A valid stored choice wins; otherwise (including an unknown stored value) a more-contrast preference gives high contrast, and all else gives amber. */
 export const resolveInitialTheme = (
   stored: string | null | undefined,
-  prefersDark: boolean,
   prefersMoreContrast: boolean,
 ): ThemeId => {
   if (isThemeId(stored)) {
     return stored;
   }
-  if (prefersMoreContrast) {
-    return "high-contrast";
-  }
-  return prefersDark ? "dark" : "light";
+  return prefersMoreContrast ? "high-contrast" : "amber";
 };

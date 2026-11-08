@@ -17,12 +17,13 @@ interface FirstLoad {
 }
 
 /*
- * The boot script sets `data-theme` before hydration from storage or the OS preference, and the
- * locale effect corrects `lang` after it; neither may make React report a mismatch (#12).
+ * The boot script sets `data-theme` before hydration from storage, the OS contrast preference or the
+ * amber default. The locale effect corrects `lang` after it. Neither may make React report a
+ * mismatch (#12).
  */
 const firstLoads: readonly FirstLoad[] = [
-  { name: "an OS light preference", colorScheme: "light", stored: [], theme: "light", lang: "en" },
-  { name: "an OS dark preference", colorScheme: "dark", stored: [], theme: "dark", lang: "en" },
+  { name: "an OS light preference", colorScheme: "light", stored: [], theme: "amber", lang: "en" },
+  { name: "an OS dark preference", colorScheme: "dark", stored: [], theme: "amber", lang: "en" },
   {
     name: "a stored dark theme",
     colorScheme: "light",
@@ -41,7 +42,7 @@ const firstLoads: readonly FirstLoad[] = [
     name: "a stored es locale",
     colorScheme: "dark",
     stored: [["PARAGLIDE_LOCALE", "es"]],
-    theme: "dark",
+    theme: "amber",
     lang: "es",
   },
 ];

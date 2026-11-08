@@ -26,6 +26,10 @@ const circuitOf = (names: readonly string[], direction: "input" | "output"): Cir
 const onGrid = (points: readonly Point[]): boolean =>
   points.every((point) => point.x % GRID === 0 && point.y % GRID === 0);
 
+/** On the grid's columns, and on the rows half a grid below its lines. */
+const onHalfRows = (points: readonly Point[]): boolean =>
+  points.every((point) => point.x % GRID === 0 && point.y % GRID === GRID / 2);
+
 describe("pin gaps", () => {
   it("stack a grid step apart and keep two steps from other parts", () => {
     expect(PIN_ROW_GAP).toBe(GRID);
@@ -96,8 +100,9 @@ describe("columnPositions below a column", () => {
     expect(columnPositions(scene, "input", [1])).toEqual([{ x: 80, y: 280 }]);
   });
 
-  it("stacks new outputs below the lowest output, at its x", () => {
-    expect(columnPositions(demoScene(), "output", [1])).toEqual([{ x: 320, y: 120 }]);
+  it("stacks new outputs below the lowest output, at its x and on its rows", () => {
+    // The demo's output sits half a grid down, in line with the NAND's out.
+    expect(columnPositions(demoScene(), "output", [1])).toEqual([{ x: 320, y: 140 }]);
   });
 });
 
@@ -173,12 +178,12 @@ describe("columnPositions on the grid", () => {
     expect(columnPositions(demoScene(), "input", [])).toEqual([]);
   });
 
-  it("puts every point on the grid", () => {
+  it("puts every point on the grid, or on the rows of a column half a grid down", () => {
     const widths = [1, NIBBLE, 8, 16, 1] as const;
     const demo = demoScene();
     const empty = sceneWith(EMPTY_CIRCUIT);
     expect(onGrid(columnPositions(demo, "input", widths))).toBe(true);
-    expect(onGrid(columnPositions(demo, "output", widths))).toBe(true);
+    expect(onHalfRows(columnPositions(demo, "output", widths))).toBe(true);
     expect(onGrid(columnPositions(empty, "output", widths))).toBe(true);
   });
 });

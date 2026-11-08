@@ -13,9 +13,10 @@
   max-block-size: 90dvh;
   overflow: auto;
   color: var(--color-text);
-  background-color: var(--color-surface);
+  background: var(--frame-corners), var(--color-surface);
   border: 1px solid var(--color-wire);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-dialog);
+  clip-path: var(--frame-clip);
 }
 
 .dialog {
@@ -28,5 +29,8 @@
 
 .title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
+  text-transform: var(--heading-case);
+  letter-spacing: var(--heading-tracking);
 }

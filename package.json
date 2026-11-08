@@ -29,6 +29,8 @@
     "prepare": "lefthook install || true"
   },
   "dependencies": {
+    "@fontsource-variable/orbitron": "catalog:",
+    "@fontsource/chakra-petch": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
     "idb": "catalog:",

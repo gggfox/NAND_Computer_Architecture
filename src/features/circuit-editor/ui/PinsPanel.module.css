@@ -9,7 +9,10 @@
 
 .heading {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
+  text-transform: var(--heading-case);
+  letter-spacing: var(--heading-tracking);
 }
 
 .body {
@@ -51,7 +54,7 @@
   font-size: var(--font-size-small);
   color: var(--color-chip-text);
   background-color: var(--color-accent);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-pill);
 }
 
 .value {

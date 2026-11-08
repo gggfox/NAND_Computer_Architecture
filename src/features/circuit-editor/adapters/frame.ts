@@ -5,6 +5,8 @@ import type { LayoutCache, Rect, Size } from "../domain/chip-layout";
 import type { Scene } from "../domain/geometry";
 import type { KnownLevels, Level } from "../domain/signals";
 import type { WireToken } from "../domain/wire-style";
+import { toCornerStyle } from "./draw-box";
+import type { CornerStyle } from "./draw-box";
 
 const BASE_TOKENS = [
   "background",
@@ -25,14 +27,16 @@ const TOKENS: readonly Token[] = [
   ...BASE_TOKENS,
   ...WIRE_COLORS.flatMap((color) => [`wire-${color}`, `wire-${color}-muted`] as const),
 ];
-export type Palette = Readonly<Record<Token, string>>;
+/** The theme's colours, and how it draws chip and pin bodies (`--canvas-corners`). */
+export type Palette = Readonly<Record<Token, string>> & { readonly corners: CornerStyle };
 
 /** Theme tokens are CSS custom properties on <html> (ADR 10); the canvas reads the same values. */
 export const readPalette = (): Palette => {
   const style = getComputedStyle(document.documentElement);
   const entries = TOKENS.map((token) => [token, style.getPropertyValue(`--color-${token}`).trim()]);
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- built from the exhaustive TOKENS list above
-  return Object.fromEntries(entries) as Palette;
+  const colors = Object.fromEntries(entries) as Readonly<Record<Token, string>>;
+  return { ...colors, corners: toCornerStyle(style.getPropertyValue("--canvas-corners")) };
 };
 
 /** One draw: the scene, how to paint it, and the world rect on screen (for culling). */

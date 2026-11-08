@@ -18,8 +18,8 @@ export { expect } from "@playwright/test";
 /** The editor adds its view (`?zoom=…&x=…&y=…`) to the URL. */
 export const PROJECT_URL = /\/projects\/[0-9a-f-]{36}(?:\?|$)/u;
 
-export type Theme = "Light" | "Dark" | "High contrast";
-export const THEMES: readonly Theme[] = ["Light", "Dark", "High contrast"];
+export type Theme = "Amber" | "Light" | "Dark" | "High contrast";
+export const THEMES: readonly Theme[] = ["Amber", "Light", "Dark", "High contrast"];
 
 /** Opens the index and creates the demo project (two inputs into one NAND), landing on its page. */
 export const createProject = async (page: Page): Promise<void> => {
@@ -80,7 +80,7 @@ const DEMO_LAYOUT = [
   { x: 0, y: 0, width: 40, height: 40 },
   { x: 0, y: 80, width: 40, height: 40 },
   { x: 160, y: 40, width: 120, height: 80 },
-  { x: 320, y: 40, width: 40, height: 40 },
+  { x: 320, y: 60, width: 40, height: 40 },
 ] as const;
 
 /** The camera the URL holds (`?zoom=&x=&y=`), with the editor's defaults when absent. */

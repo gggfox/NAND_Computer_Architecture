@@ -9,11 +9,15 @@ import { panelNumber } from "../domain/io-layout";
 import { instanceLevel, pieceValue, pinLevelKey, pinValue } from "../domain/signals";
 import type { Level } from "../domain/signals";
 import { drawBits } from "./draw-bits";
+import { traceBox } from "./draw-box";
 import { inPart, intersects, levelColor } from "./frame";
 import type { Frame } from "./frame";
 
 const CHIP_RADIUS = 6;
 const CORNER = 4;
+/** In the bevel style: how far a part's and a pin piece's corners are cut, world px. */
+const PART_BEVEL = 8;
+const PIECE_BEVEL = 6;
 const HALF = 0.5;
 const TITLE_FONT = "600 14px system-ui, sans-serif";
 /** Matches `CHAR_WIDTH` in the layout: labels are measured, not guessed. */
@@ -35,15 +39,16 @@ const DIM_ALPHA = 0.35;
 interface BodyStyle {
   readonly fill: string;
   readonly radius: number;
+  readonly bevel: number;
 }
 
-const drawBody = (frame: Frame, rect: Rect, { fill, radius }: BodyStyle): void => {
-  const { ctx } = frame;
+const drawBody = (frame: Frame, rect: Rect, { fill, radius, bevel }: BodyStyle): void => {
+  const { ctx, palette } = frame;
   ctx.fillStyle = fill;
-  ctx.strokeStyle = frame.palette.text;
+  ctx.strokeStyle = palette.text;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(rect.x, rect.y, rect.width, rect.height, radius);
+  traceBox(ctx, rect, { corners: palette.corners, radius, bevel });
   ctx.fill();
   ctx.stroke();
 };
@@ -72,7 +77,7 @@ const drawTab = (frame: Frame, tab: Rect, level: Level | undefined): void => {
   ctx.strokeStyle = palette.text;
   ctx.setLineDash(level === 0 ? LOW_TAB_DASH : SOLID);
   ctx.beginPath();
-  ctx.roundRect(tab.x, tab.y, tab.width, tab.height, TAB_RADIUS);
+  traceBox(ctx, tab, { corners: palette.corners, radius: TAB_RADIUS, bevel: 0 });
   ctx.fill();
   ctx.stroke();
 };
@@ -138,7 +143,7 @@ const drawPart = (frame: Frame, instance: ChipInstance, layout: ChipLayout): voi
     kind.type === "custom" ? project.chips.find((chip) => chip.id === kind.chipId) : undefined;
   const fill = custom?.color ?? palette["chip-nand"];
   const text = custom === undefined ? palette["chip-text"] : readableTextOn(custom.color);
-  drawBody(frame, layout.rect, { fill, radius: CORNER });
+  drawBody(frame, layout.rect, { fill, radius: CORNER, bevel: PART_BEVEL });
   frame.ctx.fillStyle = text;
   centerText(frame, layout.title, titleRect(frame, layout));
   drawLabels(frame, layout, text);
@@ -164,7 +169,20 @@ const drawPieceName = (frame: Frame, layout: ChipLayout): void => {
   );
 };
 
-/** The piece's 1-based place in its direction's Pins-panel list, in a circle at the top-left. */
+/** The badge's outline: a circle, or a square when the theme bevels its bodies. */
+const traceBadge = (frame: Frame, rect: Rect): void => {
+  const { ctx, palette } = frame;
+  const centreX = rect.x + BADGE_INSET;
+  const centreY = rect.y + BADGE_INSET;
+  if (palette.corners === "bevel") {
+    const side = BADGE_RADIUS + BADGE_RADIUS;
+    ctx.rect(centreX - BADGE_RADIUS, centreY - BADGE_RADIUS, side, side);
+    return;
+  }
+  ctx.arc(centreX, centreY, BADGE_RADIUS, 0, FULL_TURN);
+};
+
+/** The piece's 1-based place in its direction's Pins-panel list, in a badge at the top-left. */
 const drawBadge = (frame: Frame, rect: Rect, def: PinDef | undefined): void => {
   if (def === undefined) {
     return;
@@ -174,7 +192,7 @@ const drawBadge = (frame: Frame, rect: Rect, def: PinDef | undefined): void => {
   ctx.fillStyle = palette["chip-nand"];
   ctx.strokeStyle = palette["chip-text"];
   ctx.beginPath();
-  ctx.arc(rect.x + BADGE_INSET, rect.y + BADGE_INSET, BADGE_RADIUS, 0, FULL_TURN);
+  traceBadge(frame, rect);
   ctx.fill();
   ctx.stroke();
   drawBadgeNumber(frame, rect, panelNumber(frame.circuit.pins, def.id));
@@ -233,7 +251,11 @@ const drawPiece = (frame: Frame, instance: ChipInstance, layout: ChipLayout): vo
   const def = defOf(frame, instance);
   const value = def === undefined ? undefined : pieceValue(frame.known, def);
   const level = levelOfPiece(def, value);
-  drawBody(frame, layout.rect, { fill: levelColor(palette, level), radius: CHIP_RADIUS });
+  drawBody(frame, layout.rect, {
+    fill: levelColor(palette, level),
+    radius: CHIP_RADIUS,
+    bevel: PIECE_BEVEL,
+  });
   frame.ctx.fillStyle = palette[level === 0 ? "chip-text-low" : "chip-text"];
   drawPieceValue(frame, layout.rect, { def, value });
   drawBadge(frame, layout.rect, def);

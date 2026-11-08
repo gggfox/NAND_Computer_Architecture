@@ -24,7 +24,7 @@
   color: var(--color-text);
   background-color: var(--color-background);
   border: 1px solid var(--color-wire);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-control);
 }
 
 .input::-webkit-search-cancel-button {
@@ -46,7 +46,7 @@
   cursor: pointer;
   background-color: transparent;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-control);
 }
 
 .clear[data-focus-visible] {

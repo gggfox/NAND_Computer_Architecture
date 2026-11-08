@@ -11,6 +11,7 @@ interface Environment {
   readonly stored: string | undefined;
   /** Makes `localStorage.getItem` throw, like blocked storage. */
   readonly blocked: boolean;
+  /** Must not change the result: only storage and the contrast preference pick the theme. */
   readonly prefersDark: boolean;
   readonly prefersMoreContrast: boolean;
 }
@@ -44,6 +45,7 @@ const runBootScript = (environment: Environment): string | undefined => {
 
 const storedCases: (string | undefined)[] = [
   undefined,
+  "amber",
   "light",
   "dark",
   "high-contrast",
@@ -71,7 +73,7 @@ describe("theme boot script", () => {
     // Blocked storage reads as "nothing stored" in the function under comparison.
     const stored = environment.blocked ? undefined : environment.stored;
     expect(runBootScript(environment)).toBe(
-      resolveInitialTheme(stored, environment.prefersDark, environment.prefersMoreContrast),
+      resolveInitialTheme(stored, environment.prefersMoreContrast),
     );
   });
 });

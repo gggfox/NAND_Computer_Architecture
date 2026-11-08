@@ -3,7 +3,17 @@
   block-size: 100%;
   min-block-size: 16rem;
   container-type: inline-size;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-frame);
+}
+
+/* The frame's corner lines, drawn over the canvas; plain themes have none. */
+.host::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "" / "";
+  background: var(--frame-corners);
+  border-radius: var(--radius-frame);
 }
 
 .host:focus-visible {
@@ -24,8 +34,9 @@
   block-size: 100%;
   touch-action: none;
   background-color: var(--color-background);
-  border: 1px solid var(--color-grid);
-  border-radius: 0.5rem;
+  border: 1px solid var(--frame-line);
+  border-radius: var(--radius-frame);
+  clip-path: var(--frame-clip);
   -webkit-touch-callout: none;
 }
 
