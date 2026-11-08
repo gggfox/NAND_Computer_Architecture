@@ -2,9 +2,56 @@
 
 ## Status
 
-Planned on 2026-11-07, from the code on `main` at e51472f. Not started. The sub-issues are #45 to #60 (children of #17), with blocking edges. The owner chose the design on 2026-11-07 (spec §3.1): a Parts list and a Wires list, an Actions menu on each row, a "Wire to…" dialog, and a landmark in the side panel. The decisions are recorded in the spec. ADR 51 is written by the last task (T14).
+Tasks T1–T14 are done; T15 (#60) is the owner's manual screen-reader pass and is open. Issue #17 stays open until the owner reports that pass. The decisions, and the calls made while building, are recorded in [ADR 52](../../adr/0052-accessible-structure-view.md). Planned on 2026-11-07, from the code on `main` at e51472f. The owner chose the design on 2026-11-07 (spec §3.1). The plan named the record ADR 51, but ADR 51 was already used for the staging and production deploys, so the record is ADR 52.
 
-Each task below is a sub-issue of #17 with an "Agent brief". Run them as parallel `sonnet` agents where the blocking edges allow it.
+What shipped (the PR for each task is in brackets):
+
+- **T1, structure model (#68).** `structureOf(scene)` in `domain/structure.ts`: parts, pins with connections, and wires in the reading order of the sink pin. It builds the layouts once per call with `createLayoutCache`.
+- **T2, view commands (#69).** `selectItems` and `connectPins` in `domain/interaction-view.ts`. They reuse the announcements `selected`, `cleared`, `wired` and `refused`, so there is no `announcements-view.ts`. The types live in `view-command-types.ts`, and `interaction.ts` gained no import.
+- **T5a, wire targets (#73).** `wireTargets(scene, from)`. It calls `completionFor`, the canvas rule, and each target carries `width` and `bits`.
+- **T3, structure view (#74).** `StructureView`, `PartRow`, `PinRow`, `WireRow` and the skip link replace `CircuitSummary`. The input `Switch` and the output text stay, so `inputSwitch` and `output` in `e2e/support.ts` work without edits. PR #75 added `StructureSessionContext` so the menus can read the editor session.
+- **T4, part actions (#78).** Delete, Duplicate, Array…, Move left, right, up and down. Custom chips also get Rename chip…, Recolor chip… and Look inside.
+- **T5b, "Wire to…" dialog and pin menu (#77).** `PinActions`, `WireToDialog` and `wire-to-plan.ts`. The pin menu also has "Describe pin".
+- **T6, wire actions (#76).** Delete, Colour…, Re-route, Branch from here and Edit bends.
+- **T7, circuit actions (#80).** "Add part…", "Suggest wires", "Tidy wires" and the Suggested wires list with Accept, Accept all and Dismiss.
+- **T8, live regions (#79).** The policy of spec §3.5. "Read outputs", outputs quiet while the clock plays, and "Wire added: {from} to {to}" in `en` and `es`.
+- **T9, focus management (#82).** `use-row-focus.ts` and `src/shared/focus-return.ts`. Rules 1–6 and 8 of spec §3.6, pinned by `e2e/structure-focus.spec.ts`. Rule 7 is unchanged.
+- **T10, keyboard-only half adder (#84).** `e2e/keyboard-half-adder.spec.ts`. Fourteen wires made in "Wire to…", saved as "Half adder".
+- **T11, keyboard-only full adder (#87).** `e2e/keyboard-full-adder.spec.ts`. Two Half adders and three NANDs, the whole truth table, and a change inside the Half adder that the Full adder picks up. The helpers are split into `keyboard-support.ts`, `keyboard-chips.ts` and `keyboard-adders.ts`.
+- **T12, axe in every theme (#83).** `e2e/a11y-structure.spec.ts` for Light, Dark and High contrast. It checks the view with pins collapsed and expanded, the part, Add part…, wire and pin menus, the "Wire to…" dialog (also with a refusal), the Suggested wires list and the focused skip link. It found one real violation, which the same PR fixed.
+- **T13, Linux visual baselines (#86).** Two new baselines, `structure-half-adder` and `wire-to-dialog`, and the fixture `e2e/fixtures/half-adder.json`. The 7 old baselines did not change.
+- **T14, this update.** ADR 52, five glossary terms, this Status and the roadmap row.
+
+Timings:
+
+- **`structureOf`** on `e2e/fixtures/300-chips.json` (300 parts, 600 wires), 10 runs, no coverage: median about 8 ms (range 7.4–14 ms). The budget is 16 ms. On the 200-part test chip (fastest of 7, CPU time, M-series Mac) it takes 1.6–1.7 ms.
+- **`wireTargets`** on the 200-part test chip, from the clock output (444 targets), fastest of 7, CPU time, no coverage: 2.7–2.8 ms. The committed guard asserts under 16 ms.
+- `pnpm e2e:perf`: p95 16.7 ms (limit 20 ms), measured with the structure view in the side panel (PR #74).
+- Keyboard-only E2E, single local run per project: half adder 6.3–6.7 s, full adder 11.9–12.8 s (it uses `test.slow()`).
+
+Rulings made while building:
+
+- **A menu reads the session from a context (PR #75).** The plan did not say how a menu gets the `EditorSession`. The three menu agents stopped on this gap and all three asked for one shared context. `StructureBody` and the rows keep plain props.
+- **Labels (PR #74).** A bit tap reads `bit {n}` (`structure_bit`), not `d2`. An output part reads `Output {name}` (`output_named`). PR #75 also fixed three wire target test expectations that PR #73 and PR #74 broke when they merged one after the other.
+- **Bus bits in the dialog (PR #77).** A bus end always carries `bit` in its `PinRef`. The dialog asks for a bit on the target (one-bit source, bus target) or on the source (bus source, one-bit target), and for no bit when both ends are buses of the same width.
+- **The dialog checks the wire first (PR #77).** It calls `checkConnection` before `connectPins`. A refusal shows in the dialog, which stays open. The search field is outside the form, so `Enter` there never submits.
+- **"Add part…" is the built-in parts only (PR #80).** Custom chips stay in the library. Input and output pins needed a new `addPinAtCentre` bridge function, because pins are not `PlaceableKind`. The selection announcement ("NAND gate 2 selected") replaces the "Placed" announcement.
+- **"Read outputs" moved (PR #82).** It started in the route above the view (PR #79, because the brief for #52 forbade edits to `StructureView.tsx`). It now sits in `StructureActions` with "Suggest wires" and "Tidy wires". The "Add part…" menu moved to `AddPartMenu.tsx` for the import limit.
+- **The Array dialog returns focus to the row (PR #82).** The canvas overlays host the dialog. The part menu stores one focus target in `src/shared/focus-return.ts` only after the dialog opened. `useFocusHostOnClose` takes that target, or focuses the canvas host when none is set.
+- **The skip link sits at the bottom of the viewport when focused (PR #83).** Axe reported `target-size` and `target-offset` because the focused link covered "All projects". The link now has a 44 px minimum height. No axe rule was disabled.
+- **The "Wire to…" refusal needs a bus pin (PR #83).** The dialog lists only legal pins, so the demo circuit cannot refuse a wire. The axe spec wires bit 0 of a 4-bit output from Input A, then from Input B.
+- **`activate` waits 3 animation frames (PR #84).** The app moves focus by itself two frames after a row dialog closes. Without the wait, that move took focus from the next control.
+- **Phone library sheet (PR #87).** On a phone, Enter on a library row places the chip, but the sheet stays open. The helpers close it with its Close button after each library step.
+- **The structure screenshot needs a tall viewport (PR #86).** The side panel scrolls, so the test uses 1280 × 2600.
+
+Known follow-ups:
+
+- Issue #85 (open, `needs-triage`): "Wire to…" with Enter after a search sometimes picks nothing, because no option has `data-focused`. The workaround presses ArrowDown first, in `e2e/keyboard-support.ts`. A menu button sometimes does not open while a panel takes focus; `chooseEntry` tries up to 3 times. Focus moves two times after a row dialog closes (React Aria, then `returnFocus` two frames later), and `activate` waits for it. The issue is done when the workarounds are removed and the half adder spec still passes on all six projects.
+- Firefox could not start on the machine that built T3–T11 ("Could not find profile folder"). The Firefox E2E runs only in CI. PR #87 passed on 5 projects locally and on CI.
+- T15 (#60): the owner's manual pass with VoiceOver (macOS and iOS) and NVDA with Firefox. Axe and the keyboard E2E cannot show how the view reads. The result goes into a comment on #17.
+- The Docker visual run (`pnpm e2e:visual:docker`) once failed in the container's `pnpm install` (`ERR_PNPM_ENOENT`), and the script then ran Playwright without `node_modules`. A second run worked (PR #86). PR #81 keeps the pnpm store out of the repo.
+- `route-perf.test.ts` and `to-netlist-source-perf.test.ts` timed out under heavy machine load in PR #68 and PR #69. PR #72 raised their Vitest timeout.
+- The spec still says "ADR 51" (§2 and the proof item). Read it as ADR 52. This update did not change the spec.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Subagents follow the model policy in `CLAUDE.md`: implementers on `sonnet`, one `sonnet` review per PR.
 
@@ -90,7 +137,7 @@ Each task below is a sub-issue of #17 with an "Agent brief". Run them as paralle
 | T11 Keyboard E2E: full adder | #56 | T10 | `e2e/keyboard-full-adder.spec.ts` |
 | T12 Axe in every theme | #57 | T9 | `e2e/a11y-structure.spec.ts` |
 | T13 Linux visual baselines | #58 | T8, T9, T12 | `e2e/visual.spec.ts`, snapshots |
-| T14 ADR 51 and docs | #59 | T10, T11, T12, T13 | `docs/adr/0051-…`, `GLOSSARY.md`, this plan |
+| T14 ADR 52 and docs | #59 | T10, T11, T12, T13 | `docs/adr/0052-…`, `GLOSSARY.md`, this plan |
 | T15 Manual screen-reader pass | #60 | T9 | none (the owner runs it) |
 
 T1 and T2 start at once. After T3, T4, T5b, T6 and T7 run in parallel (each adds its own file; T3 leaves a placeholder component for each).
@@ -125,7 +172,7 @@ e2e/keyboard-half-adder.spec.ts       # NEW  T10
 e2e/keyboard-full-adder.spec.ts       # NEW  T11
 e2e/a11y-structure.spec.ts            # NEW  T12
 e2e/visual.spec.ts + snapshots        # T13
-docs/adr/0051-accessible-structure-view.md  # NEW  T14
+docs/adr/0052-accessible-structure-view.md  # NEW  T14
 ```
 
 ---
@@ -247,11 +294,11 @@ For each theme: the view with pins collapsed and expanded, a part menu, a pin me
 
 Run `pnpm e2e:visual:docker` first and list the baselines that changed (the panel moved: `demo-pins-panel` will). Add `@visual` tests for the structure view with a half adder and for the "Wire to…" dialog. Update with `--update-snapshots=all`. Commit only Linux files.
 
-### T14: ADR 51 and docs (mechanical)
+### T14: ADR 52 and docs (mechanical)
 
-**Files:** Create `docs/adr/0051-accessible-structure-view.md`. Modify `GLOSSARY.md`, `docs/superpowers/plans/2026-10-29-circuit-editor-roadmap.md` and this plan's Status.
+**Files:** Create `docs/adr/0052-accessible-structure-view.md`. Modify `GLOSSARY.md`, `docs/superpowers/plans/2026-10-29-circuit-editor-roadmap.md` and this plan's Status.
 
-ADR 51 records spec §3.1 and §3.4–3.6. The glossary gets **Structure view**, **Parts list**, **Wires list**, **Row actions menu** and **Wire to… dialog**. This plan's Status is rewritten as 5c's is: what shipped, timings, rulings, follow-ups.
+ADR 52 records spec §3.1 and §3.4–3.6. The glossary gets **Structure view**, **Parts list**, **Wires list**, **Row actions menu** and **Wire to… dialog**. This plan's Status is rewritten as 5c's is: what shipped, timings, rulings, follow-ups.
 
 ### T15: Manual screen-reader pass (human)
 
