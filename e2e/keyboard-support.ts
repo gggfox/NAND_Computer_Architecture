@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import type { Locator, Page } from "@playwright/test";
 import { z } from "zod";
 
-import { addPins, closePins, nameField, nameRow, openPins } from "./pins-support";
 import { PROJECT_URL, expect } from "./support";
 
 /*
@@ -90,7 +89,7 @@ export const chooseEntry = async (page: Page, button: Locator, entry: string): P
 };
 
 /** The names of every part in the Parts list, in list order. */
-const allPartNames = async (page: Page): Promise<readonly string[]> => {
+export const allPartNames = async (page: Page): Promise<readonly string[]> => {
   const labels = await structureRegion(page)
     .getByRole("button", { name: /^Actions for /u })
     .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label") ?? ""));
@@ -127,7 +126,7 @@ export interface NamedPin {
 /** A wire from an output pin to an input pin, by names. */
 export type NamedWire = readonly [NamedPin, NamedPin];
 
-const pinLabel = ({ part, pin }: NamedPin): string => `${pin} of ${part}`;
+export const pinLabel = ({ part, pin }: NamedPin): string => `${pin} of ${part}`;
 
 /** Opens the part's pin list, if it is closed. */
 const openPinList = async (page: Page, part: string): Promise<void> => {
@@ -179,38 +178,13 @@ export const wireByNames = async (page: Page, [from, to]: NamedWire): Promise<vo
   await expect(source).toBeFocused();
 };
 
-const NAND_COUNT = 6;
-const input = (name: string): NamedPin => ({ part: `Input ${name}`, pin: name });
-const output = (name: string): NamedPin => ({ part: `Output ${name}`, pin: name });
-const pin = (part: string | undefined, name: string): NamedPin => ({ part: part ?? "", pin: name });
-
-/**
- * The half adder's fourteen wires as names, in the order of `halfAdderWires` in `adder-support`.
- * `nands` are the six NAND names in the order they were added.
- */
-export const halfAdderNamedWires = (nands: readonly string[]): readonly NamedWire[] => {
-  const [n1, n2, n3, n4, n5, n6] = nands;
-  if (nands.length !== NAND_COUNT || n1 === undefined) {
-    throw new Error("A half adder needs six NANDs");
-  }
-  return [
-    // XOR: n4 = NAND(NAND(A, n1), NAND(B, n1)) with n1 = NAND(A, B).
-    [input("A"), pin(n1, "a")],
-    [input("B"), pin(n1, "b")],
-    [input("A"), pin(n2, "a")],
-    [pin(n1, "out"), pin(n2, "b")],
-    [input("B"), pin(n3, "a")],
-    [pin(n1, "out"), pin(n3, "b")],
-    [pin(n2, "out"), pin(n4, "a")],
-    [pin(n3, "out"), pin(n4, "b")],
-    [pin(n4, "out"), output("SUM")],
-    // AND: n6 = NOT(NAND(A, B)), the NOT a NAND with both inputs tied.
-    [input("A"), pin(n5, "a")],
-    [input("B"), pin(n5, "b")],
-    [pin(n5, "out"), pin(n6, "a")],
-    [pin(n5, "out"), pin(n6, "b")],
-    [pin(n6, "out"), output("CARRY")],
-  ];
+/** Deletes, from its wire menu, the one wire that ends on `to`. */
+export const deleteWireInto = async (page: Page, to: NamedPin): Promise<void> => {
+  const ending = new RegExp(`^Actions for wire Wire from .+ to ${pinLabel(to)}$`, "u");
+  const button = structureRegion(page).getByRole("button", { name: ending });
+  await expect(button).toHaveCount(1);
+  await chooseEntry(page, button, "Delete");
+  await expect(button).toHaveCount(0);
 };
 
 const DraftSchema = z.object({ wires: z.array(z.unknown()) });
@@ -228,59 +202,6 @@ export const exportedWireCount = async (page: Page, name: string): Promise<numbe
   const text = await readFile(await download.path(), "utf-8");
   const file = WireCountSchema.parse(JSON.parse(text));
   return file.project.chips.find((chip) => chip.name === name)?.draft.wires.length;
-};
-
-const FIRST = 1;
-const SECOND = 2;
-
-/** In the Pins panel: deletes OUT from its row menu, then adds SUM and CARRY and names them. */
-export const replaceOutputs = async (page: Page): Promise<void> => {
-  const pins = await openPins(page, activate);
-  await chooseEntry(page, pins.getByRole("button", { name: "Actions for OUT" }), "Delete");
-  await expect(pins.getByRole("grid", { name: "Outputs" })).toHaveCount(0);
-  await addPins(pins, { direction: "output", count: SECOND }, activate);
-  await expect(nameField(pins, "output", FIRST)).toBeFocused();
-  await nameRow(nameField(pins, "output", FIRST), "SUM");
-  await nameRow(nameField(pins, "output", SECOND), "CARRY");
-  await expect(pins.getByRole("row", { name: "CARRY" })).toBeVisible();
-  await closePins(page, activate);
-};
-
-/** Renames a chip from its row in the library. The keyboard opens the library and its menu. */
-export const renameChipInLibrary = async (page: Page, from: string, to: string): Promise<void> => {
-  const toggle = page.getByRole("button", { name: "Library", exact: true });
-  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
-    await activate(toggle);
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  }
-  const tree = page.getByRole("treegrid", { name: "Chips" });
-  await chooseEntry(
-    page,
-    tree.getByRole("button", { name: `Actions for ${from}`, exact: true }),
-    "Rename…",
-  );
-  const dialog = page
-    .getByRole("dialog")
-    .filter({ has: page.getByRole("textbox", { name: "Name" }) });
-  await dialog.getByRole("textbox", { name: "Name" }).fill(to);
-  await activate(dialog.getByRole("button", { name: "Save" }));
-  await expect(dialog).toHaveCount(0);
-  // On a phone the library is a sheet over the page. Close it, so the header takes keys again.
-  const sheet = page.getByRole("dialog", { name: "Chip library" });
-  if ((await sheet.count()) > 0) {
-    await activate(sheet.getByRole("button", { name: "Close", exact: true }));
-    await expect(sheet).toHaveCount(0);
-  }
-};
-
-/** Saves the open chip with the header's Save button. The first save asks for a folder. */
-export const saveOpenChip = async (page: Page, name: string): Promise<void> => {
-  await activate(page.getByRole("button", { name: "Save", exact: true }));
-  const dialog = page.getByRole("dialog", { name: `Save ${name}` });
-  await expect(dialog).toBeVisible();
-  await activate(dialog.getByRole("button", { name: "Save", exact: true }));
-  await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: `Saved ${name}` })).toBeAttached();
 };
 
 /** Sets an input switch with the Space key. */
