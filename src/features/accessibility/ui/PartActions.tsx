@@ -5,11 +5,13 @@ import { RecolorChipDialog, RenameChipDialog } from "~/features/circuit-editor";
 import type { EditorSession, PartEntry } from "~/features/circuit-editor";
 import { findChip } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
+import { setFocusReturn } from "~/shared/focus-return";
 import type { ChipId } from "~/shared/ids";
 import { MenuButton } from "~/shared/ui";
 import type { MenuEntry } from "~/shared/ui";
 
 import { useStructureSession } from "./structure-session";
+import { useRowFocus } from "./use-row-focus";
 
 export interface PartActionsProps {
   readonly part: PartEntry;
@@ -111,17 +113,27 @@ export const runPartAction = (
 export function PartActions({ part }: PartActionsProps): ReactNode {
   const session = useStructureSession();
   const [dialog, setDialog] = useState<PartDialog>();
+  const focus = useRowFocus(`part:${part.instanceId}`);
   const close = (): void => {
     setDialog(undefined);
+    focus.returnFocus();
   };
   const { dispatch } = session.editor.getState();
   return (
     <>
       <MenuButton
         label={m.part_actions_label({ part: part.label })}
+        buttonRef={focus.register}
         entries={partEntries(part.custom !== undefined)}
         onAction={(id) => {
+          if (id === "delete") {
+            focus.prepareRemoval();
+          }
           setDialog(runPartAction(session, part, id));
+          // The Array dialog belongs to the canvas. It gives focus back to this button.
+          if (id === "array" && session.interaction.store.getState().arraying === true) {
+            setFocusReturn({ find: focus.element });
+          }
         }}
       />
       {dialog?.kind === "rename" ? (

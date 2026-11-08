@@ -5,9 +5,10 @@ import { openCircuit } from "~/features/circuit-editor";
 import type { EditorSession } from "~/features/circuit-editor";
 import { createDemoProject } from "~/features/projects";
 
+import { addPartEntries, runAddPart } from "./AddPartMenu";
 import { StructureSessionContext } from "./structure-session";
 import { createTestSession } from "./structure-session.fixtures";
-import { addPartEntries, runAddPart, StructureActions } from "./StructureActions";
+import { StructureActions } from "./StructureActions";
 
 const setup = (): EditorSession => {
   const session = createTestSession();

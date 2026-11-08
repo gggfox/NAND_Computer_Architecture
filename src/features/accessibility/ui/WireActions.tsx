@@ -8,6 +8,7 @@ import { MenuButton } from "~/shared/ui";
 import type { MenuEntry } from "~/shared/ui";
 
 import { useStructureSession } from "./structure-session";
+import { useRowFocus } from "./use-row-focus";
 import { runWireAction } from "./wire-actions-run";
 
 export interface WireActionsProps {
@@ -29,18 +30,24 @@ const entries = (): readonly MenuEntry[] => [
 export function WireActions({ wire }: WireActionsProps): ReactNode {
   const session = useStructureSession();
   const [isColorOpen, setIsColorOpen] = useState(false);
+  const focus = useRowFocus(`wire:${wire.wireId}`);
   const close = (): void => {
     setIsColorOpen(false);
+    focus.returnFocus();
   };
   return (
     <>
       <MenuButton
         label={m.wire_actions_label({ label: wire.label })}
+        buttonRef={focus.register}
         entries={entries()}
         onAction={(id) => {
           if (id === "color") {
             setIsColorOpen(true);
           } else {
+            if (id === "delete") {
+              focus.prepareRemoval();
+            }
             runWireAction(session, wire, { id });
           }
         }}
