@@ -81,9 +81,13 @@ export function StructureBody(props: StructureBodyProps): ReactNode {
         {m.structure_heading()}
       </h2>
       <StructureActions structure={structure} />
-      <h3 className={styles.subheading}>{m.structure_parts()}</h3>
+      <h3 className={styles.subheading} tabIndex={-1}>
+        {m.structure_parts()}
+      </h3>
       <ul className={styles.list}>{structure.parts.map((part) => row(part))}</ul>
-      <h3 className={styles.subheading}>{m.structure_wires()}</h3>
+      <h3 className={styles.subheading} tabIndex={-1}>
+        {m.structure_wires()}
+      </h3>
       <ul className={styles.list}>
         {structure.wires.map((wire) => (
           <WireRow key={wire.wireId} wire={wire} />

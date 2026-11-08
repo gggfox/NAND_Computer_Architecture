@@ -8,9 +8,9 @@ import type { EditorSession, InteractionCommand } from "~/features/circuit-edito
 import { parseProjectFile } from "~/features/projects";
 import { newInstanceId, newPinId } from "~/shared/ids";
 
+import { runAddPart } from "./AddPartMenu";
 import { StructureSessionContext } from "./structure-session";
 import { createTestSession } from "./structure-session.fixtures";
-import { runAddPart } from "./StructureActions";
 import { ghostEndText, SuggestedList, SuggestedRows } from "./SuggestedList";
 
 const noop = (): void => undefined;

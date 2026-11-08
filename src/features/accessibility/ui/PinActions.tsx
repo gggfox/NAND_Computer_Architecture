@@ -8,6 +8,7 @@ import { m } from "~/i18n/paraglide/messages";
 import { MenuButton } from "~/shared/ui";
 
 import { useStructureSession } from "./structure-session";
+import { useRowFocus } from "./use-row-focus";
 import { WireToDialog } from "./WireToDialog";
 
 export interface PinActionsProps {
@@ -49,12 +50,14 @@ export function PinActions({ pin }: PinActionsProps): ReactNode {
     [project, circuit, pin.ref.instanceId],
   );
   const [isWiring, setIsWiring] = useState(false);
+  const focus = useRowFocus(`pin:${pin.ref.instanceId}:${String(pin.ref.pin)}`);
   const pinLabel = m.canvas_wire_end({ pin: pin.name, chip: part?.label ?? "" });
   const wireId = pin.direction === "output" ? "wire" : "wire-from";
   return (
     <>
       <MenuButton
         label={m.pin_actions_label({ pin: pin.name, part: part?.label ?? "" })}
+        buttonRef={focus.register}
         entries={[
           {
             id: wireId,
@@ -76,6 +79,7 @@ export function PinActions({ pin }: PinActionsProps): ReactNode {
           pinLabel={pinLabel}
           onClose={() => {
             setIsWiring(false);
+            focus.returnFocus();
           }}
         />
       ) : undefined}

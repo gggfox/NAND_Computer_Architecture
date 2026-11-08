@@ -7,6 +7,7 @@ import { m } from "~/i18n/paraglide/messages";
 import { Button } from "~/shared/ui";
 
 import { useStructureSession } from "./structure-session";
+import { focusRowWhenReady, SUGGEST_KEY, useRowFocus } from "./use-row-focus";
 
 import styles from "./StructureView.module.css";
 
@@ -34,10 +35,18 @@ interface GhostRowProps {
 
 /** One ghost as "{from} to {to}" with its Accept button. */
 function GhostRow({ from, to, onAccept }: GhostRowProps): ReactNode {
+  const { register, prepareRemoval } = useRowFocus(`ghost:${from}>${to}`, SUGGEST_KEY);
   return (
     <li className={styles.item}>
       <span>{m.suggested_row({ from, to })}</span>
-      <Button aria-label={m.suggested_accept_label({ from, to })} onPress={onAccept}>
+      <Button
+        ref={register}
+        aria-label={m.suggested_accept_label({ from, to })}
+        onPress={() => {
+          prepareRemoval();
+          onAccept();
+        }}
+      >
         {m.suggested_accept()}
       </Button>
     </li>
@@ -64,6 +73,7 @@ export function SuggestedRows({ structure, ghosts, send }: SuggestedRowsProps): 
         <Button
           onPress={() => {
             send({ type: "acceptAllGhosts" });
+            focusRowWhenReady(SUGGEST_KEY);
           }}
         >
           {m.suggestions_accept_all()}
@@ -72,6 +82,7 @@ export function SuggestedRows({ structure, ghosts, send }: SuggestedRowsProps): 
           variant="quiet"
           onPress={() => {
             send({ type: "dismissGhosts" });
+            focusRowWhenReady(SUGGEST_KEY);
           }}
         >
           {m.suggestions_dismiss()}

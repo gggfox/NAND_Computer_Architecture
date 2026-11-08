@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Button as AriaButton, Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 
 import type { MenuEntry } from "./PointMenu";
@@ -14,6 +14,8 @@ interface MenuButtonProps {
   /** Opens the menu from elsewhere too (a right-click on its row); leave out for a plain button. */
   readonly isOpen?: boolean | undefined;
   readonly onOpenChange?: ((isOpen: boolean) => void) | undefined;
+  /** Gives the caller the button element, for example to move focus to it. */
+  readonly buttonRef?: Ref<HTMLButtonElement> | undefined;
 }
 
 const NONE: readonly string[] = [];
@@ -23,7 +25,7 @@ function Entries({
   entries,
   disabledIds = NONE,
   onAction,
-}: Readonly<Omit<MenuButtonProps, "isOpen" | "onOpenChange">>): ReactNode {
+}: Readonly<Omit<MenuButtonProps, "isOpen" | "onOpenChange" | "buttonRef">>): ReactNode {
   return (
     <Menu
       aria-label={label}
@@ -46,6 +48,7 @@ function Entries({
 export function MenuButton({
   isOpen,
   onOpenChange,
+  buttonRef,
   ...props
 }: Readonly<MenuButtonProps>): ReactNode {
   // With exactOptionalPropertyTypes, React Aria props reject explicit `undefined`, so spread only what is set.
@@ -55,7 +58,7 @@ export function MenuButton({
   };
   return (
     <MenuTrigger {...controlled}>
-      <AriaButton aria-label={props.label} className={styles.button}>
+      <AriaButton ref={buttonRef} aria-label={props.label} className={styles.button}>
         <span aria-hidden="true" className={styles.dots} />
       </AriaButton>
       <Popover placement="bottom end" className={styles.popover}>
