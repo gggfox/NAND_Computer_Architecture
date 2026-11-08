@@ -80,7 +80,7 @@ const DEMO_LAYOUT = [
   { x: 0, y: 0, width: 40, height: 40 },
   { x: 0, y: 80, width: 40, height: 40 },
   { x: 160, y: 40, width: 120, height: 80 },
-  { x: 320, y: 40, width: 40, height: 40 },
+  { x: 320, y: 60, width: 40, height: 40 },
 ] as const;
 
 /** The camera the URL holds (`?zoom=&x=&y=`), with the editor's defaults when absent. */

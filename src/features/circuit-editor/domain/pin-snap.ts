@@ -8,6 +8,7 @@ import { layoutIn, partOf } from "./geometry";
 import type { Scene } from "./geometry";
 import { previewPositions, snap } from "./move";
 import { PIN_ROW_GAP } from "./pin-placement";
+import { alignToWires } from "./wire-align";
 
 /** How close a dropped pin piece must come to a column or a slot to snap to it. */
 export const PIN_SNAP = GRID;
@@ -92,11 +93,8 @@ export const snapPinDrop = (scene: Scene, instanceId: InstanceId, proposed: Poin
     : intoColumn(scene, dragged, { others, guideX, proposed });
 };
 
-/**
- * Where the chips in `instanceIds` are drawn while dragged by `delta`, and where they drop: snapped
- * to the grid, and into line when the drag moves exactly one pin piece.
- */
-export const dragPreview = (
+/** Snapped to the grid, and into line when the drag moves exactly one pin piece. */
+const snappedPreview = (
   scene: Scene,
   instanceIds: ReadonlySet<InstanceId>,
   delta: Point,
@@ -113,4 +111,17 @@ export const dragPreview = (
     positions: new Map([[item.id, drop.position]]),
     ...(drop.guideX === undefined ? {} : { guideX: drop.guideX }),
   };
+};
+
+/**
+ * Where the chips in `instanceIds` are drawn while dragged by `delta`, and where they drop:
+ * snapped, then nudged half a grid when that straightens more of their wires (`alignToWires`).
+ */
+export const dragPreview = (
+  scene: Scene,
+  instanceIds: ReadonlySet<InstanceId>,
+  delta: Point,
+): DragPreview => {
+  const snapped = snappedPreview(scene, instanceIds, delta);
+  return { ...snapped, positions: alignToWires(scene, snapped.positions) };
 };

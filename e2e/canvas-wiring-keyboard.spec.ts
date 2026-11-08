@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { Page } from "@playwright/test";
 
 import {
@@ -10,6 +12,29 @@ import {
   test,
 } from "./support";
 import { inputBWire, NAND_B, press, tabToCanvas, wireInto } from "./wiring-support";
+
+/**
+ * The demo as it was first laid out, with the output on the grid (320, 40) rather than half a grid
+ * down in line with the NAND. Grid steps can then move the output across the straight B → b run.
+ */
+const GRID_DEMO = path.join(
+  import.meta.dirname,
+  "..",
+  "src",
+  "features",
+  "projects",
+  "fixtures",
+  "v1-demo.json",
+);
+
+const importGridDemo = async (page: Page): Promise<void> => {
+  await createProject(page);
+  const chooserEvent = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Import" }).click();
+  const chooser = await chooserEvent;
+  await chooser.setFiles(GRID_DEMO);
+  await expect(page.getByRole("heading", { level: 1, name: "Demo" })).toBeAttached();
+};
 
 /** `]` from nothing: Input A, Input B, then the NAND. */
 const STEPS_TO_NAND = 3;
@@ -97,7 +122,7 @@ test("from the keyboard: n, Enter and Colour… paint one wire Blue", async ({ p
 test("Tidy wires straightens a detour left behind by a moved chip, and keeps a hand-bent wire", async ({
   page,
 }) => {
-  await createProject(page);
+  await importGridDemo(page);
   await selectNand(page);
   // Bend the wire into a by hand: n, Enter, Move bends (ArrowDown, Enter), then its interior run one cell left.
   await page.keyboard.press("n");

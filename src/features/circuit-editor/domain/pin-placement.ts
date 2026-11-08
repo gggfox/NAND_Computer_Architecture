@@ -6,7 +6,7 @@ import { GRID, layoutOfKind } from "./chip-layout";
 import type { Rect } from "./chip-layout";
 import { layoutIn, partOf } from "./geometry";
 import type { Scene } from "./geometry";
-import { snap } from "./move";
+import { snapFrom } from "./move";
 
 /** The space between stacked pin pieces. */
 export const PIN_ROW_GAP = GRID;
@@ -93,7 +93,7 @@ const columnStart = (scene: Scene, direction: PinDirection): Point => {
 /**
  * Where new pin pieces of `direction` and these `widths` go, in order: stacked below the lowest
  * piece of that direction, or in a new column beside the other parts (inputs left, outputs
- * right). Each piece's top is `PIN_ROW_GAP` below the one above it; every point is on the grid.
+ * right). Each piece's top is `PIN_ROW_GAP` below the one above it, on the rows of the column.
  */
 export const columnPositions = (
   scene: Scene,
@@ -103,7 +103,7 @@ export const columnPositions = (
   const start = columnStart(scene, direction);
   let top = start.y;
   return widths.map((width) => {
-    const point = snap({ x: start.x, y: top });
+    const point = snapFrom({ x: start.x, y: top }, start);
     top = point.y + pieceHeight(scene, direction, width) + PIN_ROW_GAP;
     return point;
   });
