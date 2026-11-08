@@ -29,7 +29,8 @@
     "dist/**",
     "coverage/**",
     ".output/**",
-    ".tanstack/**"
+    ".tanstack/**",
+    ".pnpm-store/**"
   ],
   "settings": {
     "import/resolver": { "typescript": true },
