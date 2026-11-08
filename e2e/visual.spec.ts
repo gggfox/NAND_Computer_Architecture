@@ -1,4 +1,8 @@
 /* oxlint-disable eslint/id-length -- `x` and `y` are coordinate names */
+import path from "node:path";
+
+import type { Locator, Page } from "@playwright/test";
+
 import { importLibrary, libraryRow, openLibrary } from "./library-support";
 import {
   chipPath,
@@ -93,3 +97,49 @@ test(
     await expect(chipPath(page).locator("..")).toHaveScreenshot("chip-header.png");
   },
 );
+
+const HALF_ADDER = path.join(import.meta.dirname, "fixtures", "half-adder.json");
+const HALF_ADDER_PARTS = 10;
+const HALF_ADDER_WIRES = 14;
+/** The side panel scrolls. This height lets the whole structure view of a half adder fit in it. */
+const STRUCTURE_VIEWPORT = { width: 1280, height: 2600 };
+
+const structureRegion = (page: Page): Locator =>
+  page.getByRole("region", { name: "Circuit structure" });
+
+test(
+  "the structure view of a half adder, with the pins of NAND gate 1 open",
+  { tag: "@visual" },
+  async ({ page }) => {
+    await page.setViewportSize(STRUCTURE_VIEWPORT);
+    await createProject(page);
+    const chooserEvent = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Import" }).click();
+    const chooser = await chooserEvent;
+    await chooser.setFiles(HALF_ADDER);
+    await expect(page.getByRole("heading", { level: 1, name: "Half adder" })).toBeAttached();
+    const region = structureRegion(page);
+    await expect(region.getByRole("list").first().locator("> li")).toHaveCount(HALF_ADDER_PARTS);
+    await expect(region.getByRole("list").last().locator("> li")).toHaveCount(HALF_ADDER_WIRES);
+    const toggle = region.getByRole("button", { name: "Pins of NAND gate 1" });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    // The pointer would leave a hover style on the toggle it clicked.
+    await page.mouse.move(0, 0);
+    await expect(region).toHaveScreenshot("structure-half-adder.png");
+  },
+);
+
+test("the Wire to… dialog from Input A", { tag: "@visual" }, async ({ page }) => {
+  await createProject(page);
+  await page.getByRole("button", { name: "Add NAND" }).click();
+  const region = structureRegion(page);
+  await expect(region.getByText("NAND gate 2")).toBeVisible();
+  await region.getByRole("button", { name: "Pins of Input A" }).click();
+  await region.getByRole("button", { name: "Actions for A of Input A" }).click();
+  await page.getByRole("menuitem", { name: "Wire to…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Wire A of Input A to…" });
+  await expect(dialog.getByRole("searchbox", { name: "Search pins" })).toBeFocused();
+  await page.mouse.move(0, 0);
+  await expect(dialog).toHaveScreenshot("wire-to-dialog.png");
+});
