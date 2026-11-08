@@ -22,6 +22,7 @@ import type {
   ClipboardDid,
   Notice,
   PinAnnouncement,
+  OutputsAnnouncement,
   PinCommand,
   Selection,
   SuggestAnnouncement,
@@ -198,7 +199,8 @@ export type Announcement =
   | { readonly type: "tool"; readonly tool: Tool }
   | { readonly type: "pin"; readonly instanceId: InstanceId; readonly pin: PinKey }
   | { readonly type: "armed"; readonly instanceId: InstanceId; readonly pin: PinKey }
-  | { readonly type: "wired" }
+  /** A wire was added: both ends are named. */
+  | { readonly type: "wired"; readonly from: PinRef; readonly to: PinRef }
   | { readonly type: "disarmed" }
   /** A connection was refused: `reason` says why. */
   | { readonly type: "refused"; readonly reason: ConnectionError }
@@ -211,6 +213,7 @@ export type Announcement =
   | { readonly type: "placed"; readonly kind: PlaceableKind }
   | { readonly type: "pinAdded"; readonly direction: PinDirection; readonly name: string }
   | PinAnnouncement
+  | OutputsAnnouncement
   | SuggestAnnouncement;
 
 export type Effect =

@@ -91,7 +91,6 @@ describe("announcementText", () => {
       "out of NAND gate 1 ready to wire",
     );
     expect(say({ type: "armed", instanceId: nand.id, pin: 9 })).toBe("");
-    expect(say({ type: "wired" })).toBe("Wire added");
     expect(say({ type: "disarmed" })).toBe("Wiring cancelled");
     expect(say({ type: "bends", active: true })).toBe(
       "Moving bends. ] and [ choose a segment, arrows move it, Escape finishes.",

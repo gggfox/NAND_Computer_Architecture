@@ -5,6 +5,7 @@ import {
   GRID,
   nandPosition,
   NAND_AT,
+  spoken,
   test,
 } from "./support";
 
@@ -101,4 +102,10 @@ test("Escape closes the Wire to… dialog without a wire", async ({ page }) => {
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
+});
+
+test("Read outputs speaks every output once through the canvas region", async ({ page }) => {
+  await createProject(page);
+  await page.getByRole("button", { name: "Read outputs" }).click();
+  await expect(spoken(page)).toHaveText("Outputs: OUT 1");
 });
