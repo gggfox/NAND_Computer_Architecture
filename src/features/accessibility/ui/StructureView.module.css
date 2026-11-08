@@ -22,6 +22,19 @@
   list-style: none;
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.suggested {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .part {
   display: flex;
   flex-direction: column;

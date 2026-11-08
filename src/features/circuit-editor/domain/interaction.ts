@@ -173,8 +173,8 @@ export type InteractionCommand =
   | { readonly type: "cancelPlacement" }
   /** Places one `kind` centred on `screen`, or on the viewport's centre without one. */
   | { readonly type: "placeAt"; readonly kind: PlaceableKind; readonly screen?: Point }
-  /** Adds one 1-bit pin of the open chip, its piece centred on `screen`. */
-  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen: Point }
+  /** Adds one 1-bit pin of the open chip, its piece centred on `screen`, or on the viewport centre. */
+  | { readonly type: "addPinAt"; readonly direction: PinDirection; readonly screen?: Point }
   | PinCommand
   | SuggestCommand
   | ViewCommand;

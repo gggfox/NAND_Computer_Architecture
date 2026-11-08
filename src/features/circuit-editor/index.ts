@@ -59,6 +59,7 @@ export { createEditorSession, type EditorSession } from "./application/editor-se
 export { useEditorSession } from "./ui/use-editor-session";
 export { useSessionErrors } from "./ui/use-session-errors";
 export {
+  addPinAtCentre,
   armPlacement,
   cancelPlacement,
   placeAtCentre,
@@ -75,4 +76,5 @@ export {
   RenameChipDialog,
 } from "./ui/ChipDialogs";
 export type { InteractionCommand } from "./domain/interaction";
+export type { Ghost } from "./domain/suggestion-types";
 export { WireColorDialog } from "./ui/WireDialogs";

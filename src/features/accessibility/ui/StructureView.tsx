@@ -9,6 +9,7 @@ import type { InstanceId, PinId } from "~/shared/ids";
 
 import { PartRow } from "./PartRow";
 import { StructureSessionContext } from "./structure-session";
+import { StructureActions } from "./StructureActions";
 import { WireRow } from "./WireRow";
 
 import styles from "./StructureView.module.css";
@@ -79,6 +80,7 @@ export function StructureBody(props: StructureBodyProps): ReactNode {
       <h2 id={HEADING_ID} className={styles.heading} tabIndex={-1}>
         {m.structure_heading()}
       </h2>
+      <StructureActions structure={structure} />
       <h3 className={styles.subheading}>{m.structure_parts()}</h3>
       <ul className={styles.list}>{structure.parts.map((part) => row(part))}</ul>
       <h3 className={styles.subheading}>{m.structure_wires()}</h3>
