@@ -20,6 +20,7 @@ export { NumberField } from "./NumberField";
 export { ReorderList } from "./ReorderList";
 export { Sheet } from "./Sheet";
 export { MenuButton } from "./MenuButton";
+export { PopoverButton } from "./PopoverButton";
 export { useMediaQuery } from "./use-media-query";
 export { TreeView, type RowProps, type TreeNode } from "./TreeView";
 export { SearchField } from "./SearchField";

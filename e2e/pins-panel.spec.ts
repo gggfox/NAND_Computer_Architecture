@@ -30,6 +30,7 @@ import {
   test,
   worldToPage,
 } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 import { pointerFor, usesTouch } from "./wiring-support";
 
 const SAVED_CHIP = path.join(import.meta.dirname, "fixtures", "saved-chip.json");
@@ -190,7 +191,7 @@ const LAST_OPENED = /"lastOpenedChipId": "[^"]+"/u;
 
 const importFile = async (page: Page, file: Parameters<FileChooser["setFiles"]>[0]) => {
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(file);
   await expect(page.getByRole("heading", { level: 1, name: "Saved chip" })).toBeAttached();

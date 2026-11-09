@@ -7,6 +7,7 @@ import { libraryPanel, libraryToggle, libraryTree, tapOpenLibrary } from "./libr
 import { click, tap } from "./pins-support";
 import type { Press } from "./pins-support";
 import { canvasHost, createProject, expect, exportedText, spoken } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /**
  * `fixtures/save-flow.json`: the open, saved "Half adder" (inputs A and B into a NAND, output S);
@@ -19,7 +20,7 @@ export const SAVE_FLOW = path.join(import.meta.dirname, "fixtures", "save-flow.j
 export const importSaveFlow = async (page: Page): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(SAVE_FLOW);
   await expect(page.getByRole("heading", { level: 1, name: "Save flow" })).toBeAttached();

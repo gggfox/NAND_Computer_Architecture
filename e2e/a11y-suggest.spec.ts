@@ -4,6 +4,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
 import { canvasHost, createProject, expect, pickTheme, spoken, test, THEMES } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /* Axe on Suggest wires (phase 5c), in every theme: the bar showing and a ghost focused. */
 
@@ -25,7 +26,7 @@ for (const theme of THEMES) {
   }) => {
     await createProject(page);
     const chooserEvent = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import" }).click();
+    await pressEditorTool(page, "Import");
     const chooser = await chooserEvent;
     await chooser.setFiles(REGISTER_FILE);
     await expect(page.getByRole("heading", { level: 1, name: "Register file" })).toBeAttached();

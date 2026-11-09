@@ -19,6 +19,7 @@ import {
   THEMES,
   worldToPage,
 } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 import { BUS, pointerFor, usesTouch } from "./wiring-support";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
@@ -143,7 +144,7 @@ for (const theme of THEMES) {
     await expect(host).toBeFocused();
 
     const chooserEvent = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import" }).click();
+    await pressEditorTool(page, "Import");
     const chooser = await chooserEvent;
     await chooser.setFiles(BUS);
     await expect(page.getByRole("heading", { level: 1, name: "Bus" })).toBeAttached();

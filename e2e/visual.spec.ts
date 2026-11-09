@@ -22,6 +22,7 @@ import {
   THEMES,
   worldToPage,
 } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 const slug = (theme: string): string => theme.toLowerCase().replaceAll(" ", "-");
 
@@ -114,7 +115,7 @@ test(
     await page.setViewportSize(STRUCTURE_VIEWPORT);
     await createProject(page);
     const chooserEvent = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import" }).click();
+    await pressEditorTool(page, "Import");
     const chooser = await chooserEvent;
     await chooser.setFiles(HALF_ADDER);
     await expect(page.getByRole("heading", { level: 1, name: "Half adder" })).toBeAttached();

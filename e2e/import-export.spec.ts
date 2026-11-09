@@ -3,12 +3,13 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 
 import { createProject, expect, test } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 const FIXTURES = path.join(import.meta.dirname, "fixtures");
 
 const importFile = async (page: Page, file: string): Promise<void> => {
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(file);
 };
@@ -29,7 +30,7 @@ test("an exported project imports back to the same circuit", async ({
   await expect(page.getByText("NAND gate 2", { exact: true })).toBeVisible();
 
   const downloadEvent = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
+  await pressEditorTool(page, "Export");
   const download = await downloadEvent;
   // WebKit on Linux (WPE/GTK) rewrites spaces in download names to underscores.
   const expectedName =
@@ -56,7 +57,7 @@ test("an exported project imports back to the same circuit", async ({
 /** Exports the open project and returns the path of the file. */
 const exportOpenProject = async (page: Page, outputPath: string): Promise<void> => {
   const downloadEvent = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
+  await pressEditorTool(page, "Export");
   const download = await downloadEvent;
   await download.saveAs(outputPath);
 };

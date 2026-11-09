@@ -94,13 +94,35 @@ function ColorLabel({ color }: { readonly color: WireColor | undefined }): React
   );
 }
 
+/** The colour dialog for the next new wire; it sets the colour and closes. */
+export function NextWireColorDialog({
+  session,
+  onClose,
+}: {
+  readonly session: EditorSession;
+  readonly onClose: () => void;
+}): ReactNode {
+  const color = useStore(session.interaction.store, (state) => state.wireColor);
+  return (
+    <WireColorDialog
+      title={m.next_wire_color_title()}
+      color={color}
+      onClose={onClose}
+      onSave={(next) => {
+        session.interaction.store.getState().send({
+          type: "command",
+          command: { type: "setWireColor", ...(next === undefined ? {} : { color: next }) },
+        });
+        onClose();
+      }}
+    />
+  );
+}
+
 /** The toolbar's next-wire colour: shows the current swatch and opens the picker to change it. */
 export function WireColorButton({ session }: { readonly session: EditorSession }): ReactNode {
   const color = useStore(session.interaction.store, (state) => state.wireColor);
   const [open, setOpen] = useState(false);
-  const close = (): void => {
-    setOpen(false);
-  };
   return (
     <>
       <Button
@@ -112,16 +134,10 @@ export function WireColorButton({ session }: { readonly session: EditorSession }
         <ColorLabel color={color} />
       </Button>
       {open ? (
-        <WireColorDialog
-          title={m.next_wire_color_title()}
-          color={color}
-          onClose={close}
-          onSave={(next) => {
-            session.interaction.store.getState().send({
-              type: "command",
-              command: { type: "setWireColor", ...(next === undefined ? {} : { color: next }) },
-            });
-            close();
+        <NextWireColorDialog
+          session={session}
+          onClose={() => {
+            setOpen(false);
           }}
         />
       ) : undefined}

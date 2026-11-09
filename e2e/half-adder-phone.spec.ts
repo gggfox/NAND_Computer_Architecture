@@ -16,6 +16,7 @@ import {
   worldToPage,
 } from "./support";
 import type { Point } from "./support";
+import { pressZoomTool } from "./toolbar-support";
 import { pointerFor, wiresOf } from "./wiring-support";
 import type { Pointer } from "./wiring-support";
 
@@ -105,7 +106,7 @@ test("a half adder built with taps adds every pair of bits", async ({ page }) =>
 
   // Fit the whole board on the phone's canvas, so every pin can be tapped.
   const before = urlCamera(page).zoom;
-  await tap(page.getByRole("button", { name: "Fit" }));
+  await pressZoomTool(page, "Fit", tap);
   await expect.poll(() => urlCamera(page).zoom).not.toBe(before);
 
   const wires = halfAdderWires(board);

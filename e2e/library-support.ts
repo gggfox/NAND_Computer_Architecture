@@ -4,6 +4,7 @@ import type { FileChooser, Locator, Page } from "@playwright/test";
 
 import { tap } from "./pins-support";
 import { createProject, expect } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /**
  * `fixtures/library.json`: folders Arithmetic › Adders and Logic; a saved "Half adder" in Adders,
@@ -19,7 +20,7 @@ export const importLibrary = async (
 ): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(file);
   await expect(page.getByRole("heading", { level: 1, name: "Library" })).toBeAttached();

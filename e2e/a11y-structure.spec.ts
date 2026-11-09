@@ -5,6 +5,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import { closePins, openPins } from "./pins-support";
 import { createProject, expect, pickTheme, test, THEMES } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /*
  * Axe on the structure view (phase 6), in every theme. The states are: pins collapsed and
@@ -134,7 +135,7 @@ for (const theme of THEMES) {
   }) => {
     await createProject(page);
     const chooserEvent = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import" }).click();
+    await pressEditorTool(page, "Import");
     const chooser = await chooserEvent;
     await chooser.setFiles(REGISTER_FILE);
     await expect(page.getByRole("heading", { level: 1, name: "Register file" })).toBeAttached();

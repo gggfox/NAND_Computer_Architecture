@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 
 import { createProject, expect, pickTheme, spoken, test, THEMES, worldToPage } from "./support";
 import type { Point } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /* Axe on pin picking (phase 5b), in every theme: the bar with Pick pins, the card's button, a refusal. */
 
@@ -30,7 +31,7 @@ const click = async (page: Page, world: Point, button: "left" | "right" = "left"
 const setUp = async (page: Page, theme: (typeof THEMES)[number]): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(RAM_CELL);
   await expect(page.getByRole("heading", { level: 1, name: "RAM cell" })).toBeAttached();

@@ -24,9 +24,19 @@ test("the next wire colour paints a new wire Blue", async ({ isMobile, page }, t
   const pointer = pointerFor(page, usesTouch(isMobile, testInfo));
   await createProject(page);
   await deleteDemoWire(page, pointer, { part: DEMO_PART.nand, pin: NAND_B });
-  await page.getByRole("button", { name: /Wire colour: Default/u }).click();
+  // On a phone the next wire colour is in the toolbar's More tools menu, which shows no swatch.
+  const more = page.getByRole("button", { name: "More tools" });
+  const narrow = await more.isVisible();
+  if (narrow) {
+    await more.click();
+    await page.getByRole("menuitem", { name: "Colour for new wires" }).click();
+  } else {
+    await page.getByRole("button", { name: /Wire colour: Default/u }).click();
+  }
   await saveColor(page, "Colour for new wires", "Blue");
-  await expect(page.getByRole("button", { name: /Wire colour: Blue/u })).toBeVisible();
+  if (!narrow) {
+    await expect(page.getByRole("button", { name: /Wire colour: Blue/u })).toBeVisible();
+  }
 
   await pointer.tap(await pinPoint(page, DEMO_PART.inputB, 0));
   await pointer.tap(await pinPoint(page, DEMO_PART.nand, NAND_B));

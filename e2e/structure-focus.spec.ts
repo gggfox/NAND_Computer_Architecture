@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 
 import { canvasHost, chipCenter, createProject, DEMO_PART, expect, test } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /*
  * Focus management in the structure view (phase 6, spec 3.6). Each test uses the keyboard to act
@@ -143,7 +144,7 @@ test("the skip link moves focus to the structure heading", async ({ page, browse
 test("Accept moves focus to the next suggestion, Dismiss to Suggest wires", async ({ page }) => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(REGISTER_FILE);
   await expect(page.getByRole("heading", { level: 1, name: "Register file" })).toBeAttached();

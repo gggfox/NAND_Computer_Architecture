@@ -1,8 +1,6 @@
 import { useId, useRef } from "react";
 import type { ReactNode } from "react";
-import { useStore } from "zustand";
 
-import { findChip } from "~/features/projects";
 import { m } from "~/i18n/paraglide/messages";
 
 import type { EditorSession } from "../application/editor-session";
@@ -11,6 +9,8 @@ import { CanvasOverlays } from "./CanvasOverlays";
 import type { CanvasMenuSlot } from "./CanvasOverlays";
 import { PlacingBanner } from "./PlacingBanner";
 import { useCanvas, useSpoken, useUrlCamera } from "./use-canvas";
+import { useChipName } from "./use-chip-name";
+import { ZoomCorner } from "./ZoomCorner";
 
 import styles from "./CircuitCanvas.module.css";
 
@@ -27,6 +27,7 @@ interface CircuitCanvasProps {
  * assistive technology; the focusable host around it takes the keyboard map, describes it, and
  * speaks each selection, move, delete and pin through a polite live region. Tab always leaves.
  * The minimap in the corner is a pointer shortcut only, so it is hidden from assistive technology.
+ * On a narrow screen the zoom controls sit in the top-right corner.
  */
 export function CircuitCanvas({ session, view, canvasMenu }: CircuitCanvasProps): ReactNode {
   const { canvasRef, minimapRef, onKeyDown, onKeyUp, onBlur } = useCanvas(session);
@@ -34,10 +35,7 @@ export function CircuitCanvas({ session, view, canvasMenu }: CircuitCanvasProps)
   const spoken = useSpoken(session);
   const hintId = useId();
   const hostRef = useRef<HTMLDivElement>(null);
-  const chipName = useStore(
-    session.editor,
-    (state) => findChip(state.history.present, state.chipId)?.name ?? "",
-  );
+  const chipName = useChipName(session);
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- `application` is an interactive role: the host takes the canvas's keyboard map
@@ -62,6 +60,7 @@ export function CircuitCanvas({ session, view, canvasMenu }: CircuitCanvasProps)
       <p className="visually-hidden" aria-live="polite">
         {spoken}
       </p>
+      <ZoomCorner session={session} />
       <PlacingBanner session={session} hostRef={hostRef} />
       <CanvasOverlays session={session} hostRef={hostRef} canvasMenu={canvasMenu} />
     </div>

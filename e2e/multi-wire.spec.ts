@@ -13,6 +13,7 @@ import {
   worldToPage,
 } from "./support";
 import type { ExportedFile, Point } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 import { instanceIds, pointerFor, usesTouch, wiresOf } from "./wiring-support";
 import type { Pointer } from "./wiring-support";
 
@@ -60,7 +61,7 @@ const notice = (page: Page) =>
 const importFixture = async (page: Page, file: string, name: string): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(file);
   await expect(page.getByRole("heading", { level: 1, name })).toBeAttached();

@@ -1,0 +1,23 @@
+.short {
+  display: none;
+}
+
+/* Visually hidden, as `.visually-hidden` in global.css: still read as the control's name. */
+@media (width < 640px) {
+  .full {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 0;
+    clip-path: inset(50%);
+  }
+
+  .short {
+    display: inline-grid;
+    place-items: center;
+  }
+}
