@@ -5,7 +5,8 @@ import styles from "./SegmentedControl.module.css";
 
 export interface SegmentOption {
   readonly id: string;
-  readonly label: string;
+  /** Text, or text with a visual variant that keeps the text as the accessible name. */
+  readonly label: ReactNode;
 }
 
 interface SegmentedControlProps {

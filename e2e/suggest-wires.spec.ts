@@ -14,6 +14,7 @@ import {
   worldToPage,
 } from "./support";
 import type { ExportedFile, Point } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 import { instanceIds, usesTouch, wiresOf } from "./wiring-support";
 
 /*
@@ -46,7 +47,7 @@ const suggestButton = (page: Page) =>
 const importFixture = async (page: Page): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(REGISTER_FILE);
   await expect(page.getByRole("heading", { level: 1, name: "Register file" })).toBeAttached();

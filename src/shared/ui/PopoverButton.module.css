@@ -1,0 +1,39 @@
+.button {
+  display: grid;
+  place-items: center;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding: 0;
+  color: var(--color-text);
+  cursor: pointer;
+  background-color: var(--color-surface);
+  border: 1px solid var(--frame-line);
+  border-radius: var(--radius-control);
+}
+
+.button[data-pressed] {
+  opacity: 0.7;
+}
+
+.button[data-focus-visible] {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+}
+
+.popover {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-wire);
+  border-radius: var(--radius-control);
+}
+
+.dialog {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  outline: none;
+}

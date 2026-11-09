@@ -15,6 +15,7 @@ import {
   worldToPage,
 } from "./support";
 import type { ExportedFile, ExportedWire, Point } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /** Helpers for the wiring specs: pointers that tap and drag, and reading wires from an export. */
 
@@ -140,7 +141,7 @@ export const inputBWire = (file: ExportedFile): ExportedWire | undefined => {
 
 export const importBus = async (page: Page): Promise<void> => {
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(BUS);
   await expect(page.getByRole("heading", { level: 1, name: "Bus" })).toBeAttached();

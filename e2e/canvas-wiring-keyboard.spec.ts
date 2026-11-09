@@ -12,6 +12,7 @@ import {
   spoken,
   test,
 } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 import { inputBWire, NAND_B, press, tabToCanvas, wireInto } from "./wiring-support";
 
 /**
@@ -34,7 +35,7 @@ const GRID_DEMO_URL = /\/projects\/00000000-0000-4000-8000-000000000001(?:\?|$)/
 const importGridDemo = async (page: Page): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(GRID_DEMO);
   // The import opens the file's project at its own id; keys pressed before that editor mounts go nowhere.
@@ -165,10 +166,7 @@ test("Tidy wires straightens a detour left behind by a moved chip, and keeps a h
   expect(bent?.manualWaypoints).toBe(true);
   expect(wireInto(before, DEMO_PART.nand, NAND_B)?.waypoints).toEqual(detour);
 
-  await page
-    .getByRole("toolbar", { name: "Editor tools" })
-    .getByRole("button", { name: "Tidy wires" })
-    .click();
+  await pressEditorTool(page, "Tidy wires");
   const after = await exportedProject(page);
   // The detour is gone, back to the straight run; the hand-bent wire is untouched.
   expect(wireInto(after, DEMO_PART.nand, NAND_B)?.waypoints).toEqual([]);

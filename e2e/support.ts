@@ -5,6 +5,8 @@ import { expect, test as base } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 
+import { pressEditorTool } from "./toolbar-support";
+
 /** Every spec runs with reduced motion on, so no assertion races a transition (ADR 10). */
 export const test = base.extend({
   page: async ({ page }, use) => {
@@ -275,7 +277,7 @@ export const exportedText = async (page: Page): Promise<string> => {
     globalThis.scrollTo(0, 0);
   });
   const downloadEvent = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
+  await pressEditorTool(page, "Export");
   const download = await downloadEvent;
   return readFile(await download.path(), "utf-8");
 };

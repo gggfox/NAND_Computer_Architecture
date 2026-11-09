@@ -1,0 +1,15 @@
+/*
+ * The zoom button in the canvas's top-right corner, on a narrow screen only. It stays under the
+ * canvas's banners and bars, which take the top centre.
+ */
+.corner {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+}
+
+@media (width >= 640px) {
+  .corner {
+    display: none;
+  }
+}

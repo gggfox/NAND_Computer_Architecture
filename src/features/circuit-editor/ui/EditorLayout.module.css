@@ -20,6 +20,14 @@
   min-inline-size: 0;
 }
 
+/* Narrower buttons on a phone, so the toolbar takes two rows at most. */
+@media (width < 640px) {
+  .toolbar {
+    --button-padding-inline: 0.625rem;
+    --segment-padding-inline: 0.5rem;
+  }
+}
+
 .header {
   grid-area: header;
   min-inline-size: 0;

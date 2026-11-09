@@ -13,6 +13,7 @@ import {
   TOUCH_ID_BASE,
   worldToPage,
 } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /*
  * The drag budget (Phase 2 plan, Task 13): a 50-chip selection dragged for 2 s on a 300-chip,
@@ -53,7 +54,7 @@ const percentile = (values: readonly number[], rank: number): number => {
 
 const importFixture = async (page: Page): Promise<void> => {
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(FIXTURE);
   await expect(page.getByText("NAND gate 300", { exact: true })).toBeAttached();

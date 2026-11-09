@@ -11,3 +11,21 @@
     display: none;
   }
 }
+
+/* A wide screen shows every tool; a narrow one keeps the frequent ones and a "more" menu. */
+.wide,
+.narrow {
+  display: contents;
+}
+
+@media (width < 640px) {
+  .wide {
+    display: none;
+  }
+}
+
+@media (width >= 640px) {
+  .narrow {
+    display: none;
+  }
+}

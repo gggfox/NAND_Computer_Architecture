@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 import type { Locator, Page } from "@playwright/test";
 import { z } from "zod";
 
-import { PROJECT_URL, expect } from "./support";
+import { expect, PROJECT_URL } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 /*
  * Helpers for the keyboard-only specs. They use no pointer at all. A control gets focus
@@ -201,7 +202,7 @@ export const exportedWireCount = async (page: Page, name: string): Promise<numbe
     globalThis.scrollTo(0, 0);
   });
   const downloadEvent = page.waitForEvent("download");
-  await activate(page.getByRole("button", { name: "Export" }));
+  await pressEditorTool(page, "Export", activate);
   const download = await downloadEvent;
   const text = await readFile(await download.path(), "utf-8");
   const file = WireCountSchema.parse(JSON.parse(text));

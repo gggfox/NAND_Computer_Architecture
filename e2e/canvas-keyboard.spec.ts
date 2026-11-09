@@ -14,6 +14,7 @@ import {
   spoken,
   test,
 } from "./support";
+import { pressEditorTool } from "./toolbar-support";
 
 const MAX_TABS = 40;
 /** A project whose open chip holds one instance of the custom chip "Inner", at (0, 0). */
@@ -110,7 +111,7 @@ test("? opens the keyboard help, and Tab still leaves the canvas", async ({ page
 const openCustomChipMenu = async (page: Page): Promise<void> => {
   await createProject(page);
   const chooserEvent = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import" }).click();
+  await pressEditorTool(page, "Import");
   const chooser = await chooserEvent;
   await chooser.setFiles(CUSTOM_CHIP);
   await expect(page.getByText("Inner 1", { exact: true })).toBeAttached();

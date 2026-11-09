@@ -26,6 +26,7 @@ import {
 } from "./save-support";
 import { createProject, expect, exportedProject, test, touch, worldToPage } from "./support";
 import type { ExportedWire, Point } from "./support";
+import { pressZoomTool } from "./toolbar-support";
 import { middleOf, pointerFor } from "./wiring-support";
 import type { Pointer } from "./wiring-support";
 
@@ -90,7 +91,7 @@ const addNands = async (page: Page, count: number): Promise<void> => {
 
 /** Fits the board on the phone's canvas, so every pin can be tapped. */
 const fit = async (page: Page): Promise<void> => {
-  await tap(page.getByRole("button", { name: "Fit" }));
+  await pressZoomTool(page, "Fit", tap);
   // Fit may leave the camera as it was, so wait for two URL reads half a second apart to agree.
   // The URL takes the camera 200 ms after it stops moving (view-sync).
   let previous: string | undefined = undefined;
