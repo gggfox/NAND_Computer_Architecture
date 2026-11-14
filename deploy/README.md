@@ -43,7 +43,7 @@ They are not part of the build.
 | staging     | <https://staging.nand.gggfox.com> | `staging`    | `Deploy staging`, after CI passes on main |
 | production  | <https://nand.gggfox.com>         | `production` | `Promote to production`, started by hand  |
 
-The image is `ghcr.io/garzafox/nand_computer_architecture`. The Dokploy project is "NAND".
+The image is `ghcr.io/gggfox/nand_computer_architecture`. The Dokploy project is "NAND".
 
 ### Promote staging to production
 
