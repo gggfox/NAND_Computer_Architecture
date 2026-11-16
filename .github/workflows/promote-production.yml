@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE: ghcr.io/garzafox/nand_computer_architecture
+  IMAGE: ghcr.io/gggfox/nand_computer_architecture
 
 jobs:
   promote:

@@ -3,7 +3,7 @@
 # Tell Dokploy which image to run, then deploy it (ADR 51).
 #
 # Pins the application to the immutable per-commit reference
-# `ghcr.io/garzafox/nand_computer_architecture:<sha>` with
+# `ghcr.io/gggfox/nand_computer_architecture:<sha>` with
 # `application.saveDockerProvider`, then calls `application.deploy`. A mutable
 # `:staging` / `:production` tag can be served from the server's local image
 # cache, so a stale rollout can look green. A new reference on every deploy

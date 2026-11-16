@@ -19,7 +19,7 @@ permissions:
 
 env:
   # Image names must be lowercase, so this is not derived from github.repository.
-  IMAGE: ghcr.io/garzafox/nand_computer_architecture
+  IMAGE: ghcr.io/gggfox/nand_computer_architecture
 
 jobs:
   deploy:
