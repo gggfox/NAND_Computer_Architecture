@@ -13,7 +13,8 @@ pre-commit:
       exclude:
         - "src/routeTree.gen.ts"
         - "tooling/lint-canaries/**"
-      run: pnpm exec oxlint --type-aware --deny-warnings {staged_files}
+      # Staged files can all be in an ignored folder (docs, tooling/promo); that is not an error.
+      run: pnpm exec oxlint --type-aware --deny-warnings --no-error-on-unmatched-pattern {staged_files}
     stylelint:
       glob: "*.css"
       exclude:
