@@ -26,6 +26,7 @@
     "src/routeTree.gen.ts",
     ".superpowers/**",
     "docs/**",
+    "tooling/promo/**",
     "dist/**",
     "coverage/**",
     ".output/**",

@@ -17,3 +17,6 @@ playwright-report
 # Visual baselines are Linux-only (Playwright Docker image / CI); local macOS screenshots stay out.
 e2e/**/*-darwin.png
 e2e/**/*-win32.png
+
+# Generated promo video clips, stills and renders (see tooling/promo/README.md).
+tooling/promo/out/
